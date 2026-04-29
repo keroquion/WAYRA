@@ -151,8 +151,8 @@ function _uploadToDrive(base64, filename, mimeType) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const fileId = file.getId();
-  // Usar thumbnail de Drive que funciona con img tags sin restricción de cookies
-  const url = `https://lh3.googleusercontent.com/d/${fileId}`;
+  // Usar endpoint thumbnail que es más compatible con <img> tags
+  const url = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
   return { url, fileId };
 }
 

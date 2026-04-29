@@ -209,14 +209,12 @@ const IngresoView = (() => {
         ${cells}
         <td>${fotoCell}</td>
         <td>
-          <div style="display:flex;gap:6px;align-items:center">
-            <button class="btn btn-sm btn-secondary" style="min-width:36px" title="Garantía"
-              data-reg-id="${e._registroId}" data-lote-id="${_loteActivo.id}"
-              onclick="_ingresoAbrirGarantia(this)">🛡️</button>
-            <button class="btn btn-sm btn-secondary" style="min-width:36px" title="Soporte"
-              data-reg-id="${e._registroId}" data-lote-id="${_loteActivo.id}"
-              onclick="_ingresoAbrirSoporte(this)">🔩</button>
-            <button class="btn btn-sm btn-danger" style="min-width:36px" title="Quitar del lote"
+          <div style="display:flex;gap:12px;align-items:center">
+            <button class="btn btn-sm btn-icon" title="Garantía"
+              onclick="_ingresoAbrirGarantia('${e._registroId}')">🛡️</button>
+            <button class="btn btn-sm btn-icon" title="Soporte"
+              onclick="_ingresoAbrirSoporte('${e._registroId}')">🔩</button>
+            <button class="btn btn-sm btn-icon btn-danger" title="Quitar del lote"
               onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${e._registroId}')">🗑️</button>
           </div>
         </td>
@@ -243,15 +241,13 @@ const IngresoView = (() => {
     Toast.info('Equipo quitado del lote');
   };
 
-  window._ingresoAbrirGarantia = async (btn) => {
-    const regId = btn.dataset.regId;
+  window._ingresoAbrirGarantia = (regId) => {
     const eq = window._ingresoEquiposMap?.[regId];
     if (!eq) { Toast.error('Registro no encontrado'); return; }
     FlujoGarantia.openModal(eq);
   };
 
-  window._ingresoAbrirSoporte = async (btn) => {
-    const regId = btn.dataset.regId;
+  window._ingresoAbrirSoporte = (regId) => {
     const eq = window._ingresoEquiposMap?.[regId];
     if (!eq) { Toast.error('Registro no encontrado'); return; }
     FlujoSoporte.openModal(eq);

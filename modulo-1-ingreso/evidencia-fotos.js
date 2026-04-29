@@ -21,6 +21,7 @@ const EvidenciaFotos = (() => {
       return `
         <img src="${src}" class="photo-thumb"
              title="${f.nombre||'foto'}"
+             referrerpolicy="no-referrer"
              onclick="EvidenciaFotos.openLightbox('${id}',${i})"
              style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)"
              onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span title=\'Error cargando imagen\' style=\'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--bg-hover);border-radius:4px;font-size:1rem\'>\uD83D\uDDBC\uFE0F</span>')">
@@ -131,7 +132,7 @@ const EvidenciaFotos = (() => {
       const f = fotos[idx];
       div.innerHTML = `
         <div style="position:relative;max-width:90vw;max-height:80vh">
-          <img src="${f.url||f.preview}" style="max-width:90vw;max-height:75vh;object-fit:contain;border-radius:8px">
+          <img src="${f.url||f.preview}" referrerpolicy="no-referrer" style="max-width:90vw;max-height:75vh;object-fit:contain;border-radius:8px">
           <div style="color:#fff;text-align:center;font-size:0.8rem;margin-top:8px;opacity:0.7">${f.nombre||''} · ${idx+1}/${fotos.length}</div>
         </div>
         <div style="display:flex;gap:12px">
