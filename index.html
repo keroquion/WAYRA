@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Inventario Pro v2 — Gestión modular de lotes con Google Sheets, flujos de garantía y reportes formales">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#12151f">
+  <title>Inventario Pro v2.0.0 — Petulap S.A.C.</title>
+  <link rel="stylesheet" href="core-theme/styles.css">
+  <!-- SheetJS para export Excel -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <!-- html2pdf.js para exportar PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<div id="app-shell">
+
+  <!-- TOPBAR -->
+  <header id="topbar">
+    <div class="brand">
+      <div class="brand-icon">📦</div>
+      <div>
+        <div class="brand-name">Inventario Pro</div>
+        <div class="brand-sub">v2.0.0 · Petulap S.A.C.</div>
+      </div>
+    </div>
+
+    <div class="topbar-center">
+      <!-- Chips de estado -->
+      <div id="sync-chip" class="sync-chip disconnected" title="Estado de sincronización">
+        <span class="dot"></span>Sin conexión
+      </div>
+      <div id="sheets-status-chip" title="Ir a Configuración">
+        <span class="dot"></span>Conectar Sheets
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button id="btn-theme-toggle" title="Cambiar tema">🌙</button>
+      <button id="btn-hamburger" title="Menú" style="display:none">☰</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR OVERLAY (móvil) -->
+  <div id="sidebar-overlay"></div>
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-section-label">Módulo Principal</div>
+    <a class="nav-item" id="nav-ingreso" onclick="Views.go('ingreso')">
+      <span class="nav-icon">📝</span> Ingreso & Diagnóstico
+    </a>
+    <a class="nav-item" id="nav-historial" onclick="Views.go('historial')">
+      <span class="nav-icon">📋</span> Historial de Lotes
+    </a>
+    <a class="nav-item" id="nav-inventario" onclick="Views.go('inventario')">
+      <span class="nav-icon">📦</span> Inventario Completo
+    </a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Herramientas</div>
+    <a class="nav-item" id="nav-reportes" onclick="Views.go('reportes')">
+      <span class="nav-icon">📊</span> Reportes
+    </a>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-section-label">Sistema</div>
+    <a class="nav-item" id="nav-admin" onclick="Views.go('admin')">
+      <span class="nav-icon">⚙️</span> Administración
+      <span class="nav-badge">🔐</span>
+    </a>
+
+    <div class="sidebar-version">
+      v2.0.0 · Inventario Pro<br>
+      <span style="color:var(--text-muted)">Petulap S.A.C.</span><br>
+      <span style="color:var(--text-muted)">PIN Admin: 1234</span>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main id="main-content">
+    <div class="view" id="view-ingreso"></div>
+    <div class="view" id="view-historial"></div>
+    <div class="view" id="view-inventario"></div>
+    <div class="view" id="view-reportes"></div>
+    <div class="view" id="view-admin"></div>
+  </main>
+
+  <!-- BOTTOM NAV (móvil) -->
+  <nav id="bottom-nav" style="display:none">
+    <button class="bottom-nav-item active" data-view="ingreso" onclick="Views.go('ingreso')">
+      <span class="bnav-icon">📝</span>Ingreso
+    </button>
+    <button class="bottom-nav-item" data-view="historial" onclick="Views.go('historial')">
+      <span class="bnav-icon">📋</span>Historial
+    </button>
+    <button class="bottom-nav-item" data-view="inventario" onclick="Views.go('inventario')">
+      <span class="bnav-icon">📦</span>Inventario
+    </button>
+    <button class="bottom-nav-item" data-view="reportes" onclick="Views.go('reportes')">
+      <span class="bnav-icon">📊</span>Reportes
+    </button>
+    <button class="bottom-nav-item" data-view="admin" onclick="Views.go('admin')">
+      <span class="bnav-icon">⚙️</span>Admin
+    </button>
+  </nav>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- MODAL GENÉRICO (se inyecta en DOM por modal-generico.js) -->
+
+<!-- SCRIPTS — Orden estricto de dependencias -->
+<!-- 1. Config central -->
+<script src="core-config/app.config.js"></script>
+
+<!-- 2. Tema -->
+<script src="core-theme/theme.js"></script>
+
+<!-- 3. Utils -->
+<script src="utils-helpers/toast.js"></script>
+<script src="utils-helpers/formatters.js"></script>
+<script src="utils-helpers/validators.js"></script>
+
+<!-- 4. Módulo 0 — Datos -->
+<script src="modulo-0-datos/local-cache.js"></script>
+<script src="modulo-0-datos/apps-script-bridge.js"></script>
+<script src="modulo-0-datos/sheets-api.js"></script>
+<script src="modulo-0-datos/sync-engine.js"></script>
+<script src="modulo-0-datos/audit-trail.js"></script>
+<script src="modulo-0-datos/drive-upload.js"></script>
+<script src="modulo-0-datos/import-export.js"></script>
+
+<!-- 5. Componentes UI -->
+<script src="componentes-ui/modal-generico.js"></script>
+
+<!-- 6. Módulo 1 — Ingreso -->
+<script src="modulo-1-ingreso/scanner-barras.js"></script>
+<script src="modulo-1-ingreso/evidencia-fotos.js"></script>
+<script src="modulo-1-ingreso/flujo-garantia.js"></script>
+<script src="modulo-1-ingreso/flujo-soporte.js"></script>
+<script src="modulo-1-ingreso/ingreso.view.js"></script>
+<script src="modulo-1-ingreso/historial.view.js"></script>
+
+<!-- 7. Módulo 0 — Inventario View -->
+<script src="modulo-0-datos/inventario.view.js"></script>
+
+<!-- 8. Módulo 2 — Reportes -->
+<script src="modulo-2-reportes/agrupador-lotes.js"></script>
+<script src="modulo-2-reportes/plantillas/garantia-proveedor.js"></script>
+<script src="modulo-2-reportes/plantillas/reporte-lote.js"></script>
+<script src="modulo-2-reportes/reportes.view.js"></script>
+
+<!-- 9. Módulo 3 — Admin -->
+<script src="modulo-3-admin/pin-auth.js"></script>
+<script src="modulo-3-admin/catalogos-crud.js"></script>
+<script src="modulo-3-admin/perfil-config.js"></script>
+<script src="modulo-3-admin/admin.view.js"></script>
+
+<!-- 10. Bootstrap -->
+<script src="core-config/app.js"></script>
+
+</body>
+</html>
