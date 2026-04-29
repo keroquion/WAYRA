@@ -203,32 +203,58 @@ const IngresoView = (() => {
         if (c.key==='ESTADO') return `<td>${Formatters.estadoBadge(e[c.key])}</td>`;
         return `<td title="${Formatters.safe(e[c.key])}">${Formatters.safe(e[c.key])}</td>`;
       }).join('');
-      const fotoBtn = `<td>${EvidenciaFotos.renderFotoCell(e, null)}</td>`;
+      const fotoCell = EvidenciaFotos.renderFotoCell(e, null);
       return `<tr>
         <td style="color:var(--text-muted);font-size:0.7rem">${i+1}</td>
         ${cells}
-        ${fotoBtn}
-        <td style="white-space:nowrap">
-          <button class="btn btn-sm btn-icon" title="Garantía" onclick="FlujoGarantia.openModal(${JSON.stringify(JSON.stringify(e))})">🛡️</button>
-          <button class="btn btn-sm btn-icon" title="Soporte"  onclick="FlujoSoporte.openModal(${JSON.stringify(JSON.stringify(e))})">🔩</button>
-          <button class="btn btn-sm btn-icon btn-danger" title="Quitar" onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${e._registroId}')">🗑️</button>
+        <td>${fotoCell}</td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button class="btn btn-sm btn-secondary" style="min-width:36px" title="Garantía"
+              data-reg-id="${e._registroId}" data-lote-id="${_loteActivo.id}"
+              onclick="_ingresoAbrirGarantia(this)">🛡️</button>
+            <button class="btn btn-sm btn-secondary" style="min-width:36px" title="Soporte"
+              data-reg-id="${e._registroId}" data-lote-id="${_loteActivo.id}"
+              onclick="_ingresoAbrirSoporte(this)">🔩</button>
+            <button class="btn btn-sm btn-danger" style="min-width:36px" title="Quitar del lote"
+              onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${e._registroId}')">🗑️</button>
+          </div>
         </td>
       </tr>`;
     }).join('');
 
     el.innerHTML = `<div style="overflow-x:auto"><table class="data-table">
-      <thead><tr><th>#</th>${visCols.map(c=>`<th>${c.label}</th>`).join('')}<th>Evidencia</th><th>Acciones</th></tr></thead>
+      <thead><tr><th>#</th>${visCols.map(c=>`<th>${c.label}</th>`).join('')}<th>Evidencia</th><th style="white-space:nowrap">Acciones</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+
+    // Registrar los registros en un mapa global para que los handlers puedan acceder al objeto completo
+    window._ingresoEquiposMap = {};
+    equipos.forEach(e => { window._ingresoEquiposMap[e._registroId] = e; });
   }
 
   window._ingresoQuitarEquipo = async (loteId, regId) => {
+    if (!confirm('¿Deseas quitar este equipo del lote? Esta acción no se puede deshacer.')) return;
     await LocalCache.eliminarEquipoDeLote(loteId, regId);
     _loteActivo = await LocalCache.getLoteActivo();
     window._loteActivo = _loteActivo;
     _renderTabla();
     _renderStatsInline();
     Toast.info('Equipo quitado del lote');
+  };
+
+  window._ingresoAbrirGarantia = async (btn) => {
+    const regId = btn.dataset.regId;
+    const eq = window._ingresoEquiposMap?.[regId];
+    if (!eq) { Toast.error('Registro no encontrado'); return; }
+    FlujoGarantia.openModal(eq);
+  };
+
+  window._ingresoAbrirSoporte = async (btn) => {
+    const regId = btn.dataset.regId;
+    const eq = window._ingresoEquiposMap?.[regId];
+    if (!eq) { Toast.error('Registro no encontrado'); return; }
+    FlujoSoporte.openModal(eq);
   };
 
   function _bindEvents() {

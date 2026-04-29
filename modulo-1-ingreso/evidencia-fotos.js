@@ -11,15 +11,24 @@ const EvidenciaFotos = (() => {
     const fotos = registro._fotos || [];
     const id = registro._registroId;
 
-    const thumbs = fotos.map((f, i) => `
-      <img src="${f.preview||f.url}" class="photo-thumb"
-           title="${f.nombre||'foto'}"
-           onclick="EvidenciaFotos.openLightbox('${id}',${i})"
-           onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><text y=%2228%22 font-size=%2224%22>🖼️</text></svg>'">
-    `).join('');
+    const thumbs = fotos.map((f, i) => {
+      // Si sigue subiendo, mostrar spinner
+      if (f.subiendo) {
+        return `<span title="Subiendo..." style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--bg-hover);border-radius:4px;font-size:1.1rem">⏳</span>`;
+      }
+      // Priorizar la URL de Drive (url), si no existe usar preview (base64)
+      const src = f.url || f.preview;
+      return `
+        <img src="${src}" class="photo-thumb"
+             title="${f.nombre||'foto'}"
+             onclick="EvidenciaFotos.openLightbox('${id}',${i})"
+             style="width:36px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid var(--border)"
+             onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span title=\'Error cargando imagen\' style=\'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--bg-hover);border-radius:4px;font-size:1rem\'>\uD83D\uDDBC\uFE0F</span>')">
+      `;
+    }).join('');
 
     const btnAdd = `
-      <label class="photo-upload-btn" title="Adjuntar foto" style="cursor:pointer">
+      <label class="photo-upload-btn" title="Adjuntar foto" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--bg-hover);border-radius:4px;border:1px dashed var(--border);font-size:1rem">
         📷
         <input type="file" accept="image/*" style="display:none" onchange="EvidenciaFotos.handleFileSelect(this,'${id}')">
       </label>
