@@ -209,12 +209,16 @@ const IngresoView = (() => {
         ${cells}
         <td>${fotoCell}</td>
         <td>
-          <div style="display:flex;gap:12px;align-items:center">
-            <button class="btn btn-sm btn-icon" title="Garantía"
+          <div style="display:flex;gap:18px;align-items:center;justify-content:center">
+            <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Garantía"
+              onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
               onclick="_ingresoAbrirGarantia('${e._registroId}')">🛡️</button>
-            <button class="btn btn-sm btn-icon" title="Soporte"
+            <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Soporte"
+              onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
               onclick="_ingresoAbrirSoporte('${e._registroId}')">🔩</button>
-            <button class="btn btn-sm btn-icon btn-danger" title="Quitar del lote"
+            <div style="width:1px;height:20px;background:var(--border)"></div>
+            <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s;filter:grayscale(100%)" title="Quitar del lote"
+              onmouseover="this.style.transform='scale(1.2)';this.style.filter='grayscale(0)'" onmouseout="this.style.transform='scale(1)';this.style.filter='grayscale(100%)'"
               onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${e._registroId}')">🗑️</button>
           </div>
         </td>

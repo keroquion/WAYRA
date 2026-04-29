@@ -151,8 +151,7 @@ function _uploadToDrive(base64, filename, mimeType) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const fileId = file.getId();
-  // Usar endpoint thumbnail que es más compatible con <img> tags
-  const url = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+  const url = `https://drive.google.com/uc?export=view&id=${fileId}`;
   return { url, fileId };
 }
 

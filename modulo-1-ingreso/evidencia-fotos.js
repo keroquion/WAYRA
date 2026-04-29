@@ -29,10 +29,16 @@ const EvidenciaFotos = (() => {
     }).join('');
 
     const btnAdd = `
-      <label class="photo-upload-btn" title="Adjuntar foto" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--bg-hover);border-radius:4px;border:1px dashed var(--border);font-size:1rem">
-        📷
-        <input type="file" accept="image/*" style="display:none" onchange="EvidenciaFotos.handleFileSelect(this,'${id}')">
-      </label>
+      <div style="display:flex;gap:4px">
+        <label class="photo-upload-btn" title="Subir imagen" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--bg-hover);border-radius:4px;border:1px dashed var(--border);font-size:1rem;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+          📁
+          <input type="file" accept="image/*" style="display:none" onchange="EvidenciaFotos.handleFileSelect(this,'${id}')">
+        </label>
+        <label class="photo-upload-btn" title="Tomar foto" style="cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--bg-hover);border-radius:4px;border:1px dashed var(--border);font-size:1rem;transition:transform 0.2s" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+          📷
+          <input type="file" accept="image/*" capture="environment" style="display:none" onchange="EvidenciaFotos.handleFileSelect(this,'${id}')">
+        </label>
+      </div>
     `;
 
     return `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap">${thumbs}${btnAdd}</div>`;
