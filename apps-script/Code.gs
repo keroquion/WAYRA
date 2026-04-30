@@ -289,7 +289,7 @@ function _geminiOCR(base64, mimeType) {
   if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Ve a ⚙️ Configuración del proyecto → Propiedades de secuencia de comandos.');
 
   const prompt = `Analiza esta etiqueta/sticker de hardware y extrae SOLO los datos más importantes para identificar repuestos compatibles. Devuelve un JSON estricto con estos campos (solo los que encuentres, omite los vacíos):
-- "tipo_dispositivo": qué tipo de hardware es (ej. laptop, teclado, batería, dock, monitor, cargador)
+- "descripcion": una descripción corta y clara de qué repuesto o equipo es (ej. "base para laptop Dell", "teclado para laptop HP", "batería para Lenovo")
 - "modelo": modelo exacto del equipo
 - "marca": fabricante  
 - "pn": Part Number (PN) para buscar repuesto

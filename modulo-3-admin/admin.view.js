@@ -377,7 +377,7 @@ const AdminView = (() => {
 
         // Mapeo de labels para mostrar
         const labels = {
-          tipo_dispositivo: '🏷️ Tipo Equipo', marca: '🏭 Marca', modelo: '💻 Modelo', pn: '🔩 Part Number (PN)',
+          descripcion: '🏷️ Descripción', marca: '🏭 Marca', modelo: '💻 Modelo', pn: '🔩 Part Number (PN)',
           serie: '🔢 Serie', sku: '📦 SKU', procesador: '⚡ Procesador',
           ram: '🧠 RAM', pantalla: '🖥️ Pantalla', notas: '📝 Notas'
         };
