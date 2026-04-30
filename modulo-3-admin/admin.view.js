@@ -56,7 +56,7 @@ const AdminView = (() => {
 
       <!-- Tabs -->
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
-        ${['Empresa','Catálogos','Conexión','Seguridad','Auditoría','Portabilidad'].map((t,i)=>`
+        ${['Empresa','Catálogos','Conexión','Seguridad','Auditoría','Portabilidad','🤖 Gemini IA'].map((t,i)=>`
           <button class="btn btn-ghost admin-tab" id="admin-tab-${i}" onclick="_adminTab(${i})" style="border-radius:0;border-bottom:2px solid transparent;padding:10px 16px;font-size:0.82rem">${t}</button>
         `).join('')}
       </div>
@@ -240,6 +240,37 @@ const AdminView = (() => {
           </div>
         </div>
       </div>
+
+      <!-- TAB GEMINI IA -->
+      <div class="admin-panel" id="admin-panel-6" style="display:none">
+        <div class="card" style="max-width:600px">
+          <div class="card-title">🤖 Gemini IA — OCR de Etiquetas</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:16px">
+            Gemini analiza fotos de etiquetas de hardware y extrae el Part Number (PN), modelo y datos clave para encontrar repuestos compatibles.<br><br>
+            <strong>La API Key se guarda en Apps Script (nunca en el navegador)</strong>, por lo que funciona en todos los equipos sin necesidad de configuración adicional.
+          </div>
+
+          <div style="background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(99,102,241,0.08));border:1px solid rgba(124,58,237,0.3);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:16px">
+            <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;color:var(--accent)">📋 Cómo configurar la API Key (1 vez):</div>
+            <ol style="font-size:0.8rem;line-height:2;color:var(--text-secondary);margin:0;padding-left:20px">
+              <li>Ve a <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent);text-decoration:underline">aistudio.google.com/app/apikey</a> y crea una API Key gratuita</li>
+              <li>Abre el editor de tu Apps Script (el mismo donde pegaste el Code.gs)</li>
+              <li>Haz clic en <strong>⚙️ Configuración del proyecto</strong> (ícono de engranaje en el panel izquierdo)</li>
+              <li>Busca la sección <strong>"Propiedades de secuencia de comandos"</strong> y haz clic en <strong>"Agregar propiedad"</strong></li>
+              <li>Nombre: <code class="inline-code">GEMINI_API_KEY</code> · Valor: tu API Key</li>
+              <li>Guarda. ¡Listo! La IA estará disponible en todos los equipos.</li>
+            </ol>
+          </div>
+
+          <div style="background:var(--bg-hover);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px;font-size:0.78rem">
+            <strong>¿Qué extrae Gemini de la etiqueta?</strong><br>
+            <span style="color:var(--text-secondary)">Modelo exacto · Part Number (PN) · SKU · Serie · Procesador · RAM · Pantalla — solo los datos útiles para identificar repuestos compatibles.</span>
+          </div>
+
+          <button class="btn btn-secondary" onclick="_adminTestGemini()" ${!hasGAS ? 'disabled title="Primero configura Apps Script"' : ''}>🧪 Probar Gemini con imagen de prueba</button>
+          <div id="admin-gemini-result" style="margin-top:10px;font-size:0.78rem"></div>
+        </div>
+      </div>
     `;
 
     // ── Handlers globales (ANTES de _adminTab) ──────────────────────
@@ -250,6 +281,27 @@ const AdminView = (() => {
         b.style.color = j===i ? 'var(--accent)' : '';
       });
       if (i===4) AuditTrail.renderTo('audit-container');
+    };
+
+    window._adminTestGemini = async () => {
+      const r = document.getElementById('admin-gemini-result');
+      if (!r) return;
+      if (!APP_CONFIG.appsScript.webAppUrl) {
+        r.innerHTML = '<span style="color:var(--warning)">⚠️ Configura la URL de Apps Script primero (Tab Conexión).</span>';
+        return;
+      }
+      r.innerHTML = '<span class="spinner"></span> Probando… (se envía un texto de prueba a Gemini)';
+      try {
+        // Prueba con un base64 mínimo de 1x1 pixel transparente PNG
+        const tiny1x1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+        const res = await AppsScriptBridge.geminiOCR(tiny1x1, 'image/png');
+        r.innerHTML = `<span style="color:var(--success)">✅ Gemini respondió correctamente. La API Key está configurada y funciona.</span>`;
+      } catch (err) {
+        const hint = err.message.includes('GEMINI_API_KEY no configurada')
+          ? '<br><span style="font-size:0.72rem;color:var(--text-muted)">💡 Sigue los pasos de arriba para agregar la propiedad GEMINI_API_KEY en Apps Script.</span>'
+          : '';
+        r.innerHTML = `<span style="color:var(--danger)">❌ ${err.message}</span>${hint}`;
+      }
     };
 
     window._adminGuardarGAS = async () => {

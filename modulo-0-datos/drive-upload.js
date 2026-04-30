@@ -69,7 +69,26 @@ const DriveUpload = (() => {
     return URL.createObjectURL(file);
   }
 
-  return { uploadFile, uploadDataURL, previewUrl, getBase64Preview };
+  // ── Subir y retornar objeto completo (url + thumbUrl + fileId) ───
+  async function uploadFileWithMeta(file, onProgress = null) {
+    if (!file) throw new Error('No se proporcionó archivo');
+    const sizeMB = file.size / 1048576;
+    if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
+    if (onProgress) onProgress(10, 'Leyendo archivo…');
+    const base64 = await _toBase64(file);
+    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    if (onProgress) onProgress(40, 'Subiendo a Drive…');
+    const result = await AppsScriptBridge.uploadToDrive(base64, filename, file.type);
+    if (onProgress) onProgress(100, 'Listo');
+    // result puede tener: url, thumbUrl, fileId
+    return {
+      url:      result.url || result.fileUrl || '',
+      thumbUrl: result.thumbUrl || result.url || '',
+      fileId:   result.fileId || null,
+    };
+  }
+
+  return { uploadFile, uploadFileWithMeta, uploadDataURL, previewUrl, getBase64Preview };
 })();
 
 window.DriveUpload = DriveUpload;

@@ -104,9 +104,18 @@ const AppsScriptBridge = (() => {
     return _call('loadLotes', {}, 2);
   }
 
+  async function geminiOCR(base64, mimeType) {
+    return _call('geminiOCR', { base64, mimeType }, 1);
+  }
+
+  async function saveSoporte(ticket) {
+    return _call('saveSoporte', { ticket }, 2);
+  }
+
   return {
     init, getRowCount, readSheet, writeRow, updateRow, deleteRow,
     uploadToDrive, appendAudit, testConnection, testDrive, saveLotes, loadLotes,
+    geminiOCR, saveSoporte,
     getStatus: () => _status,
     setUrl: (u) => { _url = u; APP_CONFIG.appsScript.webAppUrl = u; },
   };

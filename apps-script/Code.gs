@@ -11,10 +11,18 @@
  * 6. Quién tiene acceso: "Cualquier persona"
  * 7. Haz clic en "Implementar" y copia la URL
  * 8. Pega esa URL en Admin → Conexión → Apps Script Web App
+ *
+ * GEMINI API KEY:
+ * Para guardar tu API Key de Gemini de forma segura (no visible en el frontend):
+ * 1. En el editor de Apps Script ve a: Proyecto → ⚙️ Configuración del proyecto
+ * 2. Sección "Propiedades de secuencia de comandos" → Agregar propiedad
+ * 3. Nombre: GEMINI_API_KEY  Valor: tu_api_key_aquí
+ * 4. Guardar. Nunca se expone al cliente.
  */
 
 const SPREADSHEET_ID = ''; // Si el script no está dentro del Sheet, pega aquí el ID del Google Sheet
 const AUDIT_SHEET    = '_AuditTrail';
+const SOPORTE_SHEET  = '_Soporte';
 const DRIVE_FOLDER   = 'Inventario Pro - Evidencias';
 
 // ── Helper para obtener el Sheet (bound o standalone) ──────────────
@@ -65,6 +73,12 @@ function doPost(e) {
         break;
       case 'loadLotes':
         result = _loadLotes();
+        break;
+      case 'saveSoporte':
+        result = _saveSoporte(body.ticket);
+        break;
+      case 'geminiOCR':
+        result = _geminiOCR(body.base64, body.mimeType);
         break;
       default:
         throw new Error('Acción desconocida: ' + action);
@@ -147,12 +161,15 @@ function _uploadToDrive(base64, filename, mimeType) {
   const blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', filename);
   const file = folder.createFile(blob);
 
-  // Hacer el archivo accesible con enlace
+  // Hacer el archivo público con enlace
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const fileId = file.getId();
-  const url = `https://drive.google.com/uc?export=view&id=${fileId}`;
-  return { url, fileId };
+  // URL corregida: drive.usercontent.google.com funciona como <img src> en todos los navegadores modernos
+  const url = `https://drive.usercontent.google.com/download?id=${fileId}&export=view&authuser=0`;
+  // Thumbnail más pequeño para previews en tabla
+  const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  return { url, thumbUrl, fileId };
 }
 
 // ── Test Drive (Verifica/Crea carpeta y permisos) ──────────────────
@@ -161,7 +178,6 @@ function _testDrive() {
   const folders = DriveApp.getFoldersByName(DRIVE_FOLDER);
   if (folders.hasNext()) {
     folder = folders.next();
-    // Asegurar permisos en cada test por si acaso
     folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   } else {
     folder = DriveApp.createFolder(DRIVE_FOLDER);
@@ -181,6 +197,124 @@ function _appendAudit(auditRow) {
   }
   sheet.appendRow(auditRow);
   return { ok: true };
+}
+
+// ── Guardar ticket de Soporte en hoja _Soporte ────────────────────
+function _saveSoporte(ticket) {
+  const ss = _getSpreadsheet();
+  let sheet = ss.getSheetByName(SOPORTE_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(SOPORTE_SHEET);
+    const headers = [
+      'ID Ticket', 'Fecha', 'Código Equipo', 'Marca', 'Modelo',
+      'Serie', 'Tipo Equipo', 'Procesador', 'RAM', 'HD/SSD',
+      'Estado Soporte', 'Técnico', 'Falla Reportada', 'Diagnóstico',
+      'Repuestos Usados', 'Obs. Final', 'Fotos (URLs)', 'Gemini OCR Data',
+      'Lote', 'Última Modificación'
+    ];
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setBackground('#7c3aed').setFontColor('#ffffff').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+
+  // Buscar si ya existe una fila con este ID de ticket para actualizarla
+  const lastRow = sheet.getLastRow();
+  let targetRow = -1;
+  if (lastRow > 1) {
+    const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < ids.length; i++) {
+      if (ids[i][0] === ticket.id) { targetRow = i + 2; break; }
+    }
+  }
+
+  const repuestosStr = (ticket.repuestos || []).map(r => r.nombre).join(', ');
+  const fotosStr = (ticket.fotos || []).map(f => f.url || f.thumbUrl || '').filter(Boolean).join('\n');
+  const geminiStr = ticket.geminiData ? JSON.stringify(ticket.geminiData) : '';
+
+  const row = [
+    ticket.id || `sop_${Date.now()}`,
+    ticket.fecha || new Date().toISOString(),
+    ticket.codigo || '',
+    ticket.marca || '',
+    ticket.modelo || '',
+    ticket.serie || '',
+    ticket.tipoEquipo || '',
+    ticket.procesador || '',
+    ticket.ram || '',
+    ticket.hdSsd || '',
+    ticket.estado || '',
+    ticket.tecnico || '',
+    ticket.falla || '',
+    ticket.diagnostico || '',
+    repuestosStr,
+    ticket.obs || '',
+    fotosStr,
+    geminiStr,
+    ticket.lote || '',
+    new Date().toISOString(),
+  ];
+
+  if (targetRow > 0) {
+    sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
+  } else {
+    sheet.appendRow(row);
+  }
+
+  return { ok: true, row: targetRow > 0 ? targetRow : sheet.getLastRow() };
+}
+
+// ── Gemini OCR — Extrae datos clave de etiqueta de hardware ────────
+// La API Key debe estar en Propiedades de script: GEMINI_API_KEY
+function _geminiOCR(base64, mimeType) {
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = props.getProperty('GEMINI_API_KEY');
+  if (!apiKey) throw new Error('GEMINI_API_KEY no configurada en las propiedades del script. Ve a Proyecto → ⚙️ → Propiedades de secuencia de comandos.');
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+  const prompt = `Analiza esta etiqueta/sticker de hardware y extrae SOLO los datos más importantes para identificar repuestos compatibles. Devuelve un JSON con estos campos (solo los que encuentres, omite los vacíos):
+- "modelo": modelo exacto del equipo
+- "marca": fabricante  
+- "pn": Part Number (PN) para buscar repuesto
+- "serie": número de serie
+- "sku": SKU o código de producto
+- "procesador": CPU si aparece
+- "ram": memoria si aparece
+- "pantalla": tamaño/resolución de pantalla si aparece
+- "notas": cualquier otro código útil para encontrar repuestos
+
+Responde SOLO con el JSON, sin texto adicional.`;
+
+  const body = JSON.stringify({
+    contents: [{
+      parts: [
+        { text: prompt },
+        { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64 } }
+      ]
+    }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+  });
+
+  const response = UrlFetchApp.fetch(endpoint, {
+    method: 'POST',
+    contentType: 'application/json',
+    payload: body,
+    muteHttpExceptions: true,
+  });
+
+  const respJson = JSON.parse(response.getContentText());
+  if (respJson.error) throw new Error('Gemini error: ' + respJson.error.message);
+
+  const raw = respJson?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+  // Limpiar posibles bloques de código markdown que Gemini a veces devuelve
+  const clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+  
+  let data;
+  try { data = JSON.parse(clean); }
+  catch { data = { notas: clean }; }
+
+  return { data };
 }
 
 // ── Guardar lotes completos (reescribe hoja _Lotes) ────────────────
