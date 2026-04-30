@@ -277,9 +277,10 @@ function _saveSoporte(ticket) {
 // La API Key debe estar en Propiedades de script: GEMINI_API_KEY
 // Modelos en orden de preferencia (fallback automático si uno no está disponible)
 const GEMINI_MODELS = [
-  'gemini-2.5-flash-preview-04-17',  // Gemini 2.5 Flash — mejor visión/OCR
-  'gemini-2.0-flash',                // Gemini 2.0 Flash — estable
-  'gemini-2.0-flash-lite',           // Gemini 2.0 Flash Lite — fallback liviano
+  'gemini-2.5-flash',          // Gemini 2.5 Flash (5 RPM)
+  'gemini-3.0-flash',          // Gemini 3 Flash (5 RPM)
+  'gemini-3.1-flash-lite',     // Gemini 3.1 Flash Lite (15 RPM)
+  'gemini-2.5-flash-lite',     // Gemini 2.5 Flash Lite (10 RPM)
 ];
 
 function _geminiOCR(base64, mimeType) {
