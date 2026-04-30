@@ -243,32 +243,71 @@ const AdminView = (() => {
 
       <!-- TAB GEMINI IA -->
       <div class="admin-panel" id="admin-panel-6" style="display:none">
-        <div class="card" style="max-width:600px">
-          <div class="card-title">🤖 Gemini IA — OCR de Etiquetas</div>
-          <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:16px">
-            Gemini analiza fotos de etiquetas de hardware y extrae el Part Number (PN), modelo y datos clave para encontrar repuestos compatibles.<br><br>
-            <strong>La API Key se guarda en Apps Script (nunca en el navegador)</strong>, por lo que funciona en todos los equipos sin necesidad de configuración adicional.
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+
+          <!-- Instrucciones -->
+          <div class="card">
+            <div class="card-title">🤖 Gemini IA — OCR de Etiquetas</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:16px">
+              Sube una foto de cualquier etiqueta de hardware para que Gemini extraiga los datos clave.
+              <br><br>
+              <strong>La API Key se guarda en Apps Script</strong>, funciona desde cualquier equipo.
+            </div>
+
+            <div style="background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(99,102,241,0.08));border:1px solid rgba(124,58,237,0.3);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:14px">
+              <div style="font-weight:700;font-size:0.82rem;margin-bottom:10px;color:var(--accent)">📋 Configurar API Key (solo 1 vez):</div>
+              <ol style="font-size:0.78rem;line-height:2.1;color:var(--text-secondary);margin:0;padding-left:18px">
+                <li>Ve a <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent);text-decoration:underline">aistudio.google.com/app/apikey</a> → crear API Key</li>
+                <li>En Apps Script editor → <strong>⚙️ Configuración del proyecto</strong></li>
+                <li>Sección <strong>"Propiedades de secuencia de comandos"</strong> → Agregar</li>
+                <li>Nombre: <code class="inline-code">GEMINI_API_KEY</code> · Valor: tu key</li>
+                <li>Guardar ✅</li>
+              </ol>
+            </div>
+
+            <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 12px;font-size:0.75rem">
+              <strong style="color:var(--warning)">⚠️ Error de permisos al primer uso:</strong><br>
+              <span style="color:var(--text-secondary)">En Apps Script, ve a <strong>Ejecutar → cualquier función</strong> → aparecerá un popup → <strong>"Revisar permisos"</strong> → acepta todo. Solo se hace una vez.</span>
+            </div>
           </div>
 
-          <div style="background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(99,102,241,0.08));border:1px solid rgba(124,58,237,0.3);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:16px">
-            <div style="font-weight:700;font-size:0.85rem;margin-bottom:10px;color:var(--accent)">📋 Cómo configurar la API Key (1 vez):</div>
-            <ol style="font-size:0.8rem;line-height:2;color:var(--text-secondary);margin:0;padding-left:20px">
-              <li>Ve a <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent);text-decoration:underline">aistudio.google.com/app/apikey</a> y crea una API Key gratuita</li>
-              <li>Abre el editor de tu Apps Script (el mismo donde pegaste el Code.gs)</li>
-              <li>Haz clic en <strong>⚙️ Configuración del proyecto</strong> (ícono de engranaje en el panel izquierdo)</li>
-              <li>Busca la sección <strong>"Propiedades de secuencia de comandos"</strong> y haz clic en <strong>"Agregar propiedad"</strong></li>
-              <li>Nombre: <code class="inline-code">GEMINI_API_KEY</code> · Valor: tu API Key</li>
-              <li>Guarda. ¡Listo! La IA estará disponible en todos los equipos.</li>
-            </ol>
+          <!-- Probador de imagen -->
+          <div class="card">
+            <div class="card-title">🧪 Probar con imagen real</div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px">
+              Sube una foto de etiqueta, teclado, pantalla o cualquier pieza de hardware.
+            </div>
+
+            <!-- Drop zone / preview -->
+            <div id="gemini-dropzone" style="border:2px dashed var(--border);border-radius:var(--radius-md);min-height:140px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;margin-bottom:12px;cursor:pointer;transition:border-color 0.2s;overflow:hidden;position:relative"
+                 onclick="document.getElementById('gemini-test-file').click()"
+                 onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+              <div id="gemini-dropzone-inner" style="text-align:center;padding:16px">
+                <div style="font-size:2.5rem;margin-bottom:6px">📷</div>
+                <div style="font-size:0.82rem;font-weight:600">Haz clic para seleccionar imagen</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px">o toma foto con la cámara</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <label style="flex:1;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--bg-hover);border:1px dashed var(--border);border-radius:var(--radius-md);font-size:0.8rem" onclick="document.getElementById('gemini-test-file').click()">
+                📁 Archivo
+              </label>
+              <label style="flex:1;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--bg-hover);border:1px dashed var(--border);border-radius:var(--radius-md);font-size:0.8rem">
+                📷 Cámara
+                <input type="file" accept="image/*" capture="environment" style="display:none" onchange="_adminPreviewGemini(this)">
+              </label>
+            </div>
+
+            <input type="file" id="gemini-test-file" accept="image/*" style="display:none" onchange="_adminPreviewGemini(this)">
+
+            <button id="gemini-test-btn" class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="_adminTestGemini()" disabled>
+              🤖 Analizar con Gemini
+            </button>
+
+            <div id="admin-gemini-result" style="font-size:0.78rem"></div>
           </div>
 
-          <div style="background:var(--bg-hover);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:16px;font-size:0.78rem">
-            <strong>¿Qué extrae Gemini de la etiqueta?</strong><br>
-            <span style="color:var(--text-secondary)">Modelo exacto · Part Number (PN) · SKU · Serie · Procesador · RAM · Pantalla — solo los datos útiles para identificar repuestos compatibles.</span>
-          </div>
-
-          <button class="btn btn-secondary" onclick="_adminTestGemini()" ${!hasGAS ? 'disabled title="Primero configura Apps Script"' : ''}>🧪 Probar Gemini con imagen de prueba</button>
-          <div id="admin-gemini-result" style="margin-top:10px;font-size:0.78rem"></div>
         </div>
       </div>
     `;
@@ -283,6 +322,28 @@ const AdminView = (() => {
       if (i===4) AuditTrail.renderTo('audit-container');
     };
 
+    // ── Preview de imagen en drop zone ──────────────────────────────
+    window._adminPreviewGemini = (input) => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dz = document.getElementById('gemini-dropzone');
+        const inner = document.getElementById('gemini-dropzone-inner');
+        if (inner) {
+          inner.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:6px">`;
+        }
+        // Guardar archivo en variable global para el botón Analizar
+        window._geminiTestFile = file;
+        const btn = document.getElementById('gemini-test-btn');
+        if (btn) btn.disabled = false;
+        // Limpiar resultado anterior
+        const r = document.getElementById('admin-gemini-result');
+        if (r) r.innerHTML = '';
+      };
+      reader.readAsDataURL(file);
+    };
+
     window._adminTestGemini = async () => {
       const r = document.getElementById('admin-gemini-result');
       if (!r) return;
@@ -290,17 +351,72 @@ const AdminView = (() => {
         r.innerHTML = '<span style="color:var(--warning)">⚠️ Configura la URL de Apps Script primero (Tab Conexión).</span>';
         return;
       }
-      r.innerHTML = '<span class="spinner"></span> Probando… (se envía un texto de prueba a Gemini)';
+      if (!window._geminiTestFile) {
+        r.innerHTML = '<span style="color:var(--warning)">⚠️ Selecciona una imagen primero.</span>';
+        return;
+      }
+
+      const btn = document.getElementById('gemini-test-btn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Analizando…'; }
+      r.innerHTML = '<span class="spinner"></span> Enviando imagen a Gemini IA…';
+
       try {
-        // Prueba con un base64 mínimo de 1x1 pixel transparente PNG
-        const tiny1x1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-        const res = await AppsScriptBridge.geminiOCR(tiny1x1, 'image/png');
-        r.innerHTML = `<span style="color:var(--success)">✅ Gemini respondió correctamente. La API Key está configurada y funciona.</span>`;
+        // Convertir imagen a base64
+        const dataUrl = await new Promise((res, rej) => {
+          const fr = new FileReader();
+          fr.onload = e => res(e.target.result);
+          fr.onerror = () => rej(new Error('Error leyendo imagen'));
+          fr.readAsDataURL(window._geminiTestFile);
+        });
+        const [header, base64] = dataUrl.split(',');
+        const mimeMatch = header.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+        const res = await AppsScriptBridge.geminiOCR(base64, mimeType);
+        const data = res.data || {};
+
+        // Mapeo de labels para mostrar
+        const labels = {
+          marca: '🏭 Marca', modelo: '💻 Modelo', pn: '🔩 Part Number (PN)',
+          serie: '🔢 Serie', sku: '📦 SKU', procesador: '⚡ Procesador',
+          ram: '🧠 RAM', pantalla: '🖥️ Pantalla', notas: '📝 Notas'
+        };
+
+        const rows = Object.entries(labels)
+          .filter(([k]) => data[k])
+          .map(([k, label]) => `
+            <tr>
+              <td style="padding:7px 10px;font-size:0.75rem;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">${label}</td>
+              <td style="padding:7px 10px;font-size:0.82rem;color:var(--text-primary);border-bottom:1px solid var(--border);font-weight:${k==='pn'?'700':'400'};color:${k==='pn'?'var(--accent)':'var(--text-primary)'}">${data[k]}</td>
+            </tr>`).join('');
+
+        if (rows) {
+          r.innerHTML = `
+            <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);overflow:hidden;margin-top:8px">
+              <div style="padding:10px 14px;background:rgba(34,197,94,0.12);font-weight:700;font-size:0.8rem;color:var(--success);display:flex;align-items:center;gap:6px">
+                ✅ Gemini identificó los siguientes datos:
+              </div>
+              <table style="width:100%;border-collapse:collapse">${rows}</table>
+              ${data.pn ? `
+                <div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--bg-hover)">
+                  <span style="font-size:0.72rem;color:var(--text-muted)">Buscar repuesto compatible:</span><br>
+                  <a href="https://www.google.com/search?q=${encodeURIComponent((data.pn||'')+' '+(data.modelo||'')+' repuesto compatible')}" target="_blank" style="color:var(--accent);font-size:0.8rem;text-decoration:underline">🔍 Buscar "${data.pn} ${data.modelo||''}" en Google</a>
+                </div>` : ''}
+            </div>`;
+        } else {
+          r.innerHTML = `<div style="color:var(--warning);font-size:0.8rem;margin-top:8px">⚠️ Gemini no pudo extraer datos de esta imagen. Intenta con una foto más clara y cerca de la etiqueta.</div>`;
+        }
       } catch (err) {
-        const hint = err.message.includes('GEMINI_API_KEY no configurada')
-          ? '<br><span style="font-size:0.72rem;color:var(--text-muted)">💡 Sigue los pasos de arriba para agregar la propiedad GEMINI_API_KEY en Apps Script.</span>'
-          : '';
-        r.innerHTML = `<span style="color:var(--danger)">❌ ${err.message}</span>${hint}`;
+        const isPermError = err.message.toLowerCase().includes('urlfetch') || err.message.toLowerCase().includes('permission') || err.message.toLowerCase().includes('authorization');
+        const isKeyError  = err.message.includes('GEMINI_API_KEY no configurada');
+        r.innerHTML = `
+          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);padding:12px;margin-top:8px">
+            <div style="color:var(--danger);font-weight:700;font-size:0.8rem;margin-bottom:6px">❌ ${err.message}</div>
+            ${isPermError ? '<div style="font-size:0.75rem;color:var(--text-secondary)">💡 <strong>Fix:</strong> En Apps Script editor → Ejecutar → cualquier función → aparece popup → "Revisar permisos" → Aceptar todo. Solo se hace 1 vez.</div>' : ''}
+            ${isKeyError  ? '<div style="font-size:0.75rem;color:var(--text-secondary)">💡 Sigue los pasos de la izquierda para agregar la propiedad <code>GEMINI_API_KEY</code> en Apps Script.</div>' : ''}
+          </div>`;
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 Analizar con Gemini'; }
       }
     };
 
