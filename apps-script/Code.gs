@@ -311,7 +311,7 @@ Responde SOLO con un JSON válido.`;
     }],
     generationConfig: { 
       temperature: 0.1, 
-      maxOutputTokens: 512,
+      maxOutputTokens: 2048,
       response_mime_type: "application/json"
     }
   });
