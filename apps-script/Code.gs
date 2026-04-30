@@ -288,12 +288,13 @@ function _geminiOCR(base64, mimeType) {
   const apiKey = props.getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Ve a ⚙️ Configuración del proyecto → Propiedades de secuencia de comandos.');
 
-  const prompt = `Analiza esta etiqueta/sticker de hardware y extrae SOLO los datos más importantes para identificar repuestos compatibles. Devuelve un JSON estricto con estos campos (solo los que encuentres, omite los vacíos):
-- "descripcion": una descripción corta y clara de qué repuesto o equipo es (ej. "base para laptop Dell", "teclado para laptop HP", "batería para Lenovo")
+  const prompt = `Analiza esta imagen de una pieza de hardware. Tu tarea es extraer la información de la etiqueta y ADEMÁS identificar visualmente qué es el objeto.
+Devuelve un JSON estricto con estos campos (omite los vacíos):
+- "descripcion": Usa el contexto visual de la foto completa para deducir qué es el objeto físico (ej. "Base/Soporte para monitor Dell", "Teclado de laptop HP", "Cargador"). NO des respuestas genéricas como "Componente de hardware". Observa la forma de la pieza, gomas, anclajes, etc.
 - "modelo": modelo exacto del equipo
 - "marca": fabricante  
-- "pn": Part Number (PN) para buscar repuesto
-- "serie": número de serie
+- "pn": Part Number (PN), DP/N, o número de parte
+- "serie": número de serie (SN)
 - "sku": SKU o código de producto
 - "procesador": CPU si aparece
 - "ram": memoria si aparece
