@@ -288,7 +288,8 @@ function _geminiOCR(base64, mimeType) {
   const apiKey = props.getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Ve a ⚙️ Configuración del proyecto → Propiedades de secuencia de comandos.');
 
-  const prompt = `Analiza esta etiqueta/sticker de hardware y extrae SOLO los datos más importantes para identificar repuestos compatibles. Devuelve un JSON con estos campos (solo los que encuentres, omite los vacíos):
+  const prompt = `Analiza esta etiqueta/sticker de hardware y extrae SOLO los datos más importantes para identificar repuestos compatibles. Devuelve un JSON estricto con estos campos (solo los que encuentres, omite los vacíos):
+- "tipo_dispositivo": qué tipo de hardware es (ej. laptop, teclado, batería, dock, monitor, cargador)
 - "modelo": modelo exacto del equipo
 - "marca": fabricante  
 - "pn": Part Number (PN) para buscar repuesto
@@ -297,9 +298,9 @@ function _geminiOCR(base64, mimeType) {
 - "procesador": CPU si aparece
 - "ram": memoria si aparece
 - "pantalla": tamaño/resolución de pantalla si aparece
-- "notas": cualquier otro código útil para encontrar repuestos
+- "notas": cualquier otro dato útil
 
-Responde SOLO con el JSON, sin texto adicional.`;
+Responde SOLO con un JSON válido.`;
 
   const body = JSON.stringify({
     contents: [{
@@ -308,7 +309,11 @@ Responde SOLO con el JSON, sin texto adicional.`;
         { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64 } }
       ]
     }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+    generationConfig: { 
+      temperature: 0.1, 
+      maxOutputTokens: 512,
+      response_mime_type: "application/json"
+    }
   });
 
   // Intentar cada modelo en orden hasta que uno responda OK
