@@ -288,9 +288,10 @@ function _geminiOCR(base64, mimeType) {
   const apiKey = props.getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Ve a ⚙️ Configuración del proyecto → Propiedades de secuencia de comandos.');
 
-  const prompt = `Analiza esta imagen de una pieza de hardware. Tu tarea es extraer la información de la etiqueta y ADEMÁS identificar visualmente qué es el objeto.
+  const prompt = `Analiza esta imagen de una pieza de hardware. Tu tarea es extraer la información de la etiqueta y ADEMÁS identificar exactamente qué es el objeto.
+IMPORTANTE: Tienes acceso a búsqueda en internet. Busca el Part Number (PN) o Modelo que encuentres en la etiqueta para identificar el repuesto exacto.
 Devuelve un JSON estricto con estos campos (omite los vacíos):
-- "descripcion": Usa el contexto visual de la foto completa para deducir qué es el objeto físico (ej. "Base/Soporte para monitor Dell", "Teclado de laptop HP", "Cargador"). NO des respuestas genéricas como "Componente de hardware". Observa la forma de la pieza, gomas, anclajes, etc.
+- "descripcion": Usa tu búsqueda en internet con el PN encontrado para dar el nombre comercial real del repuesto (ej. "Brazo giratorio para monitor Dell 24 pulgadas", "Teclado retroiluminado HP Envy"). NO des respuestas genéricas.
 - "modelo": modelo exacto del equipo
 - "marca": fabricante  
 - "pn": Part Number (PN), DP/N, o número de parte
@@ -310,6 +311,9 @@ Responde SOLO con un JSON válido.`;
         { inline_data: { mime_type: mimeType || 'image/jpeg', data: base64 } }
       ]
     }],
+    tools: [
+      { googleSearch: {} }
+    ],
     generationConfig: { 
       temperature: 0.1, 
       maxOutputTokens: 2048,
