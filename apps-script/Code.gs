@@ -275,12 +275,17 @@ function _saveSoporte(ticket) {
 
 // ── Gemini OCR — Extrae datos clave de etiqueta de hardware ────────
 // La API Key debe estar en Propiedades de script: GEMINI_API_KEY
+// Modelos en orden de preferencia (fallback automático si uno no está disponible)
+const GEMINI_MODELS = [
+  'gemini-2.5-flash-preview-04-17',  // Gemini 2.5 Flash — mejor visión/OCR
+  'gemini-2.0-flash',                // Gemini 2.0 Flash — estable
+  'gemini-2.0-flash-lite',           // Gemini 2.0 Flash Lite — fallback liviano
+];
+
 function _geminiOCR(base64, mimeType) {
   const props = PropertiesService.getScriptProperties();
   const apiKey = props.getProperty('GEMINI_API_KEY');
-  if (!apiKey) throw new Error('GEMINI_API_KEY no configurada en las propiedades del script. Ve a Proyecto → ⚙️ → Propiedades de secuencia de comandos.');
-
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Ve a ⚙️ Configuración del proyecto → Propiedades de secuencia de comandos.');
 
   const prompt = `Analiza esta etiqueta/sticker de hardware y extrae SOLO los datos más importantes para identificar repuestos compatibles. Devuelve un JSON con estos campos (solo los que encuentres, omite los vacíos):
 - "modelo": modelo exacto del equipo
@@ -305,25 +310,37 @@ Responde SOLO con el JSON, sin texto adicional.`;
     generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
   });
 
-  const response = UrlFetchApp.fetch(endpoint, {
-    method: 'POST',
-    contentType: 'application/json',
-    payload: body,
-    muteHttpExceptions: true,
-  });
-
-  const respJson = JSON.parse(response.getContentText());
-  if (respJson.error) throw new Error('Gemini error: ' + respJson.error.message);
-
-  const raw = respJson?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  // Limpiar posibles bloques de código markdown que Gemini a veces devuelve
-  const clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  
-  let data;
-  try { data = JSON.parse(clean); }
-  catch { data = { notas: clean }; }
-
-  return { data };
+  // Intentar cada modelo en orden hasta que uno responda OK
+  let lastError = 'Sin modelos disponibles';
+  for (const model of GEMINI_MODELS) {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    try {
+      const response = UrlFetchApp.fetch(endpoint, {
+        method: 'POST',
+        contentType: 'application/json',
+        payload: body,
+        muteHttpExceptions: true,
+      });
+      const respJson = JSON.parse(response.getContentText());
+      if (respJson.error) {
+        const errCode = respJson.error.code;
+        const errMsg  = respJson.error.message || '';
+        if (errCode === 404 || errMsg.includes('not found')) {
+          lastError = `Modelo ${model} no disponible`; continue;
+        }
+        throw new Error('Gemini error: ' + errMsg);
+      }
+      const raw   = respJson?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const clean = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      let data;
+      try { data = JSON.parse(clean); }
+      catch { data = { notas: clean }; }
+      return { data, model };
+    } catch (fetchErr) {
+      lastError = fetchErr.message;
+    }
+  }
+  throw new Error('Ningún modelo Gemini disponible. Último error: ' + lastError);
 }
 
 // ── Guardar lotes completos (reescribe hoja _Lotes) ────────────────
@@ -559,39 +576,56 @@ function verificarGemini() {
   const keyPreview = apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4);
   results.push('✅ GEMINI_API_KEY: Encontrada (' + keyPreview + ')');
 
-  // ── 3. Hacer llamada real a Gemini con imagen 1x1 ────────────────
-  try {
-    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
-    const body = JSON.stringify({
-      contents: [{ parts: [{ text: 'Responde solo: OK' }] }],
-      generationConfig: { maxOutputTokens: 5 }
-    });
-    const resp = UrlFetchApp.fetch(endpoint, {
-      method: 'POST',
-      contentType: 'application/json',
-      payload: body,
-      muteHttpExceptions: true,
-    });
-    const json = JSON.parse(resp.getContentText());
+  // ── 3. Probar cada modelo hasta que uno funcione ─────────────────
+  let modelOk = null;
+  for (const model of GEMINI_MODELS) {
+    try {
+      const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+      const body = JSON.stringify({
+        contents: [{ parts: [{ text: 'Responde solo: OK' }] }],
+        generationConfig: { maxOutputTokens: 5 }
+      });
+      const resp = UrlFetchApp.fetch(endpoint, {
+        method: 'POST',
+        contentType: 'application/json',
+        payload: body,
+        muteHttpExceptions: true,
+      });
+      const json = JSON.parse(resp.getContentText());
 
-    if (json.error) {
-      const code = json.error.code;
-      const msg  = json.error.message;
-      if (code === 400 || msg.includes('API_KEY_INVALID') || msg.includes('invalid')) {
-        results.push('❌ GEMINI_API_KEY: INVÁLIDA — La key existe pero Google la rechaza');
-        results.push('   👉 Solución: Genera una nueva key en aistudio.google.com/app/apikey');
-      } else if (code === 429) {
-        results.push('⚠️  GEMINI_API_KEY: Válida pero límite de cuota alcanzado (OK para producción)');
-      } else {
-        results.push('❌ Gemini API error ' + code + ': ' + msg);
+      if (json.error) {
+        const code = json.error.code;
+        const msg  = json.error.message || '';
+        if (code === 404 || msg.includes('not found')) {
+          results.push('⚠️  Modelo ' + model + ': no disponible (404)');
+          continue;
+        }
+        if (code === 400 || msg.includes('API_KEY_INVALID') || msg.includes('invalid')) {
+          results.push('❌ GEMINI_API_KEY: INVÁLIDA — Google la rechaza');
+          results.push('   👉 Solución: Genera una nueva key en aistudio.google.com/app/apikey');
+          break;
+        }
+        if (code === 429) {
+          results.push('⚠️  ' + model + ': Cuota agotada (key válida, OK para uso normal)');
+          modelOk = model; break;
+        }
+        results.push('❌ Error en ' + model + ' (código ' + code + '): ' + msg);
+        continue;
       }
-    } else {
-      const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text || '(sin respuesta)';
-      results.push('✅ Gemini API: Funciona correctamente → Respuesta: "' + reply.trim() + '"');
-      results.push('🎉 TODO OK — La integración con Gemini está lista para usar');
+
+      const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text || '(sin texto)';
+      results.push('✅ Modelo activo: ' + model);
+      results.push('✅ Respuesta: "' + reply.trim() + '"');
+      results.push('🎉 TODO OK — Gemini está listo para usar');
+      modelOk = model;
+      break;
+    } catch (e) {
+      results.push('❌ Error con ' + model + ': ' + e.message);
     }
-  } catch (e) {
-    results.push('❌ Error al llamar a Gemini: ' + e.message);
+  }
+
+  if (!modelOk) {
+    results.push('❌ Ningún modelo respondió. Verifica tu API key y cuota en aistudio.google.com');
   }
 
   Logger.log('═══════════════════════════════════\n' + results.join('\n') + '\n═══════════════════════════════════');
