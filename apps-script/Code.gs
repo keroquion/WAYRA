@@ -80,6 +80,15 @@ function doPost(e) {
       case 'geminiOCR':
         result = _geminiOCR(body.base64, body.mimeType);
         break;
+      case 'writeAuditHardware':
+        result = _writeAuditHardware(body.hardwareData);
+        break;
+      case 'searchHardwareData':
+        result = _searchHardwareData(body.serial);
+        break;
+      case 'getAuditHistory':
+        result = _getAuditHistory();
+        break;
       default:
         throw new Error('Acción desconocida: ' + action);
     }
@@ -374,4 +383,139 @@ function _loadLotes() {
 function _cors(output) {
   return output
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  Módulo: Auditoría de Hardware (desde HardwareAuditApp C#)
+//  Hoja destino: _AuditHardware
+// ══════════════════════════════════════════════════════════════════
+
+const HARDWARE_AUDIT_SHEET = '_AuditHardware';
+
+/**
+ * Escribe un registro de auditoría de hardware en la hoja _AuditHardware.
+ * Crea la hoja con encabezados si no existe.
+ * Llamado desde la app C# HardwareAuditApp.
+ */
+function _writeAuditHardware(hw) {
+  const ss = _getSpreadsheet();
+  let sheet = ss.getSheetByName(HARDWARE_AUDIT_SHEET);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(HARDWARE_AUDIT_SHEET);
+    const headers = [
+      'Timestamp',
+      'Marca',
+      'Modelo',
+      'Serial',
+      'CODIGO',
+      'CPU',
+      'RAM (GB)',
+      'Almacenamiento Modelo',
+      'Almacenamiento Capacidad (GB)',
+      'Resolución Pantalla',
+      'Salud Batería (%)',
+      'Capacidad Actual Batería (mWh)',
+      'Capacidad Diseño Batería (mWh)',
+      'Windows Versión',
+      'Windows Activación',
+      'Office Versión',
+      'Office Activación',
+      'Drivers Faltantes / Con Error',
+      'Enviado Por (Usuario PC)',
+      'Nombre PC'
+    ];
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setBackground('#1a73e8')
+      .setFontColor('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+    sheet.setFrozenRows(1);
+    sheet.autoResizeColumns(1, headers.length);
+  }
+
+  // Detalles de RAM por módulo/slot
+  let ramStr = (hw.ramGb || '0') + ' GB';
+  if (hw.ramModulos && hw.ramModulos.length > 0) {
+    const detalles = hw.ramModulos
+      .map(r => `${r.Locator || 'Slot'}: ${r.CapacityGb} GB (${r.Speed} MHz)`)
+      .join('\n');
+    ramStr = `${hw.ramGb} GB Total\n${detalles}`;
+  }
+
+  // Detalles de almacenamiento por disco
+  let storageStr = hw.almacenamientoModelo || 'N/A';
+  if (hw.almacenamientoDiscos && hw.almacenamientoDiscos.length > 0) {
+    storageStr = hw.almacenamientoDiscos
+      .map(d => `${d.Model} [${d.Type}]`)
+      .join('\n');
+  }
+
+  const row = [
+    new Date().toISOString(),
+    hw.marca              || 'N/A',
+    hw.modelo             || 'N/A',
+    hw.serial             || 'N/A',
+    hw.codigoEquipo       || '',
+    hw.cpu                || 'N/A',
+    ramStr,
+    storageStr,
+    hw.almacenamientoCapacidad || 0,
+    hw.resolucion         || 'N/A',
+    hw.saludBateria       || 0,
+    hw.bateriaActual      || 0,
+    hw.bateriaDiseño      || 0,
+    hw.windowsVersion     || 'N/A',
+    hw.windowsActivacion  || 'N/A',
+    hw.officeVersion      || 'No detectado',
+    hw.officeActivacion   || 'N/A',
+    hw.driverProblemas    || 'Ninguno',
+    hw.usuarioPC          || 'N/A',
+    hw.nombrePC           || 'N/A',
+  ];
+
+  sheet.appendRow(row);
+
+  // Fila alterna para legibilidad
+  const lastRow = sheet.getLastRow();
+  if (lastRow % 2 === 0) {
+    sheet.getRange(lastRow, 1, 1, row.length).setBackground('#e8f0fe');
+  }
+
+  return { ok: true, rowIndex: lastRow };
+}
+
+/**
+ * Busca un equipo en la hoja VentasDetallado por número de serie.
+ * Retorna el CODIGO si lo encuentra.
+ */
+function _searchHardwareData(serial) {
+  if (!serial || serial === 'N/A') return { found: false };
+
+  const ss = _getSpreadsheet();
+  const sheet = ss.getSheetByName('VentasDetallado');
+  if (!sheet) return { found: false, error: 'Hoja VentasDetallado no encontrada' };
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { found: false };
+
+  // Columna A (0) = Serie, Columna B (1) = Codigo
+  for (let i = 1; i < data.length; i++) {
+    const rowSerial = String(data[i][0] || '').trim();
+    if (rowSerial.toUpperCase() === String(serial).trim().toUpperCase()) {
+      return { found: true, codigo: String(data[i][1] || '').trim() };
+    }
+  }
+  return { found: false };
+}
+
+/**
+ * Retorna todo el historial de auditoría de hardware desde _AuditHardware.
+ */
+function _getAuditHistory() {
+  const ss = _getSpreadsheet();
+  const sheet = ss.getSheetByName(HARDWARE_AUDIT_SHEET);
+  if (!sheet) return { values: [] };
+  return { values: sheet.getDataRange().getValues() };
 }
