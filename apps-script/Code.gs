@@ -519,3 +519,81 @@ function _getAuditHistory() {
   if (!sheet) return { values: [] };
   return { values: sheet.getDataRange().getValues() };
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  FUNCIÓN DE DIAGNÓSTICO — Ejecutar manualmente desde el editor
+//  para verificar permisos y API key de Gemini.
+//
+//  CÓMO USAR:
+//  1. En el editor de Apps Script, selecciona "verificarGemini"
+//     en el dropdown de funciones (junto al botón ▶ Ejecutar)
+//  2. Click ▶ Ejecutar
+//  3. Si pide permisos → ACEPTA TODO (esto autoriza UrlFetchApp)
+//  4. Revisa el resultado en: Ver → Registros de ejecución
+// ══════════════════════════════════════════════════════════════════
+function verificarGemini() {
+  const results = [];
+
+  // ── 1. Verificar que UrlFetchApp funciona ────────────────────────
+  try {
+    const testResp = UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
+    results.push('✅ UrlFetchApp: Permiso OK (HTTP ' + testResp.getResponseCode() + ')');
+  } catch (e) {
+    results.push('❌ UrlFetchApp: SIN PERMISO — ' + e.message);
+    results.push('   👉 Solución: Ve a Proyecto → ⚙️ → Scopes y agrega external_request');
+    Logger.log(results.join('\n'));
+    return;
+  }
+
+  // ── 2. Verificar que la API Key está guardada ────────────────────
+  const props = PropertiesService.getScriptProperties();
+  const apiKey = props.getProperty('GEMINI_API_KEY');
+
+  if (!apiKey) {
+    results.push('❌ GEMINI_API_KEY: NO encontrada en propiedades del script');
+    results.push('   👉 Solución: ⚙️ Configuración → Propiedades → Agregar GEMINI_API_KEY');
+    Logger.log(results.join('\n'));
+    return;
+  }
+
+  const keyPreview = apiKey.substring(0, 6) + '...' + apiKey.substring(apiKey.length - 4);
+  results.push('✅ GEMINI_API_KEY: Encontrada (' + keyPreview + ')');
+
+  // ── 3. Hacer llamada real a Gemini con imagen 1x1 ────────────────
+  try {
+    const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey;
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: 'Responde solo: OK' }] }],
+      generationConfig: { maxOutputTokens: 5 }
+    });
+    const resp = UrlFetchApp.fetch(endpoint, {
+      method: 'POST',
+      contentType: 'application/json',
+      payload: body,
+      muteHttpExceptions: true,
+    });
+    const json = JSON.parse(resp.getContentText());
+
+    if (json.error) {
+      const code = json.error.code;
+      const msg  = json.error.message;
+      if (code === 400 || msg.includes('API_KEY_INVALID') || msg.includes('invalid')) {
+        results.push('❌ GEMINI_API_KEY: INVÁLIDA — La key existe pero Google la rechaza');
+        results.push('   👉 Solución: Genera una nueva key en aistudio.google.com/app/apikey');
+      } else if (code === 429) {
+        results.push('⚠️  GEMINI_API_KEY: Válida pero límite de cuota alcanzado (OK para producción)');
+      } else {
+        results.push('❌ Gemini API error ' + code + ': ' + msg);
+      }
+    } else {
+      const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text || '(sin respuesta)';
+      results.push('✅ Gemini API: Funciona correctamente → Respuesta: "' + reply.trim() + '"');
+      results.push('🎉 TODO OK — La integración con Gemini está lista para usar');
+    }
+  } catch (e) {
+    results.push('❌ Error al llamar a Gemini: ' + e.message);
+  }
+
+  Logger.log('═══════════════════════════════════\n' + results.join('\n') + '\n═══════════════════════════════════');
+  SpreadsheetApp.getUi()?.alert('Diagnóstico Gemini\n\n' + results.join('\n'));
+}
