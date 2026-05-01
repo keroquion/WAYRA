@@ -243,7 +243,7 @@ const AdminView = (() => {
 
       <!-- TAB GEMINI IA -->
       <div class="admin-panel" id="admin-panel-6" style="display:none">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+        <div class="grid-2" style="align-items:start">
 
           <!-- Instrucciones -->
           <div class="card">
@@ -361,16 +361,32 @@ const AdminView = (() => {
       r.innerHTML = '<span class="spinner"></span> Enviando imagen a Gemini IA…';
 
       try {
-        // Convertir imagen a base64
+        // Convertir y comprimir imagen (resize max 1024px) para evitar payload enorme en móviles
         const dataUrl = await new Promise((res, rej) => {
           const fr = new FileReader();
-          fr.onload = e => res(e.target.result);
+          fr.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let { width, height } = img;
+              const maxDim = 1024;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+                else { width = Math.round((width * maxDim) / height); height = maxDim; }
+              }
+              canvas.width = width; canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+              res(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = () => rej(new Error('Error al procesar imagen'));
+            img.src = e.target.result;
+          };
           fr.onerror = () => rej(new Error('Error leyendo imagen'));
           fr.readAsDataURL(window._geminiTestFile);
         });
         const [header, base64] = dataUrl.split(',');
-        const mimeMatch = header.match(/data:([^;]+)/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        const mimeType = 'image/jpeg';
 
         const res = await AppsScriptBridge.geminiOCR(base64, mimeType);
         const data = res.data || {};

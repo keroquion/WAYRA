@@ -217,16 +217,32 @@ const FlujoSoporte = (() => {
     if (resultEl) resultEl.innerHTML = '<span class="spinner"></span> Analizando con Gemini IA…';
 
     try {
-      // Convertir a base64 puro (sin header data:...)
+      // Convertir y comprimir a base64 puro (resize max 1024px)
       const dataUrl = await new Promise((res, rej) => {
         const r = new FileReader();
-        r.onload = e => res(e.target.result);
+        r.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let { width, height } = img;
+            const maxDim = 1024;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+              else { width = Math.round((width * maxDim) / height); height = maxDim; }
+            }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            res(canvas.toDataURL('image/jpeg', 0.8));
+          };
+          img.onerror = () => rej(new Error('Error al procesar imagen'));
+          img.src = e.target.result;
+        };
         r.onerror = () => rej(new Error('Error leyendo imagen'));
         r.readAsDataURL(file);
       });
       const [header, base64] = dataUrl.split(',');
-      const mimeMatch = header.match(/data:([^;]+)/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const mimeType = 'image/jpeg';
 
       const result = await AppsScriptBridge.geminiOCR(base64, mimeType);
       const data = result.data || {};
