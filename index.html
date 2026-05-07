@@ -9,6 +9,12 @@
   <meta name="theme-color" content="#12151f">
   <title>Inventario Pro v2.0.0 — Petulap S.A.C.</title>
   <link rel="stylesheet" href="core-theme/styles.css">
+  <style>
+    @media (max-width: 768px) {
+      .rep-grid { grid-template-columns: 1fr !important; }
+      .rep-tabs { overflow-x: auto; }
+    }
+  </style>
   <!-- SheetJS para export Excel -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf.js para exportar PDF -->
@@ -154,6 +160,7 @@
 <script src="modulo-2-reportes/agrupador-lotes.js"></script>
 <script src="modulo-2-reportes/plantillas/garantia-proveedor.js"></script>
 <script src="modulo-2-reportes/plantillas/reporte-lote.js"></script>
+<script src="modulo-2-reportes/plantillas/ticket-soporte.js"></script>
 <script src="modulo-2-reportes/reportes.view.js"></script>
 
 <!-- 9. Módulo 3 — Admin -->
