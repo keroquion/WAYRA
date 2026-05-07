@@ -58,6 +58,40 @@ const FlujoSoporte = (() => {
       </div>
     `;
 
+    // ── Sección de fotos con botón Analizar por foto ─────────────────────
+    const fotosSection = (() => {
+      if (!fotos.length) {
+        return `<div style="font-size:0.75rem;color:var(--text-muted)">Sin fotos — puedes adjuntarlas desde la columna Evidencia del historial.</div>`;
+      }
+      const items = fotos.slice(0, 6).map((f, i) => {
+        const src = f.thumbUrl || f.url || f.preview || '';
+        const fullSrc = f.url || f.preview || '';
+        return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+            <div style="position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg-hover)">
+              <img src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous"
+                style="width:100%;height:100%;object-fit:cover;cursor:pointer"
+                onclick="EvidenciaFotos.openLightbox('${registro._registroId}',${i})"
+                onerror="this.style.display='none'">
+            </div>
+            ${hasGemini
+              ? `<button
+                  onclick="FlujoSoporte.analizarFotoGuardada('${fullSrc}','${registro._registroId}')"
+                  style="font-size:0.62rem;padding:3px 6px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.4);border-radius:4px;cursor:pointer;color:var(--accent);white-space:nowrap;transition:background 0.2s"
+                  onmouseover="this.style.background='rgba(124,58,237,0.3)'" onmouseout="this.style.background='rgba(124,58,237,0.15)'"
+                  title="Analizar esta foto con Gemini IA">
+                  🤖 Analizar
+                </button>`
+              : ''
+            }
+          </div>`;
+      }).join('');
+      const extra = fotos.length > 6
+        ? `<div style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:var(--bg-hover);border-radius:8px;font-size:0.7rem;color:var(--text-muted)">+${fotos.length - 6}</div>`
+        : '';
+      return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">${items}${extra}</div>`;
+    })();
+
     return `
       <div class="modal-title">🔩 Soporte Interno</div>
       <div class="modal-subtitle"><strong>${registro.MARCA} ${registro.MODELO}</strong> · ${registro.CODIGO}</div>
@@ -112,24 +146,12 @@ const FlujoSoporte = (() => {
         </div>
       </div>
 
-      <!-- Fotos del equipo -->
+      <!-- Fotos del equipo con botón Analizar -->
       <div style="margin-bottom:12px">
-        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">
-          Fotos (${fotos.length})
+        <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+          Fotos (${fotos.length})${hasGemini && fotos.length > 0 ? ' <span style="font-size:0.65rem;font-weight:400;color:var(--accent)">— Pulsa 🤖 Analizar para extraer PN y tipo de repuesto</span>' : ''}
         </div>
-        ${fotos.length > 0
-          ? `<div style="display:flex;gap:6px;flex-wrap:wrap">
-              ${fotos.slice(0,6).map((f,i) => {
-                const src = f.thumbUrl || f.url || f.preview || '';
-                return `<img src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous"
-                  style="width:52px;height:52px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer"
-                  onclick="EvidenciaFotos.openLightbox('${registro._registroId}',${i})"
-                  onerror="this.style.display='none'">`;
-              }).join('')}
-              ${fotos.length > 6 ? `<div style="display:flex;align-items:center;justify-content:center;width:52px;height:52px;background:var(--bg-hover);border-radius:6px;font-size:0.7rem;color:var(--text-muted)">+${fotos.length-6}</div>` : ''}
-            </div>`
-          : `<div style="font-size:0.75rem;color:var(--text-muted)">Sin fotos — puedes adjuntarlas desde la columna Evidencia del historial.</div>`
-        }
+        ${fotosSection}
       </div>
 
       <div class="form-group" style="margin-bottom:0">
@@ -207,7 +229,113 @@ const FlujoSoporte = (() => {
     Toast.error('Registro no encontrado');
   }
 
-  // ── Gemini OCR — Analizar foto de etiqueta ────────────────────────────
+  // ── Gemini OCR — helpers compartidos ─────────────────────────────────────
+
+  // Comprime una imagen (File o Blob) a base64 JPEG ≤ 1024px
+  async function _compressToBase64(fileOrBlob) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          const maxDim = 1024;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
+            else { width = Math.round((width * maxDim) / height); height = maxDim; }
+          }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+          const [, b64] = canvas.toDataURL('image/jpeg', 0.8).split(',');
+          res(b64);
+        };
+        img.onerror = () => rej(new Error('Error al procesar imagen'));
+        img.src = e.target.result;
+      };
+      r.onerror = () => rej(new Error('Error leyendo imagen'));
+      r.readAsDataURL(fileOrBlob);
+    });
+  }
+
+  // Muestra resultado Gemini y auto-rellena campos de repuesto
+  function _mostrarResultadoGemini(data, registroId) {
+    const resultEl = document.getElementById(`gemini-result-${registroId}`);
+    if (!resultEl) return;
+
+    const fields = ['descripcion','marca','modelo','pn','serie','sku','procesador','ram','pantalla','notas'];
+    const found = fields.filter(k => data[k]).map(k =>
+      `<div style="display:flex;gap:6px;align-items:baseline">
+        <span style="font-weight:700;min-width:85px;font-size:0.72rem;color:var(--text-muted);text-transform:uppercase">${k}</span>
+        <span style="font-size:0.82rem;color:var(--text-primary)">${data[k]}</span>
+      </div>`
+    ).join('');
+
+    if (!found) {
+      resultEl.innerHTML = `<div style="color:var(--warning);font-size:0.78rem;margin-top:6px">⚠️ No se pudieron extraer datos de la imagen. Intenta con una foto más clara.</div>`;
+      return;
+    }
+
+    // ── Auto-rellenar campos de repuesto ────────────────────────────────
+    const pnEl     = document.getElementById('sop-repuesto-detalle');
+    const selectEl = document.getElementById('sop-repuesto-select');
+    let autoFilled = '';
+
+    if (pnEl && data.pn) {
+      pnEl.value = `PN: ${data.pn}`;
+      pnEl.style.borderColor = 'var(--accent)';
+      setTimeout(() => pnEl.style.borderColor = '', 2000);
+    }
+
+    if (selectEl) {
+      // Intentar mapear descripción/modelo a un tipo del catálogo
+      const tiposDisponibles = Array.from(selectEl.options).map(o => o.value).filter(Boolean);
+      const texto = `${data.descripcion||''} ${data.modelo||''} ${data.notas||''}`.toLowerCase();
+
+      const mapas = [
+        { claves: ['pantalla','display','lcd','screen','monitor'],       tipo: 'PANTALLA'   },
+        { claves: ['bateria','battery','bat','acumulador'],               tipo: 'BATERIA'    },
+        { claves: ['teclado','keyboard','kb'],                            tipo: 'TECLADO'    },
+        { claves: ['ram','memoria','memory','dimm','sodimm'],             tipo: 'RAM'        },
+        { claves: ['ssd','hdd','disco','nvme','storage','almacenamiento'],tipo: 'DISCO'      },
+        { claves: ['cargador','adaptador','charger','power','fuente'],    tipo: 'CARGADOR'   },
+        { claves: ['camara','camera','webcam'],                           tipo: 'CAMARA'     },
+        { claves: ['ventilador','fan','cooling','disipador'],             tipo: 'VENTILADOR' },
+        { claves: ['tarjeta','card','gpu','grafica','video'],             tipo: 'TARJETA'    },
+      ];
+
+      for (const { claves, tipo } of mapas) {
+        if (claves.some(c => texto.includes(c))) {
+          // Buscar coincidencia exacta o parcial en el catálogo
+          const match = tiposDisponibles.find(t => t.toUpperCase() === tipo)
+            || tiposDisponibles.find(t => t.toUpperCase().includes(tipo))
+            || tiposDisponibles.find(t => tipo.includes(t.toUpperCase()));
+          if (match) {
+            selectEl.value = match;
+            selectEl.style.borderColor = 'var(--accent)';
+            setTimeout(() => selectEl.style.borderColor = '', 2000);
+            autoFilled = match;
+            break;
+          }
+        }
+      }
+    }
+
+    resultEl.innerHTML = `
+      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-sm);padding:10px;margin-top:6px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--success);margin-bottom:6px">✅ Datos extraídos por Gemini${autoFilled ? ` · Tipo: <strong>${autoFilled}</strong> autoseleccionado` : ''}:</div>
+        ${found}
+        ${(data.pn || autoFilled)
+          ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;font-size:0.72rem"
+               onclick="FlujoSoporte.agregarRepuesto('${registroId}')">
+               ➕ Agregar repuesto con estos datos
+             </button>`
+          : ''
+        }
+      </div>`;
+  }
+
+  // ── Analizar foto nueva desde input de archivo ────────────────────────────
   async function analizarEtiqueta(input, registroId) {
     const file = input.files[0];
     if (!file) return;
@@ -217,65 +345,50 @@ const FlujoSoporte = (() => {
     if (resultEl) resultEl.innerHTML = '<span class="spinner"></span> Analizando con Gemini IA…';
 
     try {
-      // Convertir y comprimir a base64 puro (resize max 1024px)
-      const dataUrl = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let { width, height } = img;
-            const maxDim = 1024;
-            if (width > maxDim || height > maxDim) {
-              if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
-              else { width = Math.round((width * maxDim) / height); height = maxDim; }
-            }
-            canvas.width = width; canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            res(canvas.toDataURL('image/jpeg', 0.8));
-          };
-          img.onerror = () => rej(new Error('Error al procesar imagen'));
-          img.src = e.target.result;
-        };
-        r.onerror = () => rej(new Error('Error leyendo imagen'));
-        r.readAsDataURL(file);
-      });
-      const [header, base64] = dataUrl.split(',');
-      const mimeType = 'image/jpeg';
-
-      const result = await AppsScriptBridge.geminiOCR(base64, mimeType);
+      const base64 = await _compressToBase64(file);
+      const result = await AppsScriptBridge.geminiOCR(base64, 'image/jpeg');
       const data = result.data || {};
 
-      // Guardar los datos en el registro para persistirlos
+      // Guardar datos en el registro
       const lotes = await LocalCache.getLotes();
       for (const lote of lotes) {
         const eq = lote.equipos?.find(e => e._registroId === registroId);
-        if (eq) {
-          eq._geminiData = data;
-          await LocalCache.updateLote(lote);
-          break;
-        }
+        if (eq) { eq._geminiData = data; await LocalCache.updateLote(lote); break; }
       }
 
-      // Mostrar resultado con campos clave
-      const fields = ['marca','modelo','pn','serie','sku','procesador','ram','pantalla','notas'];
-      const found = fields.filter(k => data[k]).map(k =>
-        `<div style="display:flex;gap:6px;align-items:baseline">
-          <span style="font-weight:700;min-width:80px;font-size:0.72rem;color:var(--text-muted);text-transform:uppercase">${k}</span>
-          <span style="font-size:0.82rem;color:var(--text-primary)">${data[k]}</span>
-        </div>`
-      ).join('');
+      _mostrarResultadoGemini(data, registroId);
+    } catch (err) {
+      if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);font-size:0.78rem">❌ Error: ${err.message}</span>`;
+      Toast.error('Error Gemini: ' + err.message);
+    }
+  }
 
-      if (resultEl) {
-        resultEl.innerHTML = found
-          ? `<div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-sm);padding:10px;margin-top:6px">
-              <div style="font-size:0.72rem;font-weight:700;color:var(--success);margin-bottom:6px">✅ Datos extraídos por Gemini:</div>
-              ${found}
-              ${data.pn ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;font-size:0.72rem" onclick="document.getElementById('sop-repuesto-detalle').value='PN: ${data.pn}';document.getElementById('sop-repuesto-select').value='PANTALLA'">📋 Usar PN en repuesto</button>` : ''}
-            </div>`
-          : `<div style="color:var(--warning);font-size:0.78rem;margin-top:6px">⚠️ No se pudieron extraer datos de la imagen. Intenta con una foto más clara.</div>`;
+  // ── Analizar foto YA guardada en Drive (sin input de archivo) ─────────────
+  async function analizarFotoGuardada(fotoUrl, registroId) {
+    if (!fotoUrl) { Toast.warning('Esta foto no tiene URL de Drive aún'); return; }
+
+    const resultEl = document.getElementById(`gemini-result-${registroId}`);
+    if (resultEl) resultEl.innerHTML = '<span class="spinner"></span> Descargando foto de Drive y analizando con Gemini IA…';
+    Toast.info('🤖 Analizando foto con Gemini IA…');
+
+    try {
+      // Traer la imagen como Blob desde la URL de Drive (funciona porque es pública)
+      const resp = await fetch(fotoUrl);
+      if (!resp.ok) throw new Error(`No se pudo descargar la imagen (HTTP ${resp.status})`);
+      const blob = await resp.blob();
+
+      const base64 = await _compressToBase64(blob);
+      const result = await AppsScriptBridge.geminiOCR(base64, 'image/jpeg');
+      const data = result.data || {};
+
+      // Guardar datos en el registro
+      const lotes = await LocalCache.getLotes();
+      for (const lote of lotes) {
+        const eq = lote.equipos?.find(e => e._registroId === registroId);
+        if (eq) { eq._geminiData = data; await LocalCache.updateLote(lote); break; }
       }
+
+      _mostrarResultadoGemini(data, registroId);
     } catch (err) {
       if (resultEl) resultEl.innerHTML = `<span style="color:var(--danger);font-size:0.78rem">❌ Error: ${err.message}</span>`;
       Toast.error('Error Gemini: ' + err.message);
@@ -337,7 +450,7 @@ const FlujoSoporte = (() => {
     ModalGenerico.open(renderModalSoporte(registro), { size: 'modal-lg' });
   }
 
-  return { renderStepper, openModal, confirmarSoporte, agregarRepuesto, quitarRepuesto, analizarEtiqueta };
+  return { renderStepper, openModal, confirmarSoporte, agregarRepuesto, quitarRepuesto, analizarEtiqueta, analizarFotoGuardada };
 })();
 
 window.FlujoSoporte = FlujoSoporte;
