@@ -70,15 +70,19 @@ const DriveUpload = (() => {
   }
 
   // ── Subir y retornar objeto completo (url + thumbUrl + fileId) ───
-  async function uploadFileWithMeta(file, onProgress = null) {
+  // loteNombre: nombre del lote (será la subcarpeta en Drive)
+  // equipoCodigo: código del equipo (prefijo del nombre de archivo)
+  async function uploadFileWithMeta(file, onProgress = null, loteNombre = '', equipoCodigo = '') {
     if (!file) throw new Error('No se proporcionó archivo');
     const sizeMB = file.size / 1048576;
     if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
     if (onProgress) onProgress(10, 'Leyendo archivo…');
     const base64 = await _toBase64(file);
-    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    // Nombre del archivo: CODIGO_timestamp_nombre.ext (identificable en Drive)
+    const codigoPrefix = equipoCodigo ? `${equipoCodigo}_` : '';
+    const filename = `${codigoPrefix}${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
     if (onProgress) onProgress(40, 'Subiendo a Drive…');
-    const result = await AppsScriptBridge.uploadToDrive(base64, filename, file.type);
+    const result = await AppsScriptBridge.uploadToDrive(base64, filename, file.type, loteNombre);
     if (onProgress) onProgress(100, 'Listo');
     // result puede tener: url, thumbUrl, fileId
     return {

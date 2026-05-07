@@ -67,8 +67,8 @@ const AppsScriptBridge = (() => {
     return _call('deleteRow', { sheetName, rowIndex });
   }
 
-  async function uploadToDrive(base64, filename, mimeType = 'image/jpeg') {
-    return _call('uploadToDrive', { base64, filename, mimeType });
+  async function uploadToDrive(base64, filename, mimeType = 'image/jpeg', loteNombre = '') {
+    return _call('uploadToDrive', { base64, filename, mimeType, loteNombre });
   }
 
   async function appendAudit(auditRow) {

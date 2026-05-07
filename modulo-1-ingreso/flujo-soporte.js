@@ -258,43 +258,47 @@ const FlujoSoporte = (() => {
     });
   }
 
-  // Muestra resultado Gemini y auto-rellena campos de repuesto
+  // Muestra resultado Gemini, auto-rellena campos de repuesto y diagnóstico IA
   function _mostrarResultadoGemini(data, registroId) {
     const resultEl = document.getElementById(`gemini-result-${registroId}`);
     if (!resultEl) return;
 
-    const fields = ['descripcion','marca','modelo','pn','serie','sku','procesador','ram','pantalla','notas'];
-    const found = fields.filter(k => data[k]).map(k =>
-      `<div style="display:flex;gap:6px;align-items:baseline">
-        <span style="font-weight:700;min-width:85px;font-size:0.72rem;color:var(--text-muted);text-transform:uppercase">${k}</span>
-        <span style="font-size:0.82rem;color:var(--text-primary)">${data[k]}</span>
-      </div>`
-    ).join('');
-
-    if (!found) {
-      resultEl.innerHTML = `<div style="color:var(--warning);font-size:0.78rem;margin-top:6px">⚠️ No se pudieron extraer datos de la imagen. Intenta con una foto más clara.</div>`;
+    // Verificar si hay algo útil
+    const hayDatos = data.descripcion || data.codigos || data.marca || data.modelo || data.codigos_busqueda;
+    if (!hayDatos) {
+      resultEl.innerHTML = `<div style="color:var(--warning);font-size:0.78rem;margin-top:6px">⚠️ No se pudieron extraer datos de la imagen. Intenta con una foto más clara de la etiqueta.</div>`;
       return;
     }
 
-    // ── Auto-rellenar campos de repuesto ────────────────────────────────
-    const pnEl     = document.getElementById('sop-repuesto-detalle');
-    const selectEl = document.getElementById('sop-repuesto-select');
-    let autoFilled = '';
+    // ── 1. Campo "Detalle/PN" ← todos los códigos importantes ───────────────
+    const pnEl = document.getElementById('sop-repuesto-detalle');
+    let codigosStr = '';
+    if (data.codigos && typeof data.codigos === 'object') {
+      // Formatear como "PN: X123 | FRU: Y456 | SP#: Z789"
+      codigosStr = Object.entries(data.codigos)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(' | ');
+    } else if (data.codigos_busqueda) {
+      codigosStr = data.codigos_busqueda;
+    }
+    if (!codigosStr && data.pn) codigosStr = `PN: ${data.pn}`; // retro-compat
 
-    if (pnEl && data.pn) {
-      pnEl.value = `PN: ${data.pn}`;
+    if (pnEl && codigosStr) {
+      pnEl.value = codigosStr;
       pnEl.style.borderColor = 'var(--accent)';
-      setTimeout(() => pnEl.style.borderColor = '', 2000);
+      setTimeout(() => pnEl.style.borderColor = '', 2500);
     }
 
+    // ── 2. Auto-seleccionar tipo de repuesto ─────────────────────────────────
+    const selectEl = document.getElementById('sop-repuesto-select');
+    let autoFilled = '';
     if (selectEl) {
-      // Intentar mapear descripción/modelo a un tipo del catálogo
       const tiposDisponibles = Array.from(selectEl.options).map(o => o.value).filter(Boolean);
-      const texto = `${data.descripcion||''} ${data.modelo||''} ${data.notas||''}`.toLowerCase();
-
+      const texto = `${data.descripcion||''} ${data.modelo||''} ${data.notas_tecnicas||''} ${data.especificaciones||''}`.toLowerCase();
       const mapas = [
-        { claves: ['pantalla','display','lcd','screen','monitor'],       tipo: 'PANTALLA'   },
-        { claves: ['bateria','battery','bat','acumulador'],               tipo: 'BATERIA'    },
+        { claves: ['pantalla','display','lcd','screen','monitor'],        tipo: 'PANTALLA'   },
+        { claves: ['bateria','battery','bat','acumulador'],                tipo: 'BATERIA'    },
         { claves: ['teclado','keyboard','kb'],                            tipo: 'TECLADO'    },
         { claves: ['ram','memoria','memory','dimm','sodimm'],             tipo: 'RAM'        },
         { claves: ['ssd','hdd','disco','nvme','storage','almacenamiento'],tipo: 'DISCO'      },
@@ -303,17 +307,15 @@ const FlujoSoporte = (() => {
         { claves: ['ventilador','fan','cooling','disipador'],             tipo: 'VENTILADOR' },
         { claves: ['tarjeta','card','gpu','grafica','video'],             tipo: 'TARJETA'    },
       ];
-
       for (const { claves, tipo } of mapas) {
         if (claves.some(c => texto.includes(c))) {
-          // Buscar coincidencia exacta o parcial en el catálogo
           const match = tiposDisponibles.find(t => t.toUpperCase() === tipo)
             || tiposDisponibles.find(t => t.toUpperCase().includes(tipo))
             || tiposDisponibles.find(t => tipo.includes(t.toUpperCase()));
           if (match) {
             selectEl.value = match;
             selectEl.style.borderColor = 'var(--accent)';
-            setTimeout(() => selectEl.style.borderColor = '', 2000);
+            setTimeout(() => selectEl.style.borderColor = '', 2500);
             autoFilled = match;
             break;
           }
@@ -321,11 +323,70 @@ const FlujoSoporte = (() => {
       }
     }
 
+    // ── 3. Rellenar textarea "Diagnóstico Técnico" con resumen IA ───────────
+    const diagEl = document.getElementById('modal-sop-diagnostico');
+    if (diagEl) {
+      const lines = [];
+      lines.push(`🤖 DIAGNÓSTICO IA — ${new Date().toLocaleDateString('es-PE')}`);
+      lines.push('─'.repeat(40));
+      if (data.descripcion)        lines.push(`📦 Repuesto: ${data.descripcion}`);
+      if (data.marca || data.modelo) lines.push(`🏭 Marca/Modelo: ${[data.marca, data.modelo].filter(Boolean).join(' ')}`);
+      if (codigosStr)              lines.push(`🔢 Códigos: ${codigosStr}`);
+      if (data.especificaciones)   lines.push(`⚙️ Especificaciones: ${data.especificaciones}`);
+      if (data.modelos_compatibles?.length) {
+        lines.push(`🔗 Compatible con:\n   • ${(Array.isArray(data.modelos_compatibles) ? data.modelos_compatibles : [data.modelos_compatibles]).join('\n   • ')}`);
+      }
+      if (data.diagnostico_resumen) {
+        lines.push('');
+        lines.push(`📝 Análisis: ${data.diagnostico_resumen}`);
+      }
+      if (data.advertencias?.length) {
+        lines.push('');
+        lines.push(`⚠️ Advertencias:\n   • ${(Array.isArray(data.advertencias) ? data.advertencias : [data.advertencias]).join('\n   • ')}`);
+      }
+      if (data.notas_tecnicas)     lines.push(`\n💡 Notas: ${data.notas_tecnicas}`);
+
+      diagEl.value = lines.join('\n');
+      diagEl.style.borderColor = 'var(--accent)';
+      diagEl.style.minHeight = '160px';
+      setTimeout(() => diagEl.style.borderColor = '', 2500);
+    }
+
+    // ── 4. Panel de resultados visual ────────────────────────────────────────
+    const codigosHtml = data.codigos && typeof data.codigos === 'object'
+      ? Object.entries(data.codigos).filter(([,v]) => v).map(([k,v]) =>
+          `<span style="display:inline-block;background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);border-radius:4px;padding:2px 8px;font-size:0.72rem;margin:2px">
+            <strong style="color:var(--accent)">${k}:</strong> ${v}
+          </span>`).join('')
+      : codigosStr ? `<span style="font-size:0.82rem">${codigosStr}</span>` : '';
+
+    const compatiblesHtml = data.modelos_compatibles?.length
+      ? `<div style="margin-top:6px">
+          <span style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase">Compatible con</span>
+          <div style="font-size:0.78rem;color:var(--text-primary);margin-top:2px">
+            ${(Array.isArray(data.modelos_compatibles) ? data.modelos_compatibles : [data.modelos_compatibles]).join(', ')}
+          </div>
+        </div>` : '';
+
+    const advertenciasHtml = data.advertencias?.length
+      ? `<div style="margin-top:6px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:4px;padding:6px 8px">
+          <span style="font-size:0.72rem;font-weight:700;color:var(--warning)">⚠️ Advertencias:</span>
+          <div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px">
+            ${(Array.isArray(data.advertencias) ? data.advertencias : [data.advertencias]).join(' • ')}
+          </div>
+        </div>` : '';
+
     resultEl.innerHTML = `
-      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-sm);padding:10px;margin-top:6px">
-        <div style="font-size:0.72rem;font-weight:700;color:var(--success);margin-bottom:6px">✅ Datos extraídos por Gemini${autoFilled ? ` · Tipo: <strong>${autoFilled}</strong> autoseleccionado` : ''}:</div>
-        ${found}
-        ${(data.pn || autoFilled)
+      <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-sm);padding:10px;margin-top:6px">
+        <div style="font-size:0.72rem;font-weight:700;color:var(--success);margin-bottom:8px">
+          ✅ Gemini analizó la imagen${autoFilled ? ` · Tipo <strong>${autoFilled}</strong> autoseleccionado` : ''} · Diagnóstico llenado ↑
+        </div>
+        ${data.descripcion ? `<div style="font-size:0.82rem;font-weight:600;color:var(--text-primary);margin-bottom:6px">📦 ${data.descripcion}</div>` : ''}
+        ${codigosHtml ? `<div style="margin-bottom:4px">${codigosHtml}</div>` : ''}
+        ${data.especificaciones ? `<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:4px">⚙️ ${data.especificaciones}</div>` : ''}
+        ${compatiblesHtml}
+        ${advertenciasHtml}
+        ${(codigosStr || autoFilled)
           ? `<button class="btn btn-secondary btn-sm" style="margin-top:8px;font-size:0.72rem"
                onclick="FlujoSoporte.agregarRepuesto('${registroId}')">
                ➕ Agregar repuesto con estos datos

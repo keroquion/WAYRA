@@ -172,7 +172,20 @@ const EvidenciaFotos = (() => {
 
     if (APP_CONFIG.appsScript.webAppUrl) {
       try {
-        const result = await DriveUpload.uploadFileWithMeta(file);
+        // Leer lote y código de equipo para organizar en Drive
+        let loteNombre = '';
+        let equipoCodigo = '';
+        const lotes = await LocalCache.getLotes();
+        for (const lote of lotes) {
+          const eq = lote.equipos?.find(e => e._registroId === registroId);
+          if (eq) {
+            loteNombre   = lote.titulo || lote.id || '';
+            equipoCodigo = eq.CODIGO || '';
+            break;
+          }
+        }
+
+        const result = await DriveUpload.uploadFileWithMeta(file, null, loteNombre, equipoCodigo);
         fotoObj.url      = result.url;
         fotoObj.thumbUrl = result.thumbUrl;
         fotoObj.fileId   = result.fileId;

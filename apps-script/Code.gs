@@ -153,24 +153,37 @@ function _deleteRow(sheetName, rowIndex) {
   return { ok: true };
 }
 
-// ── Subir archivo a Drive ──────────────────────────────────────────
-function _uploadToDrive(base64, filename, mimeType) {
-  // Obtener o crear carpeta
-  let folder;
-  const folders = DriveApp.getFoldersByName(DRIVE_FOLDER);
-  if (folders.hasNext()) {
-    folder = folders.next();
+// ── Subir archivo a Drive (con subcarpeta por lote) ──────────────────
+function _uploadToDrive(base64, filename, mimeType, loteNombre) {
+  // Obtener o crear carpeta principal
+  let rootFolder;
+  const rootFolders = DriveApp.getFoldersByName(DRIVE_FOLDER);
+  if (rootFolders.hasNext()) {
+    rootFolder = rootFolders.next();
   } else {
-    folder = DriveApp.createFolder(DRIVE_FOLDER);
-    folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    rootFolder = DriveApp.createFolder(DRIVE_FOLDER);
+    rootFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  }
+
+  // Si se proporcionó nombre de lote, crear/usar subcarpeta con ese nombre
+  let targetFolder = rootFolder;
+  if (loteNombre) {
+    const loteClean = loteNombre.replace(/[/\\:*?"<>|]/g, '_').substring(0, 80);
+    const subFolders = rootFolder.getFoldersByName(loteClean);
+    if (subFolders.hasNext()) {
+      targetFolder = subFolders.next();
+    } else {
+      targetFolder = rootFolder.createFolder(loteClean);
+      targetFolder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
   }
 
   // Decodificar base64 y crear archivo
   const decoded = Utilities.base64Decode(base64);
   const blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', filename);
-  const file = folder.createFile(blob);
+  const file = targetFolder.createFile(blob);
 
-  // Hacer el archivo público con enlace
+  // Hacer el archivo público con enlace (requerido para que lh3 CDN funcione)
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const fileId = file.getId();
@@ -289,21 +302,25 @@ function _geminiOCR(base64, mimeType) {
   const apiKey = props.getProperty('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY no configurada. Ve a ⚙️ Configuración del proyecto → Propiedades de secuencia de comandos.');
 
-  const prompt = `Analiza esta imagen de una pieza de hardware. Tu tarea es extraer la información de la etiqueta y ADEMÁS identificar exactamente qué es el objeto.
-IMPORTANTE: Tienes acceso a búsqueda en internet. Busca el Part Number (PN) o Modelo que encuentres en la etiqueta para identificar el repuesto exacto.
-Devuelve un JSON estricto con estos campos (omite los vacíos):
-- "descripcion": Usa tu búsqueda en internet con el PN encontrado para dar el nombre comercial real del repuesto (ej. "Brazo giratorio para monitor Dell 24 pulgadas", "Teclado retroiluminado HP Envy"). NO des respuestas genéricas.
-- "modelo": modelo exacto del equipo
-- "marca": fabricante  
-- "pn": Part Number (PN), DP/N, o número de parte
-- "serie": número de serie (SN)
-- "sku": SKU o código de producto
-- "procesador": CPU si aparece
-- "ram": memoria si aparece
-- "pantalla": tamaño/resolución de pantalla si aparece
-- "notas": cualquier otro dato útil
+  const prompt = `Eres un experto técnico en hardware y repuestos de computadoras. Analiza esta imagen y extrae TODA la información útil.
 
-Responde SOLO con un JSON válido.`;
+USA INTERNET/BÚSQUEDA para identificar el repuesto exacto y sus compatibilidades con el Part Number o código que encuentres.
+
+Devuelve un JSON ESTRICTO (sin texto fuera del JSON) con EXACTAMENTE estos campos:
+
+- "descripcion": Nombre comercial completo del repuesto (ej. "Pantalla LCD 15.6 pulgadas Full HD para HP ProBook 640 G8"). NO seas genérico.
+- "marca": Fabricante del componente
+- "modelo": Modelo del equipo al que pertenece
+- "codigos": OBJETO con TODOS los códigos importantes encontrados en la etiqueta. Incluye PN, Part Number, FRU, SP#, SPS, DP/N, SKU, P/N, REF, OEM, EAN, MPN y cualquier otro código identificador. Formato: {"PN": "...", "FRU": "...", "SP#": "...", etc.}
+- "codigos_busqueda": Texto plano con los 1-3 códigos más importantes para buscar el repuesto en internet (separados por " | ")
+- "modelos_compatibles": Lista de modelos de equipos con los que es compatible este repuesto (busca en internet). Ej: ["HP ProBook 640 G8", "HP ProBook 650 G8", "HP EliteBook 840 G8"]
+- "serie": Número de serie del componente (SN) si aparece
+- "especificaciones": Características técnicas clave (resolución, capacidad, velocidad, voltaje, pines, etc.)
+- "diagnostico_resumen": Párrafo de 2-4 oraciones para el técnico: qué es el repuesto, para qué sirve, consideraciones de instalación, y si hay versiones OEM vs original.
+- "advertencias": Lista de advertencias importantes (ej. revisar revisión de BIOS, voltaje, polaridad, etc.) o array vacío si ninguna.
+- "notas_tecnicas": Cualquier dato adicional útil para el técnico.
+
+Si un campo no aplica, omite la clave. Responde SOLO con JSON válido.`;
 
   const body = JSON.stringify({
     contents: [{
