@@ -19,6 +19,7 @@ const IngresoView = (() => {
         </div>
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" onclick="Views.go('historial')">📋 Historial</button>
+          <button class="btn btn-secondary btn-sm" id="btn-sync-base" onclick="IngresoView.syncBase()">🔄 Sincronizar Base</button>
           <button class="btn btn-primary btn-sm" id="btn-nuevo-lote-ingreso">➕ Nuevo Lote</button>
         </div>
       </div>
@@ -53,6 +54,9 @@ const IngresoView = (() => {
         </div>
       </div>
 
+      <!-- Info de sincronización local -->
+      <div id="ingreso-sync-info" style="font-size:0.72rem;color:var(--text-muted);padding:4px 0 8px;display:flex;align-items:center;gap:8px"></div>
+
       <!-- Preview equipo encontrado -->
       <div id="ingreso-preview" style="display:none;margin-bottom:12px"></div>
 
@@ -85,6 +89,7 @@ const IngresoView = (() => {
     _renderTabla();
     _bindEvents();
     ScannerBarras.init('ingreso-codigo', _onScan);
+    _renderSyncInfo(); // mostrar info de última sync
   }
 
   // ── Scan callback ─────────────────────────────────────────────────
@@ -312,7 +317,46 @@ const IngresoView = (() => {
     render();
   }
 
-  return { render, confirmarNuevoLote };
+  // ── Info de sincronización local ──────────────────────────────────────────
+  async function _renderSyncInfo() {
+    const el = document.getElementById('ingreso-sync-info');
+    if (!el) return;
+    try {
+      const info = await SheetsAPI.getSyncInfo();
+      if (!info.lastSync) {
+        el.innerHTML = `<span style="color:var(--warning)">⚠️ Sin base local — presiona 🔄 Sincronizar Base</span>`;
+        return;
+      }
+      const mins = Math.floor((Date.now() - info.lastSync) / 60000);
+      const timeStr = mins < 60 ? `hace ${mins} min` : `hace ${Math.floor(mins/60)}h`;
+      const staleColor = info.stale ? 'var(--warning)' : 'var(--success)';
+      el.innerHTML = `
+        <span style="color:${staleColor}">📦 ${info.count.toLocaleString()} equipos en base local</span>
+        <span style="color:var(--text-muted)">·</span>
+        <span style="color:${info.stale?'var(--warning)':'var(--text-muted)'}">Última sync: ${timeStr}${info.stale?' · ⚠️ Desactualizado — sincroniza':''}</span>
+      `;
+    } catch (e) {
+      el.innerHTML = `<span style="color:var(--text-muted)">Base local no disponible</span>`;
+    }
+  }
+
+  // ── Sincronizar base de equipos manualmente ─────────────────────────────────
+  async function syncBase() {
+    const btn = document.getElementById('btn-sync-base');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sincronizando…'; }
+    try {
+      const data = await SheetsAPI.syncFromRemote(true);
+      Toast.success(`✅ Base actualizada: ${data.length.toLocaleString()} equipos`);
+      SheetsAPI.invalidateCache();
+      _renderSyncInfo();
+    } catch (err) {
+      Toast.error('Error al sincronizar: ' + err.message);
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '🔄 Sincronizar Base'; }
+    }
+  }
+
+  return { render, syncBase, confirmarNuevoLote };
 })();
 
 window.IngresoView = IngresoView;

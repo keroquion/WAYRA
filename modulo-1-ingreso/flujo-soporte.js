@@ -154,44 +154,50 @@ const FlujoSoporte = (() => {
         eq._obsSoporte     = obs;
         eq._lastModified   = new Date().toISOString();
 
+        // ── 1. Guardar en IndexedDB — INSTANTÁNEO (< 10ms) ────────────
         await LocalCache.updateLote(lote);
-        await AuditTrail.log('UPDATE', 'SOPORTE', eq, before);
-        await SyncEngine.syncWrite(APP_CONFIG.sheets.sheetName, eq, { accion: 'UPDATE', entidad: 'SOPORTE' });
 
-        // ── Persistir ticket completo en hoja _Soporte ────────────
-        if (APP_CONFIG.appsScript.webAppUrl) {
-          try {
-            const ticket = {
-              id:         `sop_${registroId}`,
-              fecha:      eq._lastModified,
-              codigo:     eq.CODIGO     || '',
-              marca:      eq.MARCA      || '',
-              modelo:     eq.MODELO     || '',
-              serie:      eq.SERIE      || '',
-              tipoEquipo: eq.TIP_EQUIP  || '',
-              procesador: eq.PROCESADOR || '',
-              ram:        eq.RAM        || '',
-              hdSsd:      eq.HD_SSD     || '',
-              estado:     estado,
-              tecnico:    tecnico,
-              falla:      falla,
-              diagnostico,
-              repuestos:  eq._repuestosUsados || [],
-              obs,
-              fotos:      eq._fotos || [],
-              geminiData: eq._geminiData || null,
-              lote:       lote.titulo || lote.id,
-            };
-            await AppsScriptBridge.saveSoporte(ticket);
-            Toast.success(`✅ Soporte guardado en Sheets (hoja _Soporte)`);
-          } catch (err) {
-            Toast.warning(`Soporte guardado local. Error al sincronizar: ${err.message}`);
-          }
-        } else {
-          Toast.success(`Soporte actualizado: ${estado}`);
-        }
-
+        // ── 2. UI feedback inmediato — cerrar modal SIN esperar la red ─
+        Toast.success('💾 Soporte guardado');
         ModalGenerico.close();
+
+        // ── 3. Audit local (no bloqueante) ──────────────────────────────
+        AuditTrail.log('UPDATE', 'SOPORTE', eq, before).catch(() => {});
+
+        // ── 4. Sync a Sheets en BACKGROUND (fire-and-forget) ───────────
+        // Una sola llamada HTTP — saveSoporte escribe en _Soporte y
+        // _syncLotesRemoto (debounced) actualiza _Lotes por separado.
+        if (APP_CONFIG.appsScript.webAppUrl) {
+          const ticket = {
+            id:         `sop_${registroId}`,
+            fecha:      eq._lastModified,
+            codigo:     eq.CODIGO     || '',
+            marca:      eq.MARCA      || '',
+            modelo:     eq.MODELO     || '',
+            serie:      eq.SERIE      || '',
+            tipoEquipo: eq.TIP_EQUIP  || '',
+            procesador: eq.PROCESADOR || '',
+            ram:        eq.RAM        || '',
+            hdSsd:      eq.HD_SSD     || '',
+            estado, tecnico, falla, diagnostico,
+            repuestos:  eq._repuestosUsados || [],
+            obs,
+            fotos:      (eq._fotos || []).map(f => ({ url: f.url, thumbUrl: f.thumbUrl, fileId: f.fileId, timestamp: f.timestamp })),
+            geminiData: eq._geminiData || null,
+            lote:       lote.titulo || lote.id,
+          };
+          // No await — se ejecuta después de que la UI ya respondió
+          AppsScriptBridge.saveSoporte(ticket)
+            .then(() => {
+              console.log('[Soporte] Ticket sincronizado con Sheets ✅');
+              const chip = document.getElementById('sync-chip');
+              if (chip) { chip.className = 'sync-chip connected'; chip.innerHTML = '<span class="dot"></span>Sync OK'; }
+            })
+            .catch(err => {
+              console.warn('[Soporte] Error sync background:', err.message);
+              Toast.warning('Sincronización pendiente — se reintentará', { duration: 3000 });
+            });
+        }
         return;
       }
     }
