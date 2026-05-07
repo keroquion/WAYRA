@@ -221,8 +221,12 @@ const EvidenciaFotos = (() => {
         }
         await LocalCache.updateLote(lote);
         Toast.success('Foto eliminada');
-        // Refrescar gestor
+        // Refrescar gestor de fotos
         openGestor(registroId);
+        // Si el modal de soporte está abierto, refrescar su panel de fotos
+        if (window.FlujoSoporte?.refreshFotosEnModal) {
+          FlujoSoporte.refreshFotosEnModal(registroId);
+        }
         break;
       }
     }

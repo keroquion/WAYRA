@@ -116,12 +116,26 @@ function _readSheet(sheetName, range) {
   return { values: data };
 }
 
-// ── Obtener número de filas ────────────────────────────────────────
+// ── Obtener número de filas (con caché de 30s para reducir latencia) ─────
 function _getRowCount(sheetName) {
-  const ss = _getSpreadsheet();
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
-  return { rowCount: sheet.getLastRow() };
+  const cacheKey = 'rowcount_' + sheetName;
+  try {
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get(cacheKey);
+    if (cached !== null) return { rowCount: parseInt(cached, 10), fromCache: true };
+    const ss = _getSpreadsheet();
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
+    const count = sheet.getLastRow();
+    cache.put(cacheKey, String(count), 30); // 30 segundos
+    return { rowCount: count, fromCache: false };
+  } catch (e) {
+    // Fallback sin caché si falla CacheService
+    const ss = _getSpreadsheet();
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
+    return { rowCount: sheet.getLastRow() };
+  }
 }
 
 // ── Escribir fila al final ─────────────────────────────────────────
