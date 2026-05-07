@@ -8,21 +8,26 @@
 const EvidenciaFotos = (() => {
 
   // ── Helper URL: convierte URL de Drive a formato compatible con <img> ────
-  // Google bloqueó uc?export=view en navegadores modernos.
-  // Se usa drive.usercontent.google.com o thumbnail según el contexto.
+  // lh3.googleusercontent.com/d/{fileId} es el CDN de Google que sirve
+  // archivos de Drive públicos sin restricciones CORS en <img> tags.
+  // Es el único endpoint que funciona de forma confiable sin autenticación.
   function _fixDriveUrl(url, fileId, useThumbnail = false) {
     if (!url) return '';
-    // Si es base64 o ya es usercontent, usarla directamente
-    if (url.startsWith('data:') || url.includes('usercontent.google.com')) return url;
-    // Extraer fileId desde una URL antigua si no se pasó explícitamente
+    // Si es base64, usarla directamente
+    if (url.startsWith('data:')) return url;
+    // Si ya es lh3 CDN, devolver tal cual
+    if (url.includes('lh3.googleusercontent.com')) return url;
+    // Extraer fileId desde una URL de Drive si no se pasó explícitamente
     let id = fileId;
     if (!id) {
-      const m = url.match(/[?&]id=([^&]+)/);
+      // Soporta: id=XXX, /d/XXX/view, /file/d/XXX/
+      const m = url.match(/\/d\/([^/&?]+)/) || url.match(/[?&]id=([^&]+)/);
       if (m) id = m[1];
     }
     if (!id) return url; // URL desconocida, devolver tal cual
-    if (useThumbnail) return `https://drive.google.com/thumbnail?id=${id}&sz=w200`;
-    return `https://drive.usercontent.google.com/download?id=${id}&export=view&authuser=0`;
+    // lh3 CDN: =w200 para thumbnail, =w1200 para imagen completa
+    if (useThumbnail) return `https://lh3.googleusercontent.com/d/${id}=w200`;
+    return `https://lh3.googleusercontent.com/d/${id}=w1200`;
   }
 
   // ── Render botón de adjuntar + thumbnails (celda de tabla) ───────────────

@@ -174,10 +174,11 @@ function _uploadToDrive(base64, filename, mimeType) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const fileId = file.getId();
-  // URL corregida: drive.usercontent.google.com funciona como <img src> en todos los navegadores modernos
-  const url = `https://drive.usercontent.google.com/download?id=${fileId}&export=view&authuser=0`;
-  // Thumbnail más pequeño para previews en tabla
-  const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w200`;
+  // lh3.googleusercontent.com/d/{fileId} es el CDN de Google sin restricciones CORS.
+  // Funciona directamente en <img src> para archivos públicos (ANYONE_WITH_LINK VIEW).
+  // =w1200 para imagen completa, =w200 para thumbnail.
+  const url      = `https://lh3.googleusercontent.com/d/${fileId}=w1200`;
+  const thumbUrl = `https://lh3.googleusercontent.com/d/${fileId}=w200`;
   return { url, thumbUrl, fileId };
 }
 
