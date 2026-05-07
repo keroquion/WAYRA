@@ -253,6 +253,21 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
 
+/* ── SOPORTE MODAL — componentes ── */
+.sop-repuesto-row{display:flex;gap:6px;align-items:center}
+.sop-repuesto-row select{flex:1}
+.sop-repuesto-row input{flex:1.5}
+
+.gemini-btns{display:flex;gap:8px;flex-wrap:wrap}
+
+.fotos-grid-soporte{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.foto-card-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.foto-card-thumb{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg-hover);flex-shrink:0}
+.foto-card-extra{display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:var(--bg-hover);border-radius:8px;font-size:0.7rem;color:var(--text-muted)}
+.foto-analizar-btn{font-size:0.62rem;padding:3px 6px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.4);border-radius:4px;cursor:pointer;color:var(--accent);white-space:nowrap;transition:background 0.2s;min-height:26px}
+.foto-analizar-btn:hover{background:rgba(124,58,237,0.3)}
+.foto-hint-desktop{font-size:0.65rem;font-weight:400;color:var(--accent)}
+
 /* ══════════════════════════════════════════════════════════════════
    MOBILE RESPONSIVE — ≤768px
    ══════════════════════════════════════════════════════════════════ */
@@ -482,6 +497,20 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
 
   /* ── SCROLLBAR (ocultar en móvil) ── */
   ::-webkit-scrollbar{width:2px;height:2px}
+
+  /* ── SOPORTE MODAL MOBILE ── */
+  .sop-repuesto-row{flex-direction:column!important}
+  .sop-repuesto-row select,
+  .sop-repuesto-row input,
+  .sop-repuesto-row .btn{width:100%!important;min-height:40px}
+
+  .gemini-btns{flex-direction:column;gap:6px!important}
+  .gemini-btns label{justify-content:center}
+
+  .fotos-grid-soporte{gap:6px!important}
+  .foto-card-thumb{width:58px!important;height:58px!important}
+  .foto-analizar-btn{font-size:0.58rem!important;padding:4px 5px!important;min-height:28px!important}
+  .foto-hint-desktop{display:none!important}
 }
 
 /* ══════════════════════════════════════════════════════════════════

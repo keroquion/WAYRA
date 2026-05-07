@@ -43,7 +43,7 @@ const FlujoSoporte = (() => {
         </div>
         ${!hasGemini
           ? `<div style="font-size:0.72rem;color:var(--warning)">⚠️ Configura la URL de Apps Script en Admin → Conexión para usar esta función.</div>`
-          : `<div style="display:flex;gap:8px;flex-wrap:wrap">
+          : `<div class="gemini-btns">
               <label style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.4);border-radius:var(--radius-md);font-size:0.8rem">
                 📷 Foto etiqueta → IA
                 <input type="file" accept="image/*" capture="environment" style="display:none" onchange="FlujoSoporte.analizarEtiqueta(this,'${registro._registroId}')">
@@ -67,8 +67,8 @@ const FlujoSoporte = (() => {
         const src = f.thumbUrl || f.url || f.preview || '';
         const fullSrc = f.url || f.preview || '';
         return `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-            <div style="position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:var(--bg-hover)">
+          <div class="foto-card-item">
+            <div class="foto-card-thumb">
               <img src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous"
                 style="width:100%;height:100%;object-fit:cover;cursor:pointer"
                 onclick="EvidenciaFotos.openLightbox('${registro._registroId}',${i})"
@@ -77,8 +77,7 @@ const FlujoSoporte = (() => {
             ${hasGemini
               ? `<button
                   onclick="FlujoSoporte.analizarFotoGuardada('${fullSrc}','${registro._registroId}')"
-                  style="font-size:0.62rem;padding:3px 6px;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.4);border-radius:4px;cursor:pointer;color:var(--accent);white-space:nowrap;transition:background 0.2s"
-                  onmouseover="this.style.background='rgba(124,58,237,0.3)'" onmouseout="this.style.background='rgba(124,58,237,0.15)'"
+                  class="foto-analizar-btn"
                   title="Analizar esta foto con Gemini IA">
                   🤖 Analizar
                 </button>`
@@ -87,9 +86,9 @@ const FlujoSoporte = (() => {
           </div>`;
       }).join('');
       const extra = fotos.length > 6
-        ? `<div style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;background:var(--bg-hover);border-radius:8px;font-size:0.7rem;color:var(--text-muted)">+${fotos.length - 6}</div>`
+        ? `<div class="foto-card-item foto-card-extra">+${fotos.length - 6}</div>`
         : '';
-      return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">${items}${extra}</div>`;
+      return `<div class="fotos-grid-soporte">${items}${extra}</div>`;
     })();
 
     return `
@@ -136,12 +135,12 @@ const FlujoSoporte = (() => {
             </span>
           `).join('')}
         </div>
-        <div style="display:flex;gap:6px">
-          <select class="form-control form-control-sm" id="sop-repuesto-select" style="flex:1">
+        <div class="sop-repuesto-row">
+          <select class="form-control form-control-sm" id="sop-repuesto-select">
             <option value="">— Tipo repuesto —</option>
             ${(APP_CONFIG.catalogos.tiposRepuesto||[]).map(r=>`<option value="${r}">${r}</option>`).join('')}
           </select>
-          <input type="text" class="form-control form-control-sm" id="sop-repuesto-detalle" placeholder="Detalle/PN (opcional)" style="flex:1.5">
+          <input type="text" class="form-control form-control-sm" id="sop-repuesto-detalle" placeholder="PN u otros códigos">
           <button class="btn btn-secondary btn-sm" onclick="FlujoSoporte.agregarRepuesto('${registro._registroId}')">+ Agregar</button>
         </div>
       </div>
@@ -149,7 +148,7 @@ const FlujoSoporte = (() => {
       <!-- Fotos del equipo con botón Analizar -->
       <div style="margin-bottom:12px">
         <div style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
-          Fotos (${fotos.length})${hasGemini && fotos.length > 0 ? ' <span style="font-size:0.65rem;font-weight:400;color:var(--accent)">— Pulsa 🤖 Analizar para extraer PN y tipo de repuesto</span>' : ''}
+          Fotos (${fotos.length})<span class="foto-hint-desktop">${hasGemini && fotos.length > 0 ? ' — Pulsa 🤖 Analizar para extraer PN y tipo de repuesto' : ''}</span>
         </div>
         ${fotosSection}
       </div>
@@ -348,7 +347,7 @@ const FlujoSoporte = (() => {
 
       diagEl.value = lines.join('\n');
       diagEl.style.borderColor = 'var(--accent)';
-      diagEl.style.minHeight = '160px';
+      if (window.innerWidth > 768) diagEl.style.minHeight = '160px';
       setTimeout(() => diagEl.style.borderColor = '', 2500);
     }
 
