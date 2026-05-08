@@ -205,6 +205,7 @@ const ReportesView = (() => {
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" id="btn-sop-config" onclick="ReportesView.toggleConfigPanel()">&#9881;&#65039; Configurar PDF</button>
+            <button class="btn btn-secondary btn-sm" id="btn-sop-pdf-lote" onclick="ReportesView.exportPDFPorLote(document.getElementById('sop-filter-lote')?.value||'')">&#128230; PDF Lote Completo</button>
             <button class="btn btn-secondary btn-sm" id="btn-sop-pdf-all">🖨️ PDF Todos</button>
             <button class="btn btn-secondary btn-sm" id="btn-sop-csv">&#11015;&#65039; CSV</button>
           </div>
@@ -390,6 +391,41 @@ const ReportesView = (() => {
     document.getElementById('btn-sop-pdf-all')?.addEventListener('click', () => _exportarTodosPDF(allTickets));
   }
 
+
+  // ── VENTANA DE IMPRESIÓN (reemplaza html2pdf — funciona siempre) ───────────
+  function _abrirVentanaImpresion(ticketsHtml, filename) {
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { Toast.error('Activa las ventanas emergentes para imprimir'); return; }
+    const fecha = new Date().toLocaleDateString('es-PE');
+    win.document.write(`<!DOCTYPE html><html lang="es"><head>
+      <meta charset="UTF-8">
+      <title>` + filename + `</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1e293b; font-size: 12px; padding: 20px; }
+        .ticket-page { page-break-after: always; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px dashed #e2e8f0; }
+        .ticket-page:last-child { page-break-after: auto; border-bottom: none; }
+        img { max-width: 100%; }
+        @media print {
+          body { padding: 0; }
+          .ticket-page { border-bottom: none; margin: 0; padding: 0; }
+          @page { margin: 10mm; size: A4; }
+        }
+        .no-print { display: none !important; }
+      </style>
+    </head><body>
+      <div class="no-print" style="position:sticky;top:0;background:#f1f5f9;padding:10px;display:flex;gap:8px;align-items:center;z-index:999;border-bottom:1px solid #e2e8f0">
+        <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">
+          🖨️ Imprimir / Guardar PDF
+        </button>
+        <span style="font-size:12px;color:#64748b">Usa Ctrl+P o el botón para imprimir. Para guardar como PDF selecciona "Guardar como PDF" en el diálogo.</span>
+        <button onclick="window.close()" style="margin-left:auto;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ Cerrar</button>
+      </div>
+    ` + ticketsHtml + `</body></html>`);
+    win.document.close();
+    win.focus();
+  }
+
   // ── EXPORTAR TICKET INDIVIDUAL PDF ────────────────────────────────────────
   async function exportTicketPDF(registroId) {
     const lotes = await LocalCache.getLotes();
@@ -399,57 +435,36 @@ const ReportesView = (() => {
       if (found) { eq = found; lote = l; break; }
     }
     if (!eq) { Toast.error('Ticket no encontrado'); return; }
-
-    const html = PlantillaTicketSoporte.generar(eq, lote, _getOpciones());
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:20px;width:900px';
-    wrapper.innerHTML = html;
-    document.body.appendChild(wrapper);
-
-    try {
-      await html2pdf().set({
-        margin: 10,
-        filename: `ticket_soporte_${eq.CODIGO || registroId}.pdf`,
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 2, useCORS: true, allowTaint: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(wrapper).save();
-      Toast.success('PDF generado');
-    } catch (err) {
-      Toast.error('Error al generar PDF: ' + err.message);
-    } finally {
-      document.body.removeChild(wrapper);
-    }
+    const html = `<div class="ticket-page">${PlantillaTicketSoporte.generar(eq, lote, _getOpciones())}</div>`;
+    _abrirVentanaImpresion(html, 'Ticket_' + (eq.CODIGO || registroId));
   }
 
-  // ── EXPORTAR TODOS PDF ────────────────────────────────────────────────────
+  // ── EXPORTAR TODOS PDF (todos los tickets visibles) ────────────────────────
   async function _exportarTodosPDF(allTickets) {
     if (!allTickets.length) { Toast.warning('Sin tickets para exportar'); return; }
-    const btn = document.getElementById('btn-sop-pdf-all');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generando…'; }
-
-    const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:20px;width:900px';
-    const opc = _getOpciones();
-    wrapper.innerHTML = allTickets.map(({ eq, lote }) =>
-      `<div style="page-break-after:always">${PlantillaTicketSoporte.generar(eq, lote, opc)}</div>`
+    const opc  = _getOpciones();
+    const html = allTickets.map(({ eq, lote }) =>
+      `<div class="ticket-page">${PlantillaTicketSoporte.generar(eq, lote, opc)}</div>`
     ).join('');
-    document.body.appendChild(wrapper);
+    _abrirVentanaImpresion(html, 'Tickets_Soporte_' + new Date().toISOString().slice(0,10));
+  }
 
-    try {
-      await html2pdf().set({
-        margin: 10, filename: `tickets_soporte_${new Date().toISOString().slice(0,10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.92 },
-        html2canvas: { scale: 2, useCORS: true, allowTaint: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      }).from(wrapper).save();
-      Toast.success(`PDF con ${allTickets.length} tickets generado`);
-    } catch (err) {
-      Toast.error('Error al generar PDF');
-    } finally {
-      document.body.removeChild(wrapper);
-      if (btn) { btn.disabled = false; btn.innerHTML = '🖨️ PDF Todos'; }
-    }
+
+
+  // ── EXPORTAR PDF DE UN LOTE COMPLETO ────────────────────────────────────────
+  async function exportPDFPorLote(loteId) {
+    const lotes = await LocalCache.getLotes();
+    const lote  = loteId ? lotes.find(l => l.id === loteId) : lotes.find(l => l.activo);
+    if (!lote) { Toast.warning('Lote no encontrado'); return; }
+    if (!lote.equipos?.length) { Toast.warning('El lote está vacío'); return; }
+
+    // Todos los equipos del lote (tengan o no datos de soporte)
+    const opc  = _getOpciones();
+    const html = lote.equipos.map(eq =>
+      `<div class="ticket-page">${PlantillaTicketSoporte.generar(eq, lote, opc)}</div>`
+    ).join('');
+    _abrirVentanaImpresion(html, 'Lote_' + lote.titulo.replace(/\s+/g,'_'));
+    Toast.info(`Preparando PDF con ${lote.equipos.length} equipos del lote "${lote.titulo}"`);
   }
 
   // ── EXPORTAR CSV ───────────────────────────────────────────────────────────
@@ -583,7 +598,7 @@ const ReportesView = (() => {
     resumenContent.innerHTML  = AgrupadorLotes.renderResumen(lote.equipos);
   }
 
-  return { render, switchTab, exportTicketPDF, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig };
+  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig };
 })();
 
 window.ReportesView = ReportesView;
