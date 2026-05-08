@@ -5,6 +5,110 @@
 
 const ReportesView = (() => {
 
+  // Config PDF (persiste en localStorage)
+  let _opcConfig = null;
+  try { const r = localStorage.getItem('sop-pdf-opciones'); _opcConfig = r ? JSON.parse(r) : null; } catch {}
+
+  function _saveOpcConfig(opc) {
+    _opcConfig = opc;
+    try { localStorage.setItem('sop-pdf-opciones', JSON.stringify(opc)); } catch {}
+  }
+
+  function _getOpciones() {
+    const panel = document.getElementById('sop-config-panel');
+    if (!panel || panel.style.display === 'none') return _opcConfig || undefined;
+    const get = id => document.getElementById(id)?.checked !== false;
+    return {
+      mostrarEncabezado:   get('opc-encabezado'),
+      mostrarDatosEquipo:  get('opc-datos-equipo'),
+      mostrarCamposEquipo: {
+        CODIGO: get('opc-campo-CODIGO'), MARCA: get('opc-campo-MARCA'),
+        MODELO: get('opc-campo-MODELO'), SERIE: get('opc-campo-SERIE'),
+        TIP_EQUIP: get('opc-campo-TIP_EQUIP'), PROCESADOR: get('opc-campo-PROCESADOR'),
+        RAM: get('opc-campo-RAM'), HD_SSD: get('opc-campo-HD_SSD'), TECNICO: get('opc-campo-TECNICO'),
+      },
+      mostrarFalla: get('opc-falla'), mostrarObservacion: get('opc-observacion'),
+      mostrarDiagnostico: get('opc-diagnostico'), mostrarGemini: get('opc-gemini'),
+      mostrarRepuestos: get('opc-repuestos'), mostrarFotos: get('opc-fotos'),
+      mostrarLote: get('opc-lote'), mostrarFecha: get('opc-fecha'),
+    };
+  }
+
+  function toggleConfigPanel() {
+    const panel = document.getElementById('sop-config-panel');
+    const btn   = document.getElementById('btn-sop-config');
+    if (!panel) return;
+    const visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : '';
+    if (btn) { btn.style.background = visible ? '' : 'var(--accent)'; btn.style.color = visible ? '' : '#fff'; }
+  }
+
+  function _onConfigChange() { _saveOpcConfig(_getOpciones()); }
+
+  function _resetConfig() {
+    _saveOpcConfig(null);
+    const panel = document.getElementById('sop-config-panel');
+    if (panel) panel.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+    Toast.info('Configuracion restaurada al estado por defecto');
+  }
+
+  function _guardarConfig() { _saveOpcConfig(_getOpciones()); Toast.success('Preferencias de reporte guardadas'); }
+
+  function _renderConfigPanel() {
+    const opc    = _opcConfig || {};
+    const campos = opc.mostrarCamposEquipo || {};
+    const chk = (id, label, checked) => {
+      const isOn = checked !== false ? 'checked' : '';
+      return '<label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;cursor:pointer;padding:3px 0">' +
+        '<input type="checkbox" id="' + id + '" ' + isOn + ' onchange="ReportesView._onConfigChange()" style="accent-color:var(--accent)">' +
+        label + '</label>';
+    };
+    return '<div id="sop-config-panel" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">' +
+      '<div style="font-size:0.78rem;font-weight:700;color:var(--text-primary);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">' +
+        'Configurar Reporte PDF' +
+        '<div style="display:flex;gap:6px">' +
+          '<button class="btn btn-secondary btn-sm" style="font-size:0.68rem" onclick="ReportesView._resetConfig()">Restaurar</button>' +
+          '<button class="btn btn-primary btn-sm" style="font-size:0.68rem" onclick="ReportesView._guardarConfig()">Guardar</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">' +
+        '<div>' +
+          '<div style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Estructura</div>' +
+          chk('opc-encabezado',  'Encabezado del ticket',     opc.mostrarEncabezado   !== false) +
+          chk('opc-lote',        'Nombre del lote',           opc.mostrarLote         !== false) +
+          chk('opc-fecha',       'Fecha de generacion',       opc.mostrarFecha        !== false) +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Datos del Equipo</div>' +
+          chk('opc-datos-equipo','Seccion datos equipo',      opc.mostrarDatosEquipo  !== false) +
+          '<div style="margin-top:4px;padding-left:10px;border-left:2px solid var(--border)">' +
+            chk('opc-campo-CODIGO',     'Codigo',        campos.CODIGO     !== false) +
+            chk('opc-campo-MARCA',      'Marca',         campos.MARCA      !== false) +
+            chk('opc-campo-MODELO',     'Modelo',        campos.MODELO     !== false) +
+            chk('opc-campo-SERIE',      'Serie',         campos.SERIE      !== false) +
+            chk('opc-campo-TIP_EQUIP',  'Tipo',          campos.TIP_EQUIP  !== false) +
+            chk('opc-campo-PROCESADOR', 'Procesador',    campos.PROCESADOR !== false) +
+            chk('opc-campo-RAM',        'RAM',           campos.RAM        !== false) +
+            chk('opc-campo-HD_SSD',     'Almacenamiento',campos.HD_SSD     !== false) +
+            chk('opc-campo-TECNICO',    'Tecnico',       campos.TECNICO    !== false) +
+          '</div>' +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Diagnostico</div>' +
+          chk('opc-falla',        'Falla reportada',          opc.mostrarFalla        !== false) +
+          chk('opc-observacion',  'Observacion final',        opc.mostrarObservacion  !== false) +
+          chk('opc-diagnostico',  'Diagnostico IA/Tecnico',   opc.mostrarDiagnostico  !== false) +
+          chk('opc-gemini',       'Datos Gemini IA',          opc.mostrarGemini       !== false) +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:0.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Adicionales</div>' +
+          chk('opc-repuestos',    'Repuestos utilizados',     opc.mostrarRepuestos    !== false) +
+          chk('opc-fotos',        'Evidencia fotografica',    opc.mostrarFotos        !== false) +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   async function render() {
     const lotes = await LocalCache.getLotes();
     const el = document.getElementById('view-reportes');
@@ -99,11 +203,14 @@ const ReportesView = (() => {
             </select>
             <input type="text" class="form-control" id="sop-filter-buscar" placeholder="🔍 Buscar código, modelo…" style="width:auto;min-width:180px">
           </div>
-          <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" id="btn-sop-config" onclick="ReportesView.toggleConfigPanel()">&#9881;&#65039; Configurar PDF</button>
             <button class="btn btn-secondary btn-sm" id="btn-sop-pdf-all">🖨️ PDF Todos</button>
-            <button class="btn btn-secondary btn-sm" id="btn-sop-csv">⬇️ CSV</button>
+            <button class="btn btn-secondary btn-sm" id="btn-sop-csv">&#11015;&#65039; CSV</button>
           </div>
         </div>
+
+        ${_renderConfigPanel()}
 
         <!-- Stats soporte -->
         <div id="sop-stats-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
@@ -267,7 +374,7 @@ const ReportesView = (() => {
       <!-- DETAIL EXPANDIDO -->
       <div id="${ticketId}" style="display:none;border-top:1px solid var(--border);padding:16px;background:var(--bg-hover)">
         <div id="ticket-content-${eq._registroId}">
-          ${PlantillaTicketSoporte.generar(eq, lote)}
+          ${PlantillaTicketSoporte.generar(eq, lote, _getOpciones())}
         </div>
       </div>
     </div>`;
@@ -293,7 +400,7 @@ const ReportesView = (() => {
     }
     if (!eq) { Toast.error('Ticket no encontrado'); return; }
 
-    const html = PlantillaTicketSoporte.generar(eq, lote);
+    const html = PlantillaTicketSoporte.generar(eq, lote, _getOpciones());
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:20px;width:900px';
     wrapper.innerHTML = html;
@@ -323,8 +430,9 @@ const ReportesView = (() => {
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;padding:20px;width:900px';
+    const opc = _getOpciones();
     wrapper.innerHTML = allTickets.map(({ eq, lote }) =>
-      `<div style="page-break-after:always">${PlantillaTicketSoporte.generar(eq, lote)}</div>`
+      `<div style="page-break-after:always">${PlantillaTicketSoporte.generar(eq, lote, opc)}</div>`
     ).join('');
     document.body.appendChild(wrapper);
 
@@ -475,7 +583,7 @@ const ReportesView = (() => {
     resumenContent.innerHTML  = AgrupadorLotes.renderResumen(lote.equipos);
   }
 
-  return { render, switchTab, exportTicketPDF };
+  return { render, switchTab, exportTicketPDF, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig };
 })();
 
 window.ReportesView = ReportesView;
