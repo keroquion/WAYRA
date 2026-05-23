@@ -680,7 +680,6 @@ const ReportesView = (() => {
               <th style="border:1px solid #ccc;padding:6px 8px">Serie</th>
               <th style="border:1px solid #ccc;padding:6px 8px">Repuesto a comprar</th>
               <th style="border:1px solid #ccc;padding:6px 8px">PN / Código</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Técnico</th>
               <th style="border:1px solid #ccc;padding:6px 8px">Fecha solicitud</th>
               <th style="border:1px solid #ccc;padding:6px 8px;text-align:center;min-width:50px">□ Llegó</th>
               <th style="border:1px solid #ccc;padding:6px 8px;min-width:100px">Fecha colocación</th>
@@ -698,7 +697,6 @@ const ReportesView = (() => {
                 <td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.eq.SERIE||'—'}</td>
                 <td style="border:1px solid #ccc;padding:5px 8px;font-weight:600;color:var(--accent)">${f.repuesto}</td>
                 <td style="border:1px solid #ccc;padding:5px 8px;font-family:monospace">${f.pn}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px">${f.tecnico}</td>
                 <td style="border:1px solid #ccc;padding:5px 8px;white-space:nowrap">${f.fecha}</td>
                 <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-size:1.1rem">□</td>
                 <td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>
@@ -771,7 +769,13 @@ const ReportesView = (() => {
       </div>
       <div class="header">
         <h1>🛒 ORDEN DE COMPRA DE REPUESTOS</h1>
-        <p><strong>${empresa}</strong> · Lote: <strong>${loteTitulo}</strong> · Generado: ${new Date().toLocaleString('es-PE')}</p>
+${(()=>{
+          const loteObj = lotes.find(l=>l.id===loteId) || lotes.find(l=>l.activo) || lotes[0];
+          const loteFecha = loteObj?.fechaCreacion ? new Date(loteObj.fechaCreacion).toLocaleDateString('es-PE') : '—';
+          const loteTecnico = loteObj?.tecnico || '—';
+          return `<p><strong>${empresa}</strong> · Lote: <strong>${loteTitulo}</strong> · Fecha creación lote: <strong>${loteFecha}</strong> · Técnico: <strong>${loteTecnico}</strong></p>
+        <p style="margin-top:3px;color:#777">Documento generado: ${new Date().toLocaleString('es-PE')}</p>`;
+        })()}
       </div>
       <table>
         <thead>
@@ -783,7 +787,6 @@ const ReportesView = (() => {
             <th>Serie</th>
             <th>Repuesto a comprar</th>
             <th>PN / Código</th>
-            <th>Técnico</th>
             <th>Fecha solicitud</th>
             <th class="checkbox-cell" style="min-width:45px">□ Llegó</th>
             <th class="empty-cell">Fecha colocación</th>
@@ -799,7 +802,6 @@ const ReportesView = (() => {
             <td style="font-size:9px">${f.eq.SERIE||'—'}</td>
             <td style="font-weight:700;color:#1a1aff">${f.repuesto}</td>
             <td style="font-family:monospace">${f.pn}</td>
-            <td>${f.tecnico}</td>
             <td style="white-space:nowrap">${f.fecha}</td>
             <td class="checkbox-cell" style="font-size:14px">□</td>
             <td class="empty-cell">&nbsp;</td>
@@ -830,7 +832,6 @@ const ReportesView = (() => {
             eq.SERIE  || '',
             rep.repuesto || rep.nombre || '',
             rep.pn || '',
-            lote.tecnico || eq._tecnico || '',
             rep.timestamp ? new Date(rep.timestamp).toLocaleDateString('es-PE') : new Date(lote.fechaCreacion).toLocaleDateString('es-PE'),
             '',  // □ Llegó
             '',  // Fecha colocación
@@ -842,11 +843,11 @@ const ReportesView = (() => {
 
     if (!filas.length) { Toast.warning('No hay repuestos para exportar'); return; }
 
-    const headers = ['Lote','Código','Marca','Modelo','Serie','Repuesto a comprar','PN/Código','Técnico','Fecha solicitud','□ Llegó','Fecha colocación','Técnico instalación'];
+    const headers = ['Lote','Código','Marca','Modelo','Serie','Repuesto a comprar','PN/Código','Fecha solicitud','□ Llegó','Fecha colocación','Técnico instalación'];
     const ws = XLSX.utils.aoa_to_sheet([headers, ...filas]);
 
     // Style: column widths
-    ws['!cols'] = [14,10,10,18,16,20,16,14,14,8,14,18].map(w=>({wch:w}));
+    ws['!cols'] = [14,10,10,18,16,20,16,14,8,14,18].map(w=>({wch:w}));
 
     // Bold header row
     headers.forEach((_, c) => {
@@ -863,7 +864,7 @@ const ReportesView = (() => {
   }
 
 
-  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig };
+  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig, renderOrdenCompra, exportOrdenCompraPDF, exportOrdenCompraExcel };
 })();
 
 window.ReportesView = ReportesView;
