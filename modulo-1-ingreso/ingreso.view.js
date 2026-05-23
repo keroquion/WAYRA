@@ -5,6 +5,38 @@
 
 const IngresoView = (() => {
   let _loteActivo = null;
+  let _modo = localStorage.getItem('ingreso-modo-v1') || 'normal'; // 'normal'|'soporte'|'garantia'
+
+  function _setModo(m) {
+    _modo = m;
+    localStorage.setItem('ingreso-modo-v1', m);
+    _actualizarModoUI();
+    _renderTabla();
+  }
+
+  function _actualizarModoUI() {
+    ['normal','soporte','garantia'].forEach(m => {
+      const btn = document.getElementById('modo-btn-' + m);
+      if (!btn) return;
+      const active = m === _modo;
+      if (m === 'normal')    { btn.style.background = active ? 'var(--text-muted)' : 'var(--bg-hover)'; btn.style.color = active ? '#fff' : 'var(--text-muted)'; }
+      if (m === 'soporte')   { btn.style.background = active ? '#7c3aed' : 'var(--bg-hover)'; btn.style.color = active ? '#fff' : 'var(--text-muted)'; }
+      if (m === 'garantia')  { btn.style.background = active ? '#0891b2' : 'var(--bg-hover)'; btn.style.color = active ? '#fff' : 'var(--text-muted)'; }
+    });
+    // Show/hide the modo info strip
+    const strip = document.getElementById('modo-activo-strip');
+    if (strip) {
+      if (_modo === 'normal') { strip.style.display = 'none'; return; }
+      strip.style.display = 'flex';
+      strip.style.background = _modo === 'soporte' ? 'rgba(124,58,237,0.08)' : 'rgba(8,145,178,0.08)';
+      strip.style.borderColor = _modo === 'soporte' ? 'rgba(124,58,237,0.3)' : 'rgba(8,145,178,0.3)';
+      strip.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${_modo==='soporte'?'#7c3aed':'#0891b2'};flex-shrink:0"></span>
+        <strong style="font-size:0.75rem">Modo ${_modo==='soporte'?'Soporte':'Garantía'} activo</strong>
+        <span style="font-size:0.72rem;color:var(--text-muted)">— los campos inline se guardan al perder el foco</span>`;
+    }
+  }
+
+  window.IngresoSetModo = _setModo;
 
   async function render() {
     _loteActivo = await LocalCache.getLoteActivo();
@@ -46,13 +78,32 @@ const IngresoView = (() => {
               style="background:var(--bg-hover);cursor:default">
           </div>
           <div class="form-group" style="margin:0">
-            <label class="form-label">💬 MI OBSERVACIÓN</label>
-            <input type="text" class="form-control" id="ingreso-obs" placeholder="Observación personal…">
+            <label class="form-label">⚡ MODO DE INGRESO</label>
+            <div style="display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--border);height:38px">
+              <button id="modo-btn-normal" onclick="IngresoSetModo('normal')"
+                style="padding:6px 12px;font-size:0.72rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;
+                  background:${_modo==='normal'?'var(--text-muted)':'var(--bg-hover)'};color:${_modo==='normal'?'#fff':'var(--text-muted)'}">
+                ○ Normal
+              </button>
+              <button id="modo-btn-soporte" onclick="IngresoSetModo('soporte')"
+                style="padding:6px 12px;font-size:0.72rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;border-left:1px solid var(--border);
+                  background:${_modo==='soporte'?'#7c3aed':'var(--bg-hover)'};color:${_modo==='soporte'?'#fff':'var(--text-muted)'}">
+                🔧 Soporte
+              </button>
+              <button id="modo-btn-garantia" onclick="IngresoSetModo('garantia')"
+                style="padding:6px 12px;font-size:0.72rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;border-left:1px solid var(--border);
+                  background:${_modo==='garantia'?'#0891b2':'var(--bg-hover)'};color:${_modo==='garantia'?'#fff':'var(--text-muted)'}">
+                🛡️ Garantía
+              </button>
+            </div>
           </div>
           <button class="btn btn-primary" id="btn-ingreso-registrar" style="height:38px;align-self:end">⚡ Registrar</button>
           <button class="btn btn-secondary" id="btn-ingreso-limpiar" style="height:38px;align-self:end" title="Limpiar">✕</button>
         </div>
       </div>
+
+      <!-- Strip modo activo -->
+      <div id="modo-activo-strip" style="display:${_modo!=='normal'?'flex':'none'};align-items:center;gap:8px;padding:5px 12px;border-radius:var(--radius-sm);border:1px solid;margin-top:4px;margin-bottom:2px;transition:all .2s"></div>
 
       <!-- Info de sincronización local -->
       <div id="ingreso-sync-info" style="font-size:0.72rem;color:var(--text-muted);padding:4px 0 8px;display:flex;align-items:center;gap:8px"></div>
@@ -68,7 +119,7 @@ const IngresoView = (() => {
         <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span style="font-weight:700;font-size:0.85rem">
             📦 ${_loteActivo?.titulo || 'Sin lote activo'}
-            ${_loteActivo ? `<span style="color:var(--text-muted);font-weight:400;font-size:0.73rem"> · ${new Date(_loteActivo.fechaCreacion).toLocaleDateString('es-PE')}</span>` : ''}
+            ${_loteActivo ? `<span style="color:var(--text-muted);font-weight:400;font-size:0.73rem"> · ${new Date(_loteActivo.fechaCreacion).toLocaleDateString('es-PE')}${_loteActivo.tecnico?' · 👨‍🔧 '+_loteActivo.tecnico:''}</span>` : ''}
           </span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'csv')">⬇️ CSV</button>
@@ -209,24 +260,12 @@ const IngresoView = (() => {
         return `<td title="${Formatters.safe(e[c.key])}">${Formatters.safe(e[c.key])}</td>`;
       }).join('');
       const fotoCell = EvidenciaFotos.renderFotoCell(e, null);
+      const accionesCell = _getAccionesCell(e);
       return `<tr>
         <td style="color:var(--text-muted);font-size:0.7rem">${i+1}</td>
         ${cells}
         <td>${fotoCell}</td>
-        <td>
-          <div style="display:flex;gap:18px;align-items:center;justify-content:center">
-            <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Garantía"
-              onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
-              onclick="_ingresoAbrirGarantia('${e._registroId}')">🛡️</button>
-            <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Soporte"
-              onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
-              onclick="_ingresoAbrirSoporte('${e._registroId}')">🔩</button>
-            <div style="width:1px;height:20px;background:var(--border)"></div>
-            <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s;filter:grayscale(100%)" title="Quitar del lote"
-              onmouseover="this.style.transform='scale(1.2)';this.style.filter='grayscale(0)'" onmouseout="this.style.transform='scale(1)';this.style.filter='grayscale(100%)'"
-              onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${e._registroId}')">🗑️</button>
-          </div>
-        </td>
+        ${accionesCell}
       </tr>`;
     }).join('');
 
@@ -262,6 +301,180 @@ const IngresoView = (() => {
     FlujoSoporte.openModal(eq);
   };
 
+  // ── Acciones column según modo ─────────────────────────────────────────
+  function _getAccionesCell(eq) {
+    if (_modo === 'soporte')  return _accionesSoporte(eq);
+    if (_modo === 'garantia') return _accionesGarantia(eq);
+    return _accionesNormal(eq);
+  }
+
+  function _accionesNormal(eq) {
+    return `<td>
+      <div style="display:flex;gap:14px;align-items:center;justify-content:center">
+        <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Garantía"
+          onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
+          onclick="_ingresoAbrirGarantia('${eq._registroId}')">🛡️</button>
+        <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Soporte"
+          onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
+          onclick="_ingresoAbrirSoporte('${eq._registroId}')">🔩</button>
+        <div style="width:1px;height:20px;background:var(--border)"></div>
+        <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s;filter:grayscale(100%)" title="Quitar"
+          onmouseover="this.style.transform='scale(1.2)';this.style.filter='grayscale(0)'" onmouseout="this.style.transform='scale(1)';this.style.filter='grayscale(100%)'"
+          onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${eq._registroId}')">🗑️</button>
+      </div>
+    </td>`;
+  }
+
+  function _accionesSoporte(eq) {
+    const tiposR = (APP_CONFIG.catalogos.tiposRepuesto || []);
+    const repuestos = eq._repuestosUsados || [];
+    // Chips de repuestos existentes
+    const chipsHtml = repuestos.map((r, idx) =>
+      `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:3px;padding:1px 5px;font-size:0.65rem;white-space:nowrap">
+        <strong>${r.repuesto||r.nombre}</strong>${r.pn?' · '+r.pn:''}
+        <button onclick="_sopQuitarRepuesto('${eq._registroId}',${idx})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.7rem;padding:0;line-height:1">✕</button>
+      </span>`
+    ).join('');
+
+    return `<td style="min-width:340px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <!-- Chips existentes -->
+        ${chipsHtml ? `<div style="display:flex;flex-wrap:wrap;gap:3px">${chipsHtml}</div>` : ''}
+
+        <!-- Fila de nuevo repuesto -->
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap" id="sop-row-${eq._registroId}">
+          <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px">
+            <option value="">Repuesto…</option>
+            ${tiposR.map(t => `<option value="${t}">${t}</option>`).join('')}
+          </select>
+          <input type="text" id="sop-pn-${eq._registroId}" class="form-control" placeholder="PN / código" list="pn-list-${eq._registroId}"
+            style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
+            onblur="_sopAutocompletarPN('${eq._registroId}','${eq.MODELO||''}')">
+          <datalist id="pn-list-${eq._registroId}"></datalist>
+          <button onclick="_sopAgregarRepuesto('${eq._registroId}')"
+            style="background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:0.7rem;cursor:pointer;height:26px;white-space:nowrap">
+            ➕ Añadir
+          </button>
+          <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
+          <button class="btn btn-sm btn-icon" title="Soporte Avanzado" style="font-size:1.1rem"
+            onclick="_ingresoAbrirSoporte('${eq._registroId}')">⚙️</button>
+          <button class="btn btn-sm btn-icon" style="font-size:1.1rem;filter:grayscale(100%)" title="Quitar"
+            onmouseover="this.style.filter='grayscale(0)'" onmouseout="this.style.filter='grayscale(100%)'"
+            onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${eq._registroId}')">🗑️</button>
+        </div>
+      </div>
+    </td>`;
+  }
+
+  function _accionesGarantia(eq) {
+    const proveedores = APP_CONFIG.catalogos.proveedores || [];
+    return `<td style="min-width:340px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        ${eq._estadoGarantia ? `<span style="font-size:0.65rem;color:#0891b2;font-weight:600">${eq._estadoGarantia} · ${eq._proveedorGarantia||''}</span>` : ''}
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <select id="gar-prov-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
+            onchange="_garGuardar('${eq._registroId}')">
+            <option value="">Proveedor…</option>
+            ${proveedores.map(p => `<option value="${p}" ${eq._proveedorGarantia===p?'selected':''}>${p}</option>`).join('')}
+          </select>
+          <input type="text" id="gar-falla-${eq._registroId}" class="form-control" placeholder="Falla…"
+            value="${eq._fallaGarantia||''}"
+            style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
+            onblur="_garGuardar('${eq._registroId}')">
+          <input type="date" id="gar-fecha-${eq._registroId}" class="form-control"
+            value="${eq._fechaEnvioGarantia||new Date().toISOString().slice(0,10)}"
+            style="width:110px;font-size:0.72rem;padding:3px 6px;height:26px"
+            onchange="_garGuardar('${eq._registroId}')">
+          <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
+          <button class="btn btn-sm btn-icon" title="Garantía Avanzada" style="font-size:1.1rem"
+            onclick="_ingresoAbrirGarantia('${eq._registroId}')">🛡️</button>
+          <button class="btn btn-sm btn-icon" style="font-size:1.1rem;filter:grayscale(100%)" title="Quitar"
+            onmouseover="this.style.filter='grayscale(0)'" onmouseout="this.style.filter='grayscale(100%)'"
+            onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${eq._registroId}')">🗑️</button>
+        </div>
+      </div>
+    </td>`;
+  }
+
+  // ── Handlers inline soporte ────────────────────────────────────────────────
+  window._sopAgregarRepuesto = async (regId) => {
+    const sel = document.getElementById('sop-rep-' + regId);
+    const pnEl = document.getElementById('sop-pn-'  + regId);
+    const repuesto = sel?.value?.trim();
+    const pn       = pnEl?.value?.trim();
+    if (!repuesto) { Toast.warning('Selecciona un tipo de repuesto'); return; }
+    const lotes = await LocalCache.getLotes();
+    for (const lote of lotes) {
+      const eq = lote.equipos?.find(e => e._registroId === regId);
+      if (!eq) continue;
+      if (!eq._repuestosUsados) eq._repuestosUsados = [];
+      const nombre = repuesto + (pn ? ' (PN: ' + pn + ')' : '');
+      if (!eq._repuestosUsados.find(r => r.repuesto === repuesto && r.pn === pn)) {
+        eq._repuestosUsados.push({ nombre, repuesto, pn, timestamp: new Date().toISOString() });
+      }
+      eq._estadoSoporte = eq._estadoSoporte || 'RECIBIDO';
+      eq._tecnico = eq._tecnico || (_loteActivo?.tecnico || '');
+      eq._lastModified = new Date().toISOString();
+      await LocalCache.updateLote(lote);
+      // Guardar en DB de PNs si está disponible
+      if (pn && window.ModoRapido?.guardarPN) await ModoRapido.guardarPN(repuesto, eq.MODELO, pn);
+      _loteActivo = await LocalCache.getLoteActivo();
+      window._loteActivo = _loteActivo;
+      _renderTabla();
+      Toast.success(repuesto + (pn ? ' · ' + pn : '') + ' añadido');
+      return;
+    }
+    Toast.error('Equipo no encontrado');
+  };
+
+  window._sopQuitarRepuesto = async (regId, idx) => {
+    const lotes = await LocalCache.getLotes();
+    for (const lote of lotes) {
+      const eq = lote.equipos?.find(e => e._registroId === regId);
+      if (!eq) continue;
+      eq._repuestosUsados = (eq._repuestosUsados || []).filter((_, i) => i !== idx);
+      await LocalCache.updateLote(lote);
+      _loteActivo = await LocalCache.getLoteActivo();
+      window._loteActivo = _loteActivo;
+      _renderTabla();
+      return;
+    }
+  };
+
+  window._sopAutocompletarPN = async (regId, modelo) => {
+    if (!window.ModoRapido?.buscarPN) return;
+    const sel   = document.getElementById('sop-rep-' + regId);
+    const pnEl  = document.getElementById('sop-pn-'  + regId);
+    if (!sel || !pnEl || pnEl.value) return;
+    const repuesto = sel?.value;
+    if (!repuesto) return;
+    const pn = await ModoRapido.buscarPN(repuesto, modelo);
+    if (pn) { pnEl.value = pn; }
+  };
+
+  // ── Handlers inline garantía ───────────────────────────────────────────────
+  window._garGuardar = async (regId) => {
+    const proveedor  = document.getElementById('gar-prov-'  + regId)?.value  || '';
+    const falla      = document.getElementById('gar-falla-' + regId)?.value  || '';
+    const fechaEnvio = document.getElementById('gar-fecha-' + regId)?.value  || '';
+    const lotes = await LocalCache.getLotes();
+    for (const lote of lotes) {
+      const eq = lote.equipos?.find(e => e._registroId === regId);
+      if (!eq) continue;
+      eq._estadoGarantia     = eq._estadoGarantia || 'RECIBIDO';
+      eq._proveedorGarantia  = proveedor;
+      eq._fallaGarantia      = falla;
+      eq._fechaEnvioGarantia = fechaEnvio;
+      eq._tecnico            = eq._tecnico || (_loteActivo?.tecnico || '');
+      eq._lastModified       = new Date().toISOString();
+      await LocalCache.updateLote(lote);
+      // Actualizar referencia local sin re-renderizar
+      _loteActivo = await LocalCache.getLoteActivo();
+      window._loteActivo = _loteActivo;
+      return;
+    }
+  };
+
   function _bindEvents() {
     document.getElementById('btn-ingreso-registrar')?.addEventListener('click', () => {
       const codigo = document.getElementById('ingreso-codigo').value.trim();
@@ -289,11 +502,15 @@ const IngresoView = (() => {
   function _abrirModalNuevoLote() {
     const lotes = LocalCache.getLotes();
     ModalGenerico.open(`
-      <div class="modal-title">➕ Nuevo Lote</div>
+      <div class="modal-title">📦 Nuevo Lote</div>
       <div class="modal-subtitle">El lote anterior se conserva en el historial</div>
       <div class="form-group">
         <label class="form-label">Título del Lote</label>
         <input type="text" class="form-control" id="nuevo-lote-titulo" placeholder="LOTE 105">
+      </div>
+      <div class="form-group">
+        <label class="form-label">👨‍🔧 Técnico Encargado</label>
+        <input type="text" class="form-control" id="nuevo-lote-tecnico" placeholder="Nombre del técnico…" autocomplete="off">
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>
@@ -308,9 +525,10 @@ const IngresoView = (() => {
   }
 
   async function confirmarNuevoLote() {
-    const titulo = document.getElementById('nuevo-lote-titulo')?.value?.trim();
+    const titulo   = document.getElementById('nuevo-lote-titulo')?.value?.trim();
+    const tecnico  = document.getElementById('nuevo-lote-tecnico')?.value?.trim() || '';
     if (!titulo) { Toast.warning('Escribe un título'); return; }
-    _loteActivo = await LocalCache.crearLote(titulo);
+    _loteActivo = await LocalCache.crearLote(titulo, tecnico);
     window._loteActivo = _loteActivo;
     ModalGenerico.close();
     Toast.success(`Lote "${titulo}" creado`);

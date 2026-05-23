@@ -6,17 +6,18 @@
 
 const LocalCache = (() => {
   const DB_NAME = 'inventario-pro-v2';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;  // v2: added repuestos_db store
   let _db = null;
   let _syncTimer = null;
 
   const STORES = {
-    equipos:    { keyPath: '_id' },
-    lotes:      { keyPath: 'id' },
-    audit:      { keyPath: 'id', autoIncrement: true },
-    sync_queue: { keyPath: 'id', autoIncrement: true },
-    config:     { keyPath: 'key' },
-    catalogos:  { keyPath: 'key' },
+    equipos:      { keyPath: '_id' },
+    lotes:        { keyPath: 'id' },
+    audit:        { keyPath: 'id', autoIncrement: true },
+    sync_queue:   { keyPath: 'id', autoIncrement: true },
+    config:       { keyPath: 'key' },
+    catalogos:    { keyPath: 'key' },
+    repuestos_db: { keyPath: 'key' },   // DB interna: repuesto+modelo → PN
   };
 
   // ── Inicializar DB ───────────────────────────────────────────────
@@ -109,13 +110,14 @@ const LocalCache = (() => {
     return lotes.find(l => l.activo) || null;
   }
 
-  async function crearLote(titulo) {
+  async function crearLote(titulo, tecnico) {
     const lotes = await getLotes();
     // Desactivar anteriores
     for (const l of lotes) { if(l.activo) { l.activo=false; await put('lotes', l); } }
     const nuevo = {
       id: `lote_${Date.now()}`,
       titulo: titulo || `LOTE ${101 + lotes.length}`,
+      tecnico: tecnico || '',
       fechaCreacion: new Date().toISOString(),
       activo: true,
       equipos: [],
