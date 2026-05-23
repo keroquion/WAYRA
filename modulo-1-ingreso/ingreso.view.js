@@ -380,10 +380,10 @@ const IngresoView = (() => {
           <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
             onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}')">
             <option value="">Repuesto…</option>
-            ${tiposR.map(t => `<option value="${t}" ${t === _stickyRepuesto ? 'selected' : ''}>${t}</option>`).join('')}
+            ${tiposR.map(t => `<option value="${t}" ${!repuestos.length && t === _stickyRepuesto ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
           <input type="text" id="sop-pn-${eq._registroId}" class="form-control" placeholder="PN / código" list="pn-list-${eq._registroId}"
-            value="${_stickyPN || ''}"
+            value="${repuestos.length ? '' : (_stickyPN || '')}"
             style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
             oninput="_sopOnPNInput('${eq._registroId}',this.value)">
           <datalist id="pn-list-${eq._registroId}"></datalist>
@@ -438,9 +438,13 @@ const IngresoView = (() => {
     if (!sel) return;
     _saveStickyRepuesto(sel.value);
 
-    // Propagate to all OTHER repuesto selects that are empty (still on default)
+    // Propagate to all OTHER repuesto selects that have NO saved repuestos yet
     document.querySelectorAll('select[id^="sop-rep-"]').forEach(s => {
-      if (s.id !== 'sop-rep-' + regId && (s.value === '' || s.value === 'Repuesto…')) {
+      if (s.id === 'sop-rep-' + regId) return;
+      const rowRegId = s.id.replace('sop-rep-', '');
+      const rowEq = window._ingresoEquiposMap?.[rowRegId];
+      // Only propagate if this row has NO chips (no repuestos saved yet)
+      if (!rowEq?._repuestosUsados?.length) {
         s.value = sel.value;
       }
     });
@@ -463,9 +467,12 @@ const IngresoView = (() => {
 
   window._sopOnPNInput = (regId, val) => {
     _saveStickyPN(val);
-    // Propagate to all other empty PN inputs
+    // Propagate to all other rows that have NO saved repuestos yet
     document.querySelectorAll('input[id^="sop-pn-"]').forEach(p => {
-      if (p.id !== 'sop-pn-' + regId && !p.value) p.value = val;
+      if (p.id === 'sop-pn-' + regId) return;
+      const rowRegId = p.id.replace('sop-pn-', '');
+      const rowEq = window._ingresoEquiposMap?.[rowRegId];
+      if (!rowEq?._repuestosUsados?.length && !p.value) p.value = val;
     });
   };
 
