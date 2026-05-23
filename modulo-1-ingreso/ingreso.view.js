@@ -185,36 +185,7 @@ const IngresoView = (() => {
 
       // (ingreso-obs removed — replaced by mode switch)
       _showPreview(equipo);
-      // ── Auto-apply sticky repuesto in soporte mode ──────────────────────
-      if (_modo === 'soporte' && _stickyRepuesto && registro?._registroId) {
-        try {
-          const lotes2 = await LocalCache.getLotes();
-          for (const l2 of lotes2) {
-            const eq2 = l2.equipos?.find(e => e._registroId === registro._registroId);
-            if (!eq2) continue;
-            if (!eq2._repuestosUsados) eq2._repuestosUsados = [];
-            let pn2 = _stickyPN;
-            if (!pn2 && window.ModoRapido?.buscarPN) {
-              pn2 = await ModoRapido.buscarPN(_stickyRepuesto, eq2.MODELO) || '';
-              if (pn2) _saveStickyPN(pn2);
-            }
-            const nombre2 = _stickyRepuesto + (pn2 ? ' (PN: ' + pn2 + ')' : '');
-            if (!eq2._repuestosUsados.find(r => r.repuesto === _stickyRepuesto)) {
-              eq2._repuestosUsados.push({ nombre: nombre2, repuesto: _stickyRepuesto, pn: pn2, timestamp: new Date().toISOString() });
-            }
-            eq2._estadoSoporte  = eq2._estadoSoporte  || 'RECIBIDO';
-            eq2._tecnico        = eq2._tecnico         || (_loteActivo?.tecnico || '');
-            eq2._lastModified   = new Date().toISOString();
-            await LocalCache.updateLote(l2);
-            if (pn2 && window.ModoRapido?.guardarPN) await ModoRapido.guardarPN(_stickyRepuesto, eq2.MODELO, pn2);
-            _loteActivo = await LocalCache.getLoteActivo();
-            window._loteActivo = _loteActivo;
-            break;
-          }
-        } catch(e2) { console.warn('Auto-apply sticky:', e2); }
-      }
-
-      _renderTabla();
+            _renderTabla();
       _renderStatsInline();
       Toast.success(`✅ ${equipo.MARCA} ${equipo.MODELO}`);
     } catch (err) {
@@ -437,45 +408,18 @@ const IngresoView = (() => {
     const sel = document.getElementById('sop-rep-' + regId);
     if (!sel) return;
     _saveStickyRepuesto(sel.value);
-
-    // Propagate to all OTHER repuesto selects that have NO saved repuestos yet
-    document.querySelectorAll('select[id^="sop-rep-"]').forEach(s => {
-      if (s.id === 'sop-rep-' + regId) return;
-      const rowRegId = s.id.replace('sop-rep-', '');
-      const rowEq = window._ingresoEquiposMap?.[rowRegId];
-      // Only propagate if this row has NO chips (no repuestos saved yet)
-      if (!rowEq?._repuestosUsados?.length) {
-        s.value = sel.value;
-      }
-    });
-
-    // Auto-fill PN from internal DB for this repuesto+modelo
+    // Auto-fill PN from DB only for THIS row if PN input is empty
     if (sel.value && modelo && window.ModoRapido?.buscarPN) {
       const pn = await ModoRapido.buscarPN(sel.value, modelo);
       if (pn) {
         _saveStickyPN(pn);
-        // Fill this row's PN if empty
         const pnEl = document.getElementById('sop-pn-' + regId);
         if (pnEl && !pnEl.value) pnEl.value = pn;
-        // Propagate PN to all empty PN inputs
-        document.querySelectorAll('input[id^="sop-pn-"]').forEach(p => {
-          if (!p.value) p.value = pn;
-        });
       }
     }
   };
 
-  window._sopOnPNInput = (regId, val) => {
-    _saveStickyPN(val);
-    // Propagate to all other rows that have NO saved repuestos yet
-    document.querySelectorAll('input[id^="sop-pn-"]').forEach(p => {
-      if (p.id === 'sop-pn-' + regId) return;
-      const rowRegId = p.id.replace('sop-pn-', '');
-      const rowEq = window._ingresoEquiposMap?.[rowRegId];
-      if (!rowEq?._repuestosUsados?.length && !p.value) p.value = val;
-    });
-  };
-
+    window._sopOnPNInput = (regId, val) => { _saveStickyPN(val); };
   // ── Handlers inline soporte ────────────────────────────────────────────────
   window._sopAgregarRepuesto = async (regId) => {
     const sel = document.getElementById('sop-rep-' + regId);
