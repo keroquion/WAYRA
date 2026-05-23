@@ -178,7 +178,7 @@ const IngresoView = (() => {
       // Sync async
       SyncEngine.enqueue('writeRow', { sheetName: '_Registros', rowData: registro });
 
-      document.getElementById('ingreso-obs').value = '';
+      // (ingreso-obs removed — replaced by mode switch)
       _showPreview(equipo);
       _renderTabla();
       _renderStatsInline();
@@ -482,7 +482,6 @@ const IngresoView = (() => {
     });
     document.getElementById('btn-ingreso-limpiar')?.addEventListener('click', () => {
       document.getElementById('ingreso-codigo').value = '';
-      document.getElementById('ingreso-obs').value = '';
       document.getElementById('ingreso-preview').style.display = 'none';
       document.getElementById('ingreso-codigo').focus();
     });
