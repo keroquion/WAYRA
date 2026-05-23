@@ -5,7 +5,12 @@
 
 const IngresoView = (() => {
   let _loteActivo = null;
-  let _modo = localStorage.getItem('ingreso-modo-v1') || 'normal'; // 'normal'|'soporte'|'garantia'
+  let _modo          = localStorage.getItem('ingreso-modo-v1')      || 'normal';
+  let _stickyRepuesto = localStorage.getItem('sticky-repuesto-v1') || '';
+  let _stickyPN       = localStorage.getItem('sticky-pn-v1')       || '';
+
+  function _saveStickyRepuesto(r) { _stickyRepuesto = r; localStorage.setItem('sticky-repuesto-v1', r); }
+  function _saveStickyPN(p)       { _stickyPN = p;       localStorage.setItem('sticky-pn-v1', p); }
 
   function _setModo(m) {
     _modo = m;
@@ -180,6 +185,35 @@ const IngresoView = (() => {
 
       // (ingreso-obs removed — replaced by mode switch)
       _showPreview(equipo);
+      // ── Auto-apply sticky repuesto in soporte mode ──────────────────────
+      if (_modo === 'soporte' && _stickyRepuesto && registro?._registroId) {
+        try {
+          const lotes2 = await LocalCache.getLotes();
+          for (const l2 of lotes2) {
+            const eq2 = l2.equipos?.find(e => e._registroId === registro._registroId);
+            if (!eq2) continue;
+            if (!eq2._repuestosUsados) eq2._repuestosUsados = [];
+            let pn2 = _stickyPN;
+            if (!pn2 && window.ModoRapido?.buscarPN) {
+              pn2 = await ModoRapido.buscarPN(_stickyRepuesto, eq2.MODELO) || '';
+              if (pn2) _saveStickyPN(pn2);
+            }
+            const nombre2 = _stickyRepuesto + (pn2 ? ' (PN: ' + pn2 + ')' : '');
+            if (!eq2._repuestosUsados.find(r => r.repuesto === _stickyRepuesto)) {
+              eq2._repuestosUsados.push({ nombre: nombre2, repuesto: _stickyRepuesto, pn: pn2, timestamp: new Date().toISOString() });
+            }
+            eq2._estadoSoporte  = eq2._estadoSoporte  || 'RECIBIDO';
+            eq2._tecnico        = eq2._tecnico         || (_loteActivo?.tecnico || '');
+            eq2._lastModified   = new Date().toISOString();
+            await LocalCache.updateLote(l2);
+            if (pn2 && window.ModoRapido?.guardarPN) await ModoRapido.guardarPN(_stickyRepuesto, eq2.MODELO, pn2);
+            _loteActivo = await LocalCache.getLoteActivo();
+            window._loteActivo = _loteActivo;
+            break;
+          }
+        } catch(e2) { console.warn('Auto-apply sticky:', e2); }
+      }
+
       _renderTabla();
       _renderStatsInline();
       Toast.success(`✅ ${equipo.MARCA} ${equipo.MODELO}`);
@@ -421,6 +455,9 @@ const IngresoView = (() => {
       _loteActivo = await LocalCache.getLoteActivo();
       window._loteActivo = _loteActivo;
       _renderTabla();
+      // Update sticky to the repuesto+PN just used
+      if (repuesto) _saveStickyRepuesto(repuesto);
+      if (pn)       _saveStickyPN(pn);
       Toast.success(repuesto + (pn ? ' · ' + pn : '') + ' añadido');
       return;
     }
@@ -474,6 +511,23 @@ const IngresoView = (() => {
       return;
     }
   };
+
+  // ── Sticky handlers exposed globally ───────────────────────────────────────
+  window._sopOnRepuestoChange = async (regId, modelo) => {
+    const sel = document.getElementById('sop-rep-' + regId);
+    if (!sel) return;
+    _saveStickyRepuesto(sel.value);
+    // Auto-fill PN from DB for this repuesto+modelo
+    if (sel.value && modelo && window.ModoRapido?.buscarPN) {
+      const pn = await ModoRapido.buscarPN(sel.value, modelo);
+      if (pn) {
+        const pnEl = document.getElementById('sop-pn-' + regId);
+        if (pnEl && !pnEl.value) { pnEl.value = pn; _saveStickyPN(pn); }
+      }
+    }
+  };
+
+  window._sopOnPNInput = (val) => { _saveStickyPN(val); };
 
   function _bindEvents() {
     document.getElementById('btn-ingreso-registrar')?.addEventListener('click', () => {
