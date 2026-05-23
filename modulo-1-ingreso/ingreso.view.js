@@ -377,13 +377,15 @@ const IngresoView = (() => {
 
         <!-- Fila de nuevo repuesto -->
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap" id="sop-row-${eq._registroId}">
-          <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px">
+          <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
+            onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}')">
             <option value="">Repuesto…</option>
-            ${tiposR.map(t => `<option value="${t}">${t}</option>`).join('')}
+            ${tiposR.map(t => `<option value="${t}" ${t === _stickyRepuesto ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
           <input type="text" id="sop-pn-${eq._registroId}" class="form-control" placeholder="PN / código" list="pn-list-${eq._registroId}"
+            value="${_stickyPN || ''}"
             style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onblur="_sopAutocompletarPN('${eq._registroId}','${eq.MODELO||''}')">
+            oninput="_sopOnPNInput('${eq._registroId}',this.value)">
           <datalist id="pn-list-${eq._registroId}"></datalist>
           <button onclick="_sopAgregarRepuesto('${eq._registroId}')"
             style="background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:0.7rem;cursor:pointer;height:26px;white-space:nowrap">
@@ -429,6 +431,43 @@ const IngresoView = (() => {
       </div>
     </td>`;
   }
+
+  // ── Sticky handlers: save + propagate to all rows in DOM ─────────────────
+  window._sopOnRepuestoChange = async (regId, modelo) => {
+    const sel = document.getElementById('sop-rep-' + regId);
+    if (!sel) return;
+    _saveStickyRepuesto(sel.value);
+
+    // Propagate to all OTHER repuesto selects that are empty (still on default)
+    document.querySelectorAll('select[id^="sop-rep-"]').forEach(s => {
+      if (s.id !== 'sop-rep-' + regId && (s.value === '' || s.value === 'Repuesto…')) {
+        s.value = sel.value;
+      }
+    });
+
+    // Auto-fill PN from internal DB for this repuesto+modelo
+    if (sel.value && modelo && window.ModoRapido?.buscarPN) {
+      const pn = await ModoRapido.buscarPN(sel.value, modelo);
+      if (pn) {
+        _saveStickyPN(pn);
+        // Fill this row's PN if empty
+        const pnEl = document.getElementById('sop-pn-' + regId);
+        if (pnEl && !pnEl.value) pnEl.value = pn;
+        // Propagate PN to all empty PN inputs
+        document.querySelectorAll('input[id^="sop-pn-"]').forEach(p => {
+          if (!p.value) p.value = pn;
+        });
+      }
+    }
+  };
+
+  window._sopOnPNInput = (regId, val) => {
+    _saveStickyPN(val);
+    // Propagate to all other empty PN inputs
+    document.querySelectorAll('input[id^="sop-pn-"]').forEach(p => {
+      if (p.id !== 'sop-pn-' + regId && !p.value) p.value = val;
+    });
+  };
 
   // ── Handlers inline soporte ────────────────────────────────────────────────
   window._sopAgregarRepuesto = async (regId) => {
