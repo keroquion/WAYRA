@@ -132,6 +132,10 @@ const ReportesView = (() => {
           style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--radius-sm) var(--radius-sm) 0 0">
           🔧 Tickets Soporte
         </button>
+        <button class="rep-tab" id="tab-btn-compras" onclick="ReportesView.switchTab('compras')"
+          style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--radius-sm) var(--radius-sm) 0 0">
+          🛒 Orden de Compra
+        </button>
       </div>
 
       <!-- TAB: REPORTES CLÁSICOS -->
@@ -184,6 +188,29 @@ const ReportesView = (() => {
         </div>
       </div>
 
+      <!-- TAB: ORDEN DE COMPRA -->
+      <div id="tab-panel-compras" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select class="form-control" id="compras-filter-lote" style="width:auto;min-width:180px"
+              onchange="ReportesView.renderOrdenCompra()">
+              <option value="">Todos los lotes</option>
+              ${lotes.map(l=>`<option value="${l.id}" ${l.activo?'selected':''}>${l.titulo}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="ReportesView.exportOrdenCompraPDF()">🖨️ Imprimir / PDF</button>
+            <button class="btn btn-secondary btn-sm" onclick="ReportesView.exportOrdenCompraExcel()">📊 Exportar Excel</button>
+          </div>
+        </div>
+        <div id="compras-tabla-wrapper">
+          <div style="padding:40px;text-align:center;color:var(--text-muted)">
+            <div style="font-size:2.5rem">🛒</div>
+            <div style="margin-top:8px">Selecciona un lote para generar la orden de compra</div>
+          </div>
+        </div>
+      </div>
+
       <!-- TAB: TICKETS SOPORTE -->
       <div id="tab-panel-soporte" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
@@ -227,7 +254,7 @@ const ReportesView = (() => {
 
   // ── TAB SWITCHING ─────────────────────────────────────────────────────────
   function switchTab(tab) {
-    const tabs   = ['reportes', 'soporte'];
+    const tabs   = ['reportes', 'soporte', 'compras'];
     tabs.forEach(t => {
       const btn   = document.getElementById(`tab-btn-${t}`);
       const panel = document.getElementById(`tab-panel-${t}`);
@@ -240,6 +267,9 @@ const ReportesView = (() => {
     });
     if (tab === 'soporte') {
       LocalCache.getLotes().then(lotes => _renderTicketsSoporte(lotes));
+    }
+    if (tab === 'compras') {
+      renderOrdenCompra();
     }
   }
 
@@ -597,6 +627,241 @@ const ReportesView = (() => {
     resumenCard.style.display = 'block';
     resumenContent.innerHTML  = AgrupadorLotes.renderResumen(lote.equipos);
   }
+
+  // ── ORDEN DE COMPRA ───────────────────────────────────────────────────────
+
+  async function renderOrdenCompra() {
+    const wrapper = document.getElementById('compras-tabla-wrapper');
+    if (!wrapper) return;
+    const loteId = document.getElementById('compras-filter-lote')?.value || '';
+    const lotes  = await LocalCache.getLotes();
+    const empresa = APP_CONFIG.empresa?.nombre || 'Empresa';
+
+    // Collect rows: one per repuesto per equipment
+    const filas = [];
+    for (const lote of lotes) {
+      if (loteId && lote.id !== loteId) continue;
+      for (const eq of (lote.equipos || [])) {
+        const repuestos = eq._repuestosUsados || [];
+        if (!repuestos.length) continue;
+        for (const rep of repuestos) {
+          filas.push({
+            lote,
+            eq,
+            repuesto: rep.repuesto || rep.nombre || '—',
+            pn:       rep.pn || '—',
+            fecha:    rep.timestamp ? new Date(rep.timestamp).toLocaleDateString('es-PE') : new Date(lote.fechaCreacion).toLocaleDateString('es-PE'),
+            tecnico:  lote.tecnico || eq._tecnico || '—',
+          });
+        }
+      }
+    }
+
+    if (!filas.length) {
+      wrapper.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted)">
+        <div style="font-size:2.5rem">📭</div>
+        <div style="margin-top:8px">No hay repuestos registrados en este lote.<br>
+          <small>Añade repuestos desde Ingreso → Modo Soporte.</small>
+        </div>
+      </div>`;
+      return;
+    }
+
+    wrapper.innerHTML = `
+      <div id="compras-printable" style="overflow-x:auto">
+        <table class="data-table" style="border-collapse:collapse;width:100%;font-size:0.8rem">
+          <thead>
+            <tr style="background:var(--accent);color:#fff">
+              <th style="border:1px solid #ccc;padding:6px 8px;text-align:center">#</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Lote</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Código</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Marca</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Modelo</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Serie</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Repuesto a comprar</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">PN / Código</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Técnico</th>
+              <th style="border:1px solid #ccc;padding:6px 8px">Fecha solicitud</th>
+              <th style="border:1px solid #ccc;padding:6px 8px;text-align:center;min-width:50px">□ Llegó</th>
+              <th style="border:1px solid #ccc;padding:6px 8px;min-width:100px">Fecha colocación</th>
+              <th style="border:1px solid #ccc;padding:6px 8px;min-width:120px">Técnico instalación</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filas.map((f, i) => `
+              <tr style="background:${i%2===0?'var(--bg-card)':'var(--bg-hover)'}">
+                <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:var(--text-muted);font-size:0.7rem">${i+1}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.lote.titulo}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;font-weight:600">${f.eq.CODIGO||'—'}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px">${f.eq.MARCA||'—'}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px">${f.eq.MODELO||'—'}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.eq.SERIE||'—'}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;font-weight:600;color:var(--accent)">${f.repuesto}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;font-family:monospace">${f.pn}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px">${f.tecnico}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;white-space:nowrap">${f.fecha}</td>
+                <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-size:1.1rem">□</td>
+                <td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>
+                <td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:12px;font-size:0.7rem;color:var(--text-muted)">
+          Total de repuestos: <strong>${filas.length}</strong> ·
+          Generado: ${new Date().toLocaleString('es-PE')}
+        </div>
+      </div>
+    `;
+  }
+
+  async function exportOrdenCompraPDF() {
+    const loteId = document.getElementById('compras-filter-lote')?.value || '';
+    const lotes  = await LocalCache.getLotes();
+    const empresa = APP_CONFIG.empresa?.nombre || 'Empresa';
+
+    const filas = [];
+    for (const lote of lotes) {
+      if (loteId && lote.id !== loteId) continue;
+      for (const eq of (lote.equipos || [])) {
+        for (const rep of (eq._repuestosUsados || [])) {
+          filas.push({
+            lote, eq,
+            repuesto: rep.repuesto || rep.nombre || '—',
+            pn:       rep.pn || '—',
+            fecha:    rep.timestamp ? new Date(rep.timestamp).toLocaleDateString('es-PE') : new Date(lote.fechaCreacion).toLocaleDateString('es-PE'),
+            tecnico:  lote.tecnico || eq._tecnico || '—',
+          });
+        }
+      }
+    }
+
+    if (!filas.length) { Toast.warning('No hay repuestos para imprimir'); return; }
+
+    const loteTitulo = loteId ? lotes.find(l=>l.id===loteId)?.titulo : 'Todos los lotes';
+    const win = window.open('', '_blank', 'width=1000,height=750');
+    win.document.write(`<!DOCTYPE html><html lang="es"><head>
+      <meta charset="UTF-8">
+      <title>Orden de Compra — ${loteTitulo}</title>
+      <style>
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:Arial,sans-serif; font-size:11px; padding:20px; color:#111; }
+        .header { margin-bottom:16px; border-bottom:2px solid #1a1aff; padding-bottom:10px; }
+        .header h1 { font-size:16px; color:#1a1aff; }
+        .header p  { font-size:11px; color:#555; margin-top:3px; }
+        table { width:100%; border-collapse:collapse; margin-top:12px; }
+        th { background:#1a1aff; color:#fff; padding:6px 8px; border:1px solid #aaa; font-size:10px; text-align:left; }
+        td { padding:5px 8px; border:1px solid #ccc; font-size:10px; }
+        tr:nth-child(even) td { background:#f5f5ff; }
+        .empty-cell { min-width:90px; }
+        .checkbox-cell { text-align:center; font-size:14px; }
+        .no-print { display:block; }
+        @media print {
+          .no-print { display:none !important; }
+          body { padding:10px; }
+        }
+      </style>
+    </head><body>
+      <div class="no-print" style="background:#1a1aff;color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;margin:-20px -20px 16px;position:sticky;top:0;z-index:99">
+        <span style="font-weight:700;font-size:14px">🛒 Orden de Compra — ${loteTitulo}</span>
+        <div style="display:flex;gap:8px">
+          <button onclick="window.print()" style="background:#fff;color:#1a1aff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;font-weight:700">🖨️ Imprimir / Guardar PDF</button>
+          <button onclick="window.close()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;padding:6px 12px;border-radius:4px;cursor:pointer">✕ Cerrar</button>
+        </div>
+      </div>
+      <div class="header">
+        <h1>🛒 ORDEN DE COMPRA DE REPUESTOS</h1>
+        <p><strong>${empresa}</strong> · Lote: <strong>${loteTitulo}</strong> · Generado: ${new Date().toLocaleString('es-PE')}</p>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Código</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Serie</th>
+            <th>Repuesto a comprar</th>
+            <th>PN / Código</th>
+            <th>Técnico</th>
+            <th>Fecha solicitud</th>
+            <th class="checkbox-cell" style="min-width:45px">□ Llegó</th>
+            <th class="empty-cell">Fecha colocación</th>
+            <th class="empty-cell">Técnico instalación</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filas.map((f, i) => `<tr>
+            <td style="text-align:center;color:#888">${i+1}</td>
+            <td><strong>${f.eq.CODIGO||'—'}</strong></td>
+            <td>${f.eq.MARCA||'—'}</td>
+            <td>${f.eq.MODELO||'—'}</td>
+            <td style="font-size:9px">${f.eq.SERIE||'—'}</td>
+            <td style="font-weight:700;color:#1a1aff">${f.repuesto}</td>
+            <td style="font-family:monospace">${f.pn}</td>
+            <td>${f.tecnico}</td>
+            <td style="white-space:nowrap">${f.fecha}</td>
+            <td class="checkbox-cell" style="font-size:14px">□</td>
+            <td class="empty-cell">&nbsp;</td>
+            <td class="empty-cell">&nbsp;</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <p style="margin-top:14px;font-size:10px;color:#888">Total repuestos: <strong>${filas.length}</strong></p>
+    </body></html>`);
+    win.document.close();
+    Toast.success('Ventana de impresión abierta');
+  }
+
+  async function exportOrdenCompraExcel() {
+    const loteId = document.getElementById('compras-filter-lote')?.value || '';
+    const lotes  = await LocalCache.getLotes();
+
+    const filas = [];
+    for (const lote of lotes) {
+      if (loteId && lote.id !== loteId) continue;
+      for (const eq of (lote.equipos || [])) {
+        for (const rep of (eq._repuestosUsados || [])) {
+          filas.push([
+            lote.titulo,
+            eq.CODIGO || '',
+            eq.MARCA  || '',
+            eq.MODELO || '',
+            eq.SERIE  || '',
+            rep.repuesto || rep.nombre || '',
+            rep.pn || '',
+            lote.tecnico || eq._tecnico || '',
+            rep.timestamp ? new Date(rep.timestamp).toLocaleDateString('es-PE') : new Date(lote.fechaCreacion).toLocaleDateString('es-PE'),
+            '',  // □ Llegó
+            '',  // Fecha colocación
+            '',  // Técnico instalación
+          ]);
+        }
+      }
+    }
+
+    if (!filas.length) { Toast.warning('No hay repuestos para exportar'); return; }
+
+    const headers = ['Lote','Código','Marca','Modelo','Serie','Repuesto a comprar','PN/Código','Técnico','Fecha solicitud','□ Llegó','Fecha colocación','Técnico instalación'];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...filas]);
+
+    // Style: column widths
+    ws['!cols'] = [14,10,10,18,16,20,16,14,14,8,14,18].map(w=>({wch:w}));
+
+    // Bold header row
+    headers.forEach((_, c) => {
+      const cell = XLSX.utils.encode_cell({r:0, c});
+      if (!ws[cell]) return;
+      ws[cell].s = { font:{bold:true}, fill:{fgColor:{rgb:'1a1aff'}}, font2:{color:{rgb:'FFFFFF'}} };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const loteTitulo = loteId ? lotes.find(l=>l.id===loteId)?.titulo || 'Todos' : 'Todos';
+    XLSX.utils.book_append_sheet(wb, ws, 'Orden de Compra');
+    XLSX.writeFile(wb, `OrdenCompra_${loteTitulo.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    Toast.success('Excel descargado');
+  }
+
 
   return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig };
 })();
