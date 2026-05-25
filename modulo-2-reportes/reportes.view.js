@@ -426,87 +426,113 @@ const ReportesView = (() => {
     const win = window.open('', '_blank', 'width=1000,height=750');
     if (!win) { Toast.error('Activa las ventanas emergentes para imprimir'); return; }
 
-    // Calcular escala de columna
-    const colWidth = cols === 1 ? '100%' : cols === 4 ? 'calc(50% - 8px)' : 'calc(50% - 8px)';
-    const gridCols = cols === 1 ? '1fr' : cols === 4 ? '1fr 1fr' : '1fr 1fr';
-    // Para 4 columnas usamos 2 por fila pero con fuente más pequeña
-    const bodyFontSize = cols === 4 ? '9px' : cols === 2 ? '11px' : '12px';
+    const gridCols = cols === 1 ? '1fr' : '1fr 1fr';
+    const bodyFontSize = cols >= 4 ? '9px' : cols === 2 ? '11px' : '12px';
 
     win.document.write(`<!DOCTYPE html><html lang="es"><head>
       <meta charset="UTF-8">
       <title>${filename}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1e293b; font-size: ${bodyFontSize}; padding: 12px; }
+        body {
+          font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+          background: #f1f5f9;
+          color: #1e293b;
+          font-size: ${bodyFontSize};
+          padding: 16px;
+        }
 
         /* Grid de tickets */
         .tickets-grid {
           display: grid;
           grid-template-columns: ${gridCols};
-          gap: 12px;
+          gap: 16px;
         }
 
-        /* Cada ticket */
+        /* Cada ticket: el diseño viene del HTML generado */
         .ticket-page {
-          background: #fff;
-          border: 1px solid #e2e8f0;
-          border-radius: 6px;
-          padding: 14px;
           break-inside: avoid;
           page-break-inside: avoid;
+          border-radius: 10px;
+          overflow: hidden;
         }
 
-        img { max-width: 100%; height: auto; }
+        /* Asegurar que imágenes dentro del ticket se escalen bien */
+        .ticket-soporte-doc img {
+          max-width: 100%;
+          height: auto;
+        }
 
         @media print {
-          body { padding: 6px; }
+          body { padding: 5mm; background: #fff; }
           .no-print { display: none !important; }
           .tickets-grid { gap: 8px; }
-          .ticket-page { border: 1px solid #ccc; padding: 10px; }
-          @page { margin: 8mm; size: A4; }
+          @page { margin: 6mm; size: A4; }
         }
 
         .no-print { display: flex; }
       </style>
     </head><body>
-      <div class="no-print" style="position:sticky;top:0;background:#f1f5f9;padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:999;border-bottom:1px solid #e2e8f0;margin:-12px -12px 12px;flex-wrap:wrap">
-        <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;font-weight:700">
+      <div class="no-print" style="
+        position:sticky;top:0;
+        background:linear-gradient(135deg,#0f172a,#1e293b);
+        padding:10px 16px;
+        display:flex;gap:10px;align-items:center;
+        z-index:999;
+        margin:-16px -16px 16px;
+        flex-wrap:wrap;
+        box-shadow:0 2px 8px rgba(0,0,0,0.2);
+      ">
+        <span style="font-size:13px;font-weight:700;color:#fff">🖨️ Tickets de Soporte</span>
+        <button onclick="window.print()" style="
+          background:linear-gradient(135deg,#7c3aed,#6d28d9);
+          color:#fff;border:none;border-radius:8px;
+          padding:8px 20px;font-size:12px;cursor:pointer;font-weight:700;
+          box-shadow:0 2px 8px rgba(124,58,237,0.4);
+        ">
           🖨️ Imprimir / Guardar PDF
         </button>
-        <span style="font-size:11px;color:#64748b">
-          En el diálogo de impresión, selecciona <strong>"Guardar como PDF"</strong> como destino para descargar el PDF.
+        <span style="font-size:10.5px;color:#94a3b8">
+          Selecciona <strong style="color:#c4b5fd">"Guardar como PDF"</strong> en el diálogo para descargar.
         </span>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
-          <label style="font-size:11px;color:#475569">Tickets por fila:</label>
-          <select onchange="_cambiarDensidad(this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #cbd5e1;font-size:12px">
-            <option value="1" ${cols===1?'selected':''}>1 (grande)</option>
-            <option value="2" ${cols!==1&&cols!==4?'selected':''}>2 (estándar)</option>
-            <option value="4" ${cols===4?'selected':''}>4 (compacto)</option>
+          <label style="font-size:10.5px;color:#94a3b8">Tickets por fila:</label>
+          <select onchange="_cambiarDensidad(this.value)" style="
+            padding:5px 10px;border-radius:6px;
+            border:1px solid #334155;
+            background:#1e293b;color:#e2e8f0;
+            font-size:12px;cursor:pointer;
+          ">
+            <option value="1" ${cols===1?'selected':''}>1 — Grande</option>
+            <option value="2" ${cols!==1&&cols!==4?'selected':''}>2 — Estándar</option>
+            <option value="4" ${cols===4?'selected':''}>4 — Compacto</option>
           </select>
         </div>
-        <button onclick="window.close()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">✕ Cerrar</button>
+        <button onclick="window.close()" style="
+          background:#dc2626;color:#fff;border:none;
+          border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer;
+        ">✕ Cerrar</button>
       </div>
       <div class="tickets-grid" id="tickets-grid">
         ${ticketsHtml}
       </div>
     </body></html>`);
 
-    // Script para cambiar densidad sin recargar
     win.document.write(`<script>
       function _cambiarDensidad(v) {
         const g = document.getElementById('tickets-grid');
         if (!g) return;
-        const cols = parseInt(v);
-        const gridCols = cols === 1 ? '1fr' : '1fr 1fr';
-        const fs = cols >= 4 ? '9px' : cols === 2 ? '11px' : '12px';
-        g.style.gridTemplateColumns = gridCols;
-        document.body.style.fontSize = fs;
+        const n = parseInt(v);
+        g.style.gridTemplateColumns = n === 1 ? '1fr' : '1fr 1fr';
+        document.body.style.fontSize = n >= 4 ? '9px' : n === 2 ? '11px' : '12px';
       }
     <\/script>`);
 
     win.document.close();
     win.focus();
   }
+
+
 
   // ── EXPORTAR TICKET INDIVIDUAL PDF ────────────────────────────────────
   async function exportTicketPDF(registroId) {
