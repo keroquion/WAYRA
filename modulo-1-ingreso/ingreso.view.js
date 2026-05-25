@@ -136,7 +136,7 @@ const IngresoView = (() => {
         <div style="padding:8px 14px;border-bottom:1px solid var(--border)">
           <div class="col-toggle-row" id="ingreso-col-toggles"></div>
         </div>
-        <div id="ingreso-tabla"></div>
+        <div id="ingreso-tabla" style="overflow-x:auto"></div>
       </div>
     `;
 

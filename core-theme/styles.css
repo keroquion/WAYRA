@@ -520,6 +520,21 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
   .foto-card-thumb{width:58px!important;height:58px!important}
   .foto-analizar-btn{font-size:0.58rem!important;padding:4px 5px!important;min-height:28px!important}
   .foto-hint-desktop{display:none!important}
+
+  /* ── TABLA INGRESO: scroll horizontal en móvil ── */
+  #ingreso-tabla { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #ingreso-tabla .data-table { min-width: 600px; }
+
+  /* ── SOPORTE TICKETS: overflow ── */
+  #sop-tickets-area { overflow-x: auto; }
+
+  /* ── SCAN BAR: modo ingreso en fila propia en pantallas pequeñas ── */
+}
+
+/* ── EXTRA PEQUEÑO: ≤480px ── */
+@media(max-width:480px){
+  .scan-bar-row { grid-template-columns: 1fr !important; }
+  #btn-ingreso-registrar, #btn-ingreso-limpiar { width: 100%; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
