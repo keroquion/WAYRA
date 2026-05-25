@@ -45,8 +45,70 @@ const IngresoView = (() => {
 
   async function render() {
     _loteActivo = await LocalCache.getLoteActivo();
+    const lotes = await LocalCache.getLotes();
     const el = document.getElementById('view-ingreso');
     if (!el) return;
+
+    // Obtener los últimos 3 lotes cerrados (inactivos)
+    const lotesCerrados = lotes
+      .filter(l => !l.activo)
+      .sort((a, b) => new Date(b.fechaCreacion) - new Date(a.fechaCreacion))
+      .slice(0, 3);
+
+    let bannerHtml = '';
+    if (_loteActivo) {
+      bannerHtml = `
+        <div class="card" style="border-left: 4px solid var(--success); background: rgba(34,197,94,0.06); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">📂</span>
+            <div>
+              <div style="font-weight: 700; color: var(--success); font-size: 0.9rem;">Lote Activo: ${_loteActivo.titulo}</div>
+              <div style="font-size: 0.76rem; color: var(--text-secondary);">
+                Técnico: <strong>${_loteActivo.tecnico || 'Sin asignar'}</strong> · 
+                Equipos: <strong>${_loteActivo.equipos?.length || 0}</strong> · 
+                Creado: <strong>${new Date(_loteActivo.fechaCreacion).toLocaleDateString('es-PE')}</strong>
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn-secondary btn-sm" onclick="Views.go('historial')">📋 Ver Historial</button>
+            <button class="btn btn-danger btn-sm" id="btn-banner-cerrar-lote" style="background: var(--danger); color: #fff;">🔒 Cerrar Lote</button>
+          </div>
+        </div>
+      `;
+    } else {
+      const shortcuts = lotesCerrados.length > 0 
+        ? `<div style="margin-top: 8px; font-size: 0.76rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span>Continuar lote anterior:</span>
+            ${lotesCerrados.map(l => `
+              <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; min-height: 24px; font-size: 0.7rem; font-weight: normal;" onclick="IngresoView.continuarLoteRapido('${l.id}')">
+                📦 ${l.titulo}
+              </button>
+            `).join('')}
+           </div>`
+        : '';
+
+      bannerHtml = `
+        <div class="card" style="border-left: 4px solid var(--warning); background: rgba(245,158,11,0.06); padding: 16px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <span style="font-size: 1.4rem;">📭</span>
+              <div>
+                <div style="font-weight: 700; color: var(--warning); font-size: 0.9rem;">No hay ningún lote activo en curso</div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                  Para registrar equipos y diagnosticar, debes iniciar un nuevo lote o continuar uno existente desde el historial.
+                </div>
+                ${shortcuts}
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <button class="btn btn-secondary btn-sm" onclick="Views.go('historial')">📋 Ir al Historial</button>
+              <button class="btn btn-primary btn-sm" onclick="IngresoView.abrirModalNuevoLoteBanner()">➕ Nuevo Lote</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     el.innerHTML = `
       <div class="page-header">
@@ -60,6 +122,9 @@ const IngresoView = (() => {
           <button class="btn btn-primary btn-sm" id="btn-nuevo-lote-ingreso">➕ Nuevo Lote</button>
         </div>
       </div>
+
+      <!-- Banner de Lote Activo/Inactivo -->
+      ${bannerHtml}
 
       <!-- SCAN BAR -->
       <div class="scan-bar">
@@ -127,9 +192,10 @@ const IngresoView = (() => {
             ${_loteActivo ? `<span style="color:var(--text-muted);font-weight:400;font-size:0.73rem"> · ${new Date(_loteActivo.fechaCreacion).toLocaleDateString('es-PE')}${_loteActivo.tecnico?' · 👨‍🔧 '+_loteActivo.tecnico:''}</span>` : ''}
           </span>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'csv')">⬇️ CSV</button>
-            <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'xlsx')">📊 Excel</button>
-            <button class="btn btn-danger btn-sm" id="btn-ingreso-vaciar">🗑️ Vaciar Lote</button>
+            <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'csv')" ${_loteActivo ? '' : 'disabled'}>⬇️ CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'xlsx')" ${_loteActivo ? '' : 'disabled'}>📊 Excel</button>
+            ${_loteActivo ? `<button class="btn btn-secondary btn-sm" id="btn-ingreso-cerrar" style="color:var(--danger);border-color:rgba(239,68,68,0.2)">🔒 Cerrar Lote</button>` : ''}
+            <button class="btn btn-danger btn-sm" id="btn-ingreso-vaciar" ${_loteActivo ? '' : 'disabled'}>🗑️ Vaciar Lote</button>
           </div>
         </div>
         <!-- Toggle columnas -->
@@ -565,10 +631,34 @@ const IngresoView = (() => {
       Toast.warning('Lote vaciado');
     });
     document.getElementById('btn-nuevo-lote-ingreso')?.addEventListener('click', _abrirModalNuevoLote);
+
+    // Botones de cerrar lote
+    document.getElementById('btn-banner-cerrar-lote')?.addEventListener('click', _cerrarLoteActivo);
+    document.getElementById('btn-ingreso-cerrar')?.addEventListener('click', _cerrarLoteActivo);
+  }
+
+  async function _cerrarLoteActivo() {
+    if (!_loteActivo) return;
+    if (!confirm(`¿Deseas cerrar el lote "${_loteActivo.titulo}"? Ya no podrás agregar más equipos a este lote a menos que lo vuelvas a abrir.`)) return;
+    _loteActivo.activo = false;
+    await LocalCache.updateLote(_loteActivo);
+    Toast.success(`Lote "${_loteActivo.titulo}" cerrado`);
+    _loteActivo = null;
+    window._loteActivo = null;
+    render();
+  }
+
+  async function continuarLoteRapido(loteId) {
+    const lote = await LocalCache.continuarLote(loteId);
+    if (lote) {
+      Toast.success(`Lote "${lote.titulo}" reactivado`);
+      render();
+    } else {
+      Toast.error('No se pudo encontrar el lote');
+    }
   }
 
   function _abrirModalNuevoLote() {
-    const lotes = LocalCache.getLotes();
     ModalGenerico.open(`
       <div class="modal-title">📦 Nuevo Lote</div>
       <div class="modal-subtitle">El lote anterior se conserva en el historial</div>
@@ -650,7 +740,7 @@ const IngresoView = (() => {
     ScannerBarras.setGlobalActive(false);
   }
 
-  return { render, syncBase, confirmarNuevoLote, onLeave };
+  return { render, syncBase, confirmarNuevoLote, onLeave, abrirModalNuevoLoteBanner: _abrirModalNuevoLote, continuarLoteRapido };
 })();
 
 window.IngresoView = IngresoView;

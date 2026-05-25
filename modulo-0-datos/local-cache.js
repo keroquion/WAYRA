@@ -121,6 +121,7 @@ const LocalCache = (() => {
       fechaCreacion: new Date().toISOString(),
       activo: true,
       equipos: [],
+      synced: false,
     };
     await put('lotes', nuevo);
     _syncLotesRemoto();
@@ -128,18 +129,48 @@ const LocalCache = (() => {
   }
 
   async function updateLote(lote) {
+    lote.synced = false;
     await put('lotes', lote);
     _syncLotesRemoto();
   }
 
   async function deleteLote(loteId) {
     await del('lotes', loteId);
+
+    // Registrar ID del lote eliminado localmente para evitar re-importación rápida
+    let deletedIds = await getConfig('deleted_lote_ids', []);
+    if (!deletedIds.includes(loteId)) {
+      deletedIds.push(loteId);
+      await setConfig('deleted_lote_ids', deletedIds);
+    }
+
     const lotes = await getLotes();
     if (lotes.length > 0 && !lotes.find(l=>l.activo)) {
       lotes[0].activo = true;
       await put('lotes', lotes[0]);
     }
+    
+    // Sincronizar inmediatamente
+    await syncLotesRemotoInmediato();
+  }
+
+  async function continuarLote(loteId) {
+    const lotes = await getLotes();
+    let targetLote = null;
+    for (const l of lotes) {
+      if (l.id === loteId) {
+        l.activo = true;
+        l.synced = false;
+        await put('lotes', l);
+        targetLote = l;
+      } else if (l.activo) {
+        l.activo = false;
+        l.synced = false;
+        await put('lotes', l);
+      }
+    }
     _syncLotesRemoto();
+    return targetLote;
   }
 
   async function agregarEquipoALote(loteId, equipo, obsPersonal='') {
@@ -154,6 +185,7 @@ const LocalCache = (() => {
       _fotos: [],
     };
     lote.equipos.unshift(registro);
+    lote.synced = false;
     await put('lotes', lote);
     _syncLotesRemoto();
     return registro;
@@ -164,6 +196,7 @@ const LocalCache = (() => {
     const lote = lotes.find(l=>l.id===loteId);
     if (!lote) return;
     lote.equipos = lote.equipos.filter(e=>e._registroId!==registroId);
+    lote.synced = false;
     await put('lotes', lote);
     _syncLotesRemoto();
   }
@@ -176,11 +209,40 @@ const LocalCache = (() => {
       try {
         const lotes = await getLotes();
         await AppsScriptBridge.saveLotes(lotes);
+        // Marcar los lotes como sincronizados localmente
+        for (const l of lotes) {
+          if (!l.synced) {
+            l.synced = true;
+            await put('lotes', l);
+          }
+        }
+        await setConfig('deleted_lote_ids', []);
         console.log('✅ Lotes sincronizados a Sheets (' + lotes.length + ')');
       } catch (err) {
         console.warn('[LocalCache] Error sincronizando lotes:', err.message);
       }
     }, 2000); // esperar 2s para agrupar cambios rápidos
+  }
+
+  // ── SYNC LOTES A REMOTO INMEDIATO ────────────────────────────────
+  async function syncLotesRemotoInmediato() {
+    if (!APP_CONFIG.appsScript.webAppUrl) return;
+    clearTimeout(_syncTimer);
+    try {
+      const lotes = await getLotes();
+      await AppsScriptBridge.saveLotes(lotes);
+      // Marcar los lotes como sincronizados localmente
+      for (const l of lotes) {
+        if (!l.synced) {
+          l.synced = true;
+          await put('lotes', l);
+        }
+      }
+      await setConfig('deleted_lote_ids', []);
+      console.log('✅ Lotes sincronizados a Sheets inmediatamente (' + lotes.length + ')');
+    } catch (err) {
+      console.warn('[LocalCache] Error sincronizando lotes inmediatamente:', err.message);
+    }
   }
 
   // ── CARGAR LOTES DESDE REMOTO ────────────────────────────────────
@@ -189,29 +251,52 @@ const LocalCache = (() => {
     try {
       const result = await AppsScriptBridge.loadLotes();
       const remoteLotes = result.lotes || [];
-      if (remoteLotes.length === 0) return { added: 0, total: 0 };
+      
+      // Marcar todos los descargados como synced
+      remoteLotes.forEach(l => { l.synced = true; });
 
       const localLotes = await getLotes();
+      const deletedIds = await getConfig('deleted_lote_ids', []);
 
-      // Si no hay lotes locales, simplemente cargar los remotos
+      // Si no hay lotes locales, cargar remotos respetando eliminados
       if (localLotes.length === 0) {
+        let added = 0;
         for (const lote of remoteLotes) {
-          await put('lotes', lote);
+          if (!deletedIds.includes(lote.id)) {
+            await put('lotes', lote);
+            added++;
+          }
         }
-        console.log('✅ Cargados ' + remoteLotes.length + ' lotes desde Sheets');
+        console.log('✅ Cargados ' + added + ' lotes desde Sheets');
         return { added: remoteLotes.length, total: remoteLotes.length };
       }
 
-      // Merge: remotos que no existen localmente se agregan
-      const localIds = new Set(localLotes.map(l => l.id));
+      const remoteIds = new Set(remoteLotes.map(l => l.id));
+
+      // 1. Eliminar localmente los lotes que tienen synced: true pero NO están en remoteLotes
+      for (const local of localLotes) {
+        if (local.synced && !remoteIds.has(local.id)) {
+          await del('lotes', local.id);
+          console.log(`🗑️ Lote ${local.titulo} eliminado localmente por no existir en Sheets`);
+        }
+      }
+
+      // Volver a obtener locales tras posible purga
+      const activeLocalLotes = await getLotes();
+      const localIds = new Set(activeLocalLotes.map(l => l.id));
       let added = 0;
+
+      // 2. Merge: remotos que no existen localmente y no están eliminados se agregan
       for (const remoteLote of remoteLotes) {
+        if (deletedIds.includes(remoteLote.id)) {
+          continue;
+        }
         if (!localIds.has(remoteLote.id)) {
           await put('lotes', remoteLote);
           added++;
         } else {
           // Si existe en ambos, el que tenga más equipos gana
-          const local = localLotes.find(l => l.id === remoteLote.id);
+          const local = activeLocalLotes.find(l => l.id === remoteLote.id);
           if (local && remoteLote.equipos.length > local.equipos.length) {
             await put('lotes', remoteLote);
             added++;
@@ -273,12 +358,13 @@ const LocalCache = (() => {
     init, getAll, get, put, del, clear,
     getConfig, setConfig,
     getCatalogos, setCatalogo,
-    getLotes, getLoteActivo, crearLote, updateLote, deleteLote,
+    getLotes, getLoteActivo, crearLote, updateLote, deleteLote, continuarLote,
     agregarEquipoALote, eliminarEquipoDeLote,
     enqueue, getQueue, removeFromQueue,
     addAudit, getAudit,
     exportBackup,
     loadLotesFromRemote,
+    syncLotesRemotoInmediato,
   };
 })();
 

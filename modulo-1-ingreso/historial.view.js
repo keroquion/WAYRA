@@ -40,12 +40,14 @@ const HistorialView = (() => {
             <span style="font-size:1.2rem">📦</span>
             <div>
               <div style="font-weight:700">${lote.titulo} ${lote.activo?'<span class="badge badge-success" style="margin-left:6px;font-size:0.62rem">ACTIVO</span>':''}</div>
-              <div style="font-size:0.72rem;color:var(--text-muted)">${fecha} · ${eq.length} equipo(s) · ${correctos} correctos</div>
+              <div style="font-size:0.72rem;color:var(--text-muted)">${fecha} · ${eq.length} equipo(s) · ${correctos} correctos ${lote.tecnico ? ' · 👨‍🔧 '+lote.tecnico : ''}</div>
             </div>
           </div>
           <div style="display:flex;gap:5px;align-items:center">
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();ImportExport.exportLote(window._histLotes?.find(l=>l.id==='${lote.id}'),'csv')">CSV</button>
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();ImportExport.exportLote(window._histLotes?.find(l=>l.id==='${lote.id}'),'xlsx')">Excel</button>
+            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();_histEditar('${lote.id}')" title="Editar lote">✏️</button>
+            ${!lote.activo?`<button class="btn btn-sm btn-success" style="background:var(--success);border:none;color:#fff" onclick="event.stopPropagation();_histContinuar('${lote.id}')" title="Continuar trabajando en este lote">▶️ Continuar</button>`:''}
             ${!lote.activo?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();_histEliminar('${lote.id}')">🗑️</button>`:''}
             <span id="hist-arrow-${lote.id}" style="color:var(--text-muted);transition:transform 0.2s">▼</span>
           </div>
@@ -89,6 +91,61 @@ const HistorialView = (() => {
     await LocalCache.deleteLote(id);
     Toast.warning('Lote eliminado');
     HistorialView.render();
+  };
+
+  window._histEditar = async (id) => {
+    const lotes = await LocalCache.getLotes();
+    const lote = lotes.find(l => l.id === id);
+    if (!lote) { Toast.error('Lote no encontrado'); return; }
+
+    ModalGenerico.open(`
+      <div class="modal-title">✏️ Editar Lote</div>
+      <div class="modal-subtitle">Modifica los detalles del lote en el historial</div>
+      <div class="form-group">
+        <label class="form-label">Título del Lote</label>
+        <input type="text" class="form-control" id="edit-lote-titulo" value="${Formatters.safe(lote.titulo)}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">👨‍🔧 Técnico Encargado</label>
+        <input type="text" class="form-control" id="edit-lote-tecnico" value="${Formatters.safe(lote.tecnico || '')}" autocomplete="off">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>
+        <button class="btn btn-primary" onclick="_histGuardarEdicion('${lote.id}')">Guardar Cambios</button>
+      </div>
+    `);
+  };
+
+  window._histGuardarEdicion = async (id) => {
+    const titulo = document.getElementById('edit-lote-titulo')?.value?.trim();
+    const tecnico = document.getElementById('edit-lote-tecnico')?.value?.trim() || '';
+    if (!titulo) { Toast.warning('Escribe un título'); return; }
+
+    const lotes = await LocalCache.getLotes();
+    const lote = lotes.find(l => l.id === id);
+    if (lote) {
+      lote.titulo = titulo;
+      lote.tecnico = tecnico;
+      await LocalCache.updateLote(lote);
+      ModalGenerico.close();
+      Toast.success('Lote actualizado');
+      // Actualizar la variable global del historial
+      window._histLotes = await LocalCache.getLotes();
+      HistorialView.render();
+    } else {
+      Toast.error('Error al actualizar el lote');
+    }
+  };
+
+  window._histContinuar = async (id) => {
+    const lote = await LocalCache.continuarLote(id);
+    if (lote) {
+      Toast.success(`Trabajando ahora en: ${lote.titulo}`);
+      // Ir a la vista de ingreso
+      Views.go('ingreso');
+    } else {
+      Toast.error('No se pudo reactivar el lote');
+    }
   };
 
   return { render };
