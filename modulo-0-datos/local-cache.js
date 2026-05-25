@@ -144,12 +144,8 @@ const LocalCache = (() => {
       await setConfig('deleted_lote_ids', deletedIds);
     }
 
-    const lotes = await getLotes();
-    if (lotes.length > 0 && !lotes.find(l=>l.activo)) {
-      lotes[0].activo = true;
-      await put('lotes', lotes[0]);
-    }
-    
+    // Eliminado: auto-activar el primer lote si no hay activo
+    // (A petición del usuario, si se borra el activo no debe abrirse otro automáticamente)
     // Sincronizar inmediatamente
     await syncLotesRemotoInmediato();
   }
@@ -393,10 +389,8 @@ window.depurarLotesBugeados = async () => {
       activos[i].activo = false;
       await LocalCache.put('lotes', activos[i]);
     }
-  } else if (activos.length === 0 && remaining.length > 0) {
-    remaining[0].activo = true;
-    await LocalCache.put('lotes', remaining[0]);
   }
+  // Eliminado: auto-activar el primer lote si no hay activo
   console.log(`Depuración completa. Lotes purgados: ${purgados}`);
   alert(`Depuración completa. Se purgaron ${purgados} lotes fantasma. Por favor recarga la página.`);
   location.reload();
