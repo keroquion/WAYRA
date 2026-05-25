@@ -28,6 +28,7 @@ inventario-pro-v2/
 │   ├── evidencia-fotos.js                       → FileInput → preview → upload Drive async → lightbox.
 │   ├── flujo-garantia.js                        → Stepper 6 estados. Modal cambio estado. Audit en cada transición.
 │   ├── flujo-soporte.js                         → Stepper 6 estados. Repuestos usados (texto). Técnico asignado.
+│   ├── modo-rapido.js                           → Panel sticky de configuración rápida para ingreso masivo.
 │   ├── ingreso.view.js                          → Vista principal: scan bar + col-toggle + tabla lote + botones flujo.
 │   └── historial.view.js                        → Historial de lotes: colapsar/expandir, eliminar, export CSV/XLSX.
 │
@@ -35,6 +36,7 @@ inventario-pro-v2/
 │   ├── agrupador-lotes.js                       → Totalizar equipos por tipo/marca/estado/sucursal con barras de progreso.
 │   ├── plantillas/
 │   │   ├── garantia-proveedor.js                → Doc formal: cabecera empresa, tabla equipos, firma/sello.
+│   │   ├── ticket-soporte.js                    → Doc individual de ticket de soporte para vista previa y PDF.
 │   │   └── reporte-lote.js                      → Reporte general: resumen visual + tabla completa.
 │   └── reportes.view.js                         → Vista: selector lote + tipo doc + preview live + export PDF/CSV/XLSX.
 │

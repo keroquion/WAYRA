@@ -32,11 +32,13 @@
 - [x] `modulo-1-ingreso/evidencia-fotos.js` — Fotos + preview + upload Drive + lightbox
 - [x] `modulo-1-ingreso/flujo-garantia.js` — Stepper 6 estados garantía
 - [x] `modulo-1-ingreso/flujo-soporte.js` — Stepper 6 estados soporte + repuestos
+- [x] `modulo-1-ingreso/modo-rapido.js` — Panel sticky de configuración rápida para ingreso masivo
 - [x] `modulo-1-ingreso/ingreso.view.js` — Vista principal Módulo 1
 - [x] `modulo-1-ingreso/historial.view.js` — Historial de lotes
 - [x] `modulo-2-reportes/agrupador-lotes.js` — Totalización por tipo/marca/estado
 - [x] `modulo-2-reportes/plantillas/garantia-proveedor.js` — Doc formal garantía
 - [x] `modulo-2-reportes/plantillas/reporte-lote.js` — Reporte general lote
+- [x] `modulo-2-reportes/plantillas/ticket-soporte.js` — Doc individual de ticket de soporte
 - [x] `modulo-2-reportes/reportes.view.js` — Vista reportes: preview + export
 - [x] `modulo-3-admin/pin-auth.js` — PIN SHA-256 + keypad + sesión
 - [x] `modulo-3-admin/catalogos-crud.js` — CRUD catálogos sin código
