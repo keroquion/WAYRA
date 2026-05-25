@@ -431,8 +431,9 @@ const ReportesView = (() => {
     const win = window.open('', '_blank', 'width=1000,height=750');
     if (!win) { Toast.error('Activa las ventanas emergentes para imprimir'); return; }
 
-    const gridCols = cols === 1 ? '1fr' : '1fr 1fr';
     const bodyFontSize = cols >= 4 ? '9px' : cols === 2 ? '11px' : '12px';
+    const initWidth = cols === 1 ? '100%' : cols === 4 ? 'calc(25% - 12px)' : 'calc(50% - 8px)';
+    const printWidth = cols === 1 ? '100%' : cols === 4 ? 'calc(25% - 6px)' : 'calc(50% - 4px)';
 
     win.document.write(`<!DOCTYPE html><html lang="es"><head>
       <meta charset="UTF-8">
@@ -447,19 +448,22 @@ const ReportesView = (() => {
           padding: 16px;
         }
 
-        /* Grid de tickets */
+        /* Contenedor flexible de tickets */
         .tickets-grid {
-          display: grid;
-          grid-template-columns: ${gridCols};
+          display: flex;
+          flex-wrap: wrap;
           gap: 16px;
         }
 
-        /* Cada ticket: el diseño viene del HTML generado */
+        /* Cada ticket: evitar rupturas entre páginas */
         .ticket-page {
+          width: ${initWidth};
           break-inside: avoid;
           page-break-inside: avoid;
-          border-radius: 10px;
+          border-radius: 8px;
           overflow: hidden;
+          background: #fff;
+          border: 1px solid #cbd5e1;
         }
 
         /* Asegurar que imágenes dentro del ticket se escalen bien */
@@ -472,6 +476,11 @@ const ReportesView = (() => {
           body { padding: 5mm; background: #fff; }
           .no-print { display: none !important; }
           .tickets-grid { gap: 8px; }
+          .ticket-page {
+            width: ${printWidth} !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: none !important;
+          }
           @page { margin: 6mm; size: A4; }
         }
 
@@ -528,7 +537,16 @@ const ReportesView = (() => {
         const g = document.getElementById('tickets-grid');
         if (!g) return;
         const n = parseInt(v);
-        g.style.gridTemplateColumns = n === 1 ? '1fr' : '1fr 1fr';
+        const items = g.querySelectorAll('.ticket-page');
+        items.forEach(item => {
+          if (n === 1) {
+            item.style.width = '100%';
+          } else if (n === 4) {
+            item.style.width = 'calc(25% - 12px)';
+          } else {
+            item.style.width = 'calc(50% - 8px)';
+          }
+        });
         document.body.style.fontSize = n >= 4 ? '9px' : n === 2 ? '11px' : '12px';
       }
     <\/script>`);

@@ -1,7 +1,7 @@
 /**
  * modulo-2-reportes/plantillas/ticket-soporte.js
- * Genera el HTML de un ticket de soporte individual para vista previa y PDF.
- * v2.3: Diseño premium rediseñado, fotos usando URL original de Drive.
+ * Genera el HTML de un ticket de soporte técnico individual.
+ * Versión rediseñada: Estándar corporativo bilingüe e internacional (ES/EN) para inspección y pedido de repuestos (China).
  */
 
 const PlantillaTicketSoporte = (() => {
@@ -31,257 +31,337 @@ const PlantillaTicketSoporte = (() => {
     const fechaMod = eq._lastModified ? new Date(eq._lastModified).toLocaleString('es-PE') : '—';
     const estado   = eq._estadoSoporte || 'Pendiente';
 
+    // Configuración de estados de soporte
     const estadoMap = {
-      'Listo para entrega': { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: '✅' },
-      'En diagnóstico':     { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: '🔍' },
-      'En reparación':      { color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', icon: '🔧' },
-      'Esperando repuesto': { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', icon: '⏳' },
-      'Sin solución':       { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: '❌' },
-      'Pendiente':          { color: '#4b5563', bg: '#f9fafb', border: '#e5e7eb', icon: '⏸️' },
+      'Listo para entrega': { color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', icon: '✅', labelEN: 'Ready for Delivery' },
+      'En diagnóstico':     { color: '#d97706', bg: '#fffbeb', border: '#fde68a', icon: '🔍', labelEN: 'In Diagnosis' },
+      'En reparación':      { color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe', icon: '🔧', labelEN: 'Under Repair' },
+      'Esperando repuesto': { color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', icon: '⏳', labelEN: 'Awaiting Spare Part' },
+      'Sin solución':       { color: '#dc2626', bg: '#fef2f2', border: '#fecaca', icon: '❌', labelEN: 'No Solution' },
+      'Pendiente':          { color: '#4b5563', bg: '#f9fafb', border: '#e5e7eb', icon: '⏸️', labelEN: 'Pending' },
     };
     const est = estadoMap[estado] || estadoMap['Pendiente'];
 
-    // ── FOTOS: usar URL original de Drive, thumbUrl solo como fallback ──────
-    // f.url = URL completa de Google Drive (imagen real)
-    // f.thumbUrl = miniatura reducida (evitar para PDF)
+    // ── FOTOS: usar URL original o preview, con fallback ──────
     const fotosArr = opc.mostrarFotos
       ? (eq._fotos || []).slice(0, 6).filter(f => f.url || f.thumbUrl || f.preview)
       : [];
 
     const hasFotos = fotosArr.length > 0;
+    const fotosSrc = fotosArr.map(f => f.url || f.preview || f.thumbUrl || '');
 
-    // Para PDF usamos la URL original. Si Drive requiere autenticación,
-    // intentamos el export directo, si no, el thumbnail como fallback visual
-    const fotosSrc = fotosArr.map(f => {
-      // Prioridad: url original > preview base64 > thumbUrl (miniatura)
-      return f.url || f.preview || f.thumbUrl || '';
-    });
+    // ── CABECERA Y METADATOS ─────────────────────────────────
+    const headerHtml = opc.mostrarEncabezado ? `
+      <div style="
+        background:#1e293b;
+        border-bottom:3px solid #0f172a;
+        padding:12px 18px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        flex-wrap:wrap;
+        gap:10px;
+      ">
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#ffffff;letter-spacing:-0.2px;text-transform:uppercase;">
+            🛠️ TECHNICAL SUPPORT &amp; PARTS REPLACEMENT REPORT
+          </div>
+          <div style="font-size:10px;color:#94a3b8;margin-top:2px;font-weight:500;">
+            Reporte Técnico de Soporte y Diagnóstico de Equipos (Inspección y Garantía)
+          </div>
+        </div>
+        <div style="
+          background:${est.bg};
+          border:1px solid ${est.border};
+          border-radius:4px;
+          padding:4px 10px;
+          font-size:10px;
+          font-weight:700;
+          color:${est.color};
+          white-space:nowrap;
+          text-align:right;
+        ">
+          <span style="font-size:11px;margin-right:3px;">${est.icon}</span> 
+          <span>${_esc(estado).toUpperCase()} / ${est.labelEN.toUpperCase()}</span>
+        </div>
+      </div>
+      
+      <div style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:6px 18px;display:flex;justify-content:space-between;font-size:9.5px;color:#64748b;flex-wrap:wrap;gap:8px;">
+        ${opc.mostrarLote ? `<span><strong>LOTE / BATCH:</strong> <span style="color:#334155">${_esc(lote?.titulo || '—')}</span></span>` : ''}
+        ${opc.mostrarFecha ? `<span><strong>EMISIÓN / ISSUED:</strong> <span style="color:#334155">${ahora}</span></span>` : ''}
+        <span><strong>ÚLTIMA MODIFICACIÓN / UPDATED:</strong> <span style="color:#334155">${fechaMod}</span></span>
+      </div>
+    ` : '';
 
-    // ── CAMPOS DE EQUIPO ──────────────────────────────────────────────────────
-    const CAMPO_CONFIG = [
-      { key: 'CODIGO',    label: 'CÓDIGO',        icon: '🔖', val: eq.CODIGO },
-      { key: 'MARCA',     label: 'MARCA',          icon: '🏭', val: eq.MARCA },
-      { key: 'MODELO',    label: 'MODELO',         icon: '📐', val: eq.MODELO },
-      { key: 'SERIE',     label: 'SERIE',          icon: '🔢', val: eq.SERIE },
-      { key: 'TIP_EQUIP', label: 'TIPO',           icon: '🖥️', val: eq.TIP_EQUIP || eq.TIPO_EQUIPO },
-      { key: 'PROCESADOR',label: 'PROCESADOR',     icon: '⚙️', val: eq.PROCESADOR },
-      { key: 'RAM',       label: 'RAM',            icon: '🧠', val: eq.RAM },
-      { key: 'HD_SSD',    label: 'ALMACENAMIENTO', icon: '💾', val: eq.HD_SSD || eq.DISCO },
-      { key: 'TECNICO',   label: 'TÉCNICO',        icon: '👨‍🔧', val: eq._tecnico },
-    ].filter(c => opc.mostrarCamposEquipo?.[c.key] !== false);
+    // ── SECCIÓN 1: DETALLES DEL EQUIPO ──────────────────────
+    let infoTableHtml = '';
+    if (opc.mostrarDatosEquipo) {
+      infoTableHtml = `
+        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10.5px;font-family:inherit;">
+          <thead>
+            <tr style="background:#f1f5f9;border-bottom:2px solid #cbd5e1;">
+              <th colspan="4" style="text-align:left;padding:6px 10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.5px;font-size:9px;">
+                💻 INFORMACIÓN DEL EQUIPO / DEVICE SPECIFICATIONS
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="width:25%;padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">CÓDIGO / DEVICE CODE</td>
+              <td style="width:25%;padding:6px 10px;border:1px solid #e2e8f0;font-weight:700;color:#0f172a;${eq.CODIGO?'border-left:3px solid #7c3aed;':''}">
+                ${_esc(eq.CODIGO || '—')}
+              </td>
+              <td style="width:25%;padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">TIPO / DEVICE TYPE</td>
+              <td style="width:25%;padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;color:#0f172a;">
+                ${_esc(eq.TIP_EQUIP || eq.TIPO_EQUIPO || '—').toUpperCase()}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">MARCA / BRAND</td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;color:#0f172a;">
+                ${_esc(eq.MARCA || '—').toUpperCase()}
+              </td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">MODELO / MODEL</td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;color:#0f172a;">
+                ${_esc(eq.MODELO || '—')}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">N° SERIE / SERIAL NUMBER (S/N)</td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:700;color:#000000;font-family:monospace;font-size:11.5px;background:#fbfbfe;${eq.SERIE?'border-left:3px solid #0891b2;':''}">
+                ${_esc(eq.SERIE || '—').toUpperCase()}
+              </td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">TÉCNICO / TECHNICIAN</td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;color:#0f172a;">
+                ${_esc(eq._tecnico || '—')}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">PROCESADOR / CPU</td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;color:#334155;">
+                ${_esc(eq.PROCESADOR || '—')}
+              </td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;background:#f8fafc;font-weight:600;color:#475569;">RAM / ALMACENAMIENTO (STORAGE)</td>
+              <td style="padding:6px 10px;border:1px solid #e2e8f0;color:#334155;">
+                ${_esc(eq.RAM || '—')} / ${_esc(eq.HD_SSD || eq.DISCO || '—')}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
 
-    // ── REPUESTOS ──────────────────────────────────────────────────────────────
-    const repuestosArr = eq._repuestosUsados || [];
-    const repuestosHtml = opc.mostrarRepuestos
-      ? (repuestosArr.length
-          ? repuestosArr.map(r => `
-              <span style="display:inline-flex;align-items:center;gap:5px;
-                background:linear-gradient(135deg,#ede9fe,#f5f3ff);
-                border:1px solid #c4b5fd;border-radius:6px;
-                padding:4px 10px;font-size:11px;font-weight:600;color:#6d28d9">
-                🔩 ${_esc(r.nombre)}
-              </span>`).join('')
-          : '<span style="color:#94a3b8;font-size:11px;font-style:italic">Sin repuestos registrados</span>')
-      : null;
+    // ── SECCIÓN 2: FALLAS Y DIAGNÓSTICO ─────────────────────
+    let diagnosisTableHtml = '';
+    if (opc.mostrarFalla || opc.mostrarObservacion || opc.mostrarDiagnostico) {
+      const geminiData = eq._geminiData;
+      const geminiHtml = (opc.mostrarGemini && geminiData) ? `
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:3px solid #16a34a;border-radius:4px;padding:8px 12px;margin-top:10px;font-size:10.5px;">
+          <div style="font-size:9px;font-weight:700;color:#15803d;text-transform:uppercase;margin-bottom:4px;letter-spacing:0.5px;">🤖 ANÁLISIS INTELIGENTE IA / SMART AI ANALYSIS</div>
+          ${geminiData.descripcion ? `<div style="color:#166534"><strong>Repuesto Sugerido / Proposed Spare Part:</strong> ${_esc(geminiData.descripcion)}</div>` : ''}
+          ${geminiData.marca || geminiData.modelo ? `<div style="color:#166534;margin-top:2px"><strong>Marca &amp; Modelo / Brand &amp; Model:</strong> ${_esc([geminiData.marca, geminiData.modelo].filter(Boolean).join(' '))}</div>` : ''}
+          ${geminiData.especificaciones ? `<div style="color:#166534;margin-top:2px"><strong>Especificaciones / Specs:</strong> ${_esc(geminiData.especificaciones)}</div>` : ''}
+          ${_buildCodigosHtml(geminiData.codigos)}
+          ${geminiData.diagnostico_resumen ? `<div style="color:#166534;margin-top:4px;border-top:1px dashed #bbf7d0;padding-top:4px;"><strong>Resumen Análisis / Analysis Summary:</strong> ${_esc(geminiData.diagnostico_resumen)}</div>` : ''}
+        </div>` : '';
 
-    // ── DIAGNÓSTICO ────────────────────────────────────────────────────────────
-    const diagHtml = opc.mostrarDiagnostico
-      ? (eq._diagnostico
-          ? `<pre style="white-space:pre-wrap;word-break:break-word;font-family:'Segoe UI',Arial,sans-serif;
-              font-size:11px;color:#334155;background:#f8fafc;border:1px solid #e2e8f0;
-              border-left:3px solid #7c3aed;border-radius:0 6px 6px 0;
-              padding:10px 12px;margin:0;line-height:1.5">${_esc(eq._diagnostico)}</pre>`
-          : '<span style="color:#94a3b8;font-size:11px;font-style:italic">Sin diagnóstico registrado</span>')
-      : null;
+      const reportedFalla = eq._fallaReportada || 'Sin falla reportada / No issue reported';
+      const finalObs = eq._obsSoporte || eq._obsPersonal || '—';
+      const techDiag = eq._diagnostico || '';
 
-    // ── DATOS GEMINI ───────────────────────────────────────────────────────────
-    const gemini = eq._geminiData;
-    const geminiHtml = (opc.mostrarGemini && gemini) ? `
-      <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:6px;padding:10px;margin-top:8px">
-        <div style="font-size:10px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">🤖 Análisis IA</div>
-        ${gemini.descripcion ? `<div style="font-size:11px;color:#166534"><strong>Repuesto:</strong> ${_esc(gemini.descripcion)}</div>` : ''}
-        ${gemini.marca||gemini.modelo ? `<div style="font-size:11px;color:#166534"><strong>Marca/Modelo:</strong> ${_esc([gemini.marca,gemini.modelo].filter(Boolean).join(' '))}</div>` : ''}
-        ${gemini.especificaciones ? `<div style="font-size:11px;color:#166534"><strong>Especificaciones:</strong> ${_esc(gemini.especificaciones)}</div>` : ''}
-        ${_buildCodigosHtml(gemini.codigos)}
-        ${gemini.diagnostico_resumen ? `<div style="font-size:11px;color:#166534;margin-top:4px"><strong>Análisis:</strong> ${_esc(gemini.diagnostico_resumen)}</div>` : ''}
-      </div>` : '';
+      diagnosisTableHtml = `
+        <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10.5px;font-family:inherit;">
+          <thead>
+            <tr style="background:#f1f5f9;border-bottom:2px solid #cbd5e1;">
+              <th colspan="2" style="text-align:left;padding:6px 10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.5px;font-size:9px;">
+                🔍 DIAGNÓSTICO TÉCNICO / TECHNICAL INSPECTION &amp; DIAGNOSIS
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="width:50%;padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">
+                <div style="font-size:8.5px;font-weight:700;color:#b45309;text-transform:uppercase;margin-bottom:4px;letter-spacing:0.3px;">⚠️ FALLA REPORTADA / REPORTED ISSUE</div>
+                <div style="font-size:10.5px;color:#78350f;line-height:1.4;background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #f59e0b;padding:6px 8px;border-radius:3px;">
+                  ${_esc(reportedFalla)}
+                </div>
+              </td>
+              <td style="width:50%;padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;">
+                <div style="font-size:8.5px;font-weight:700;color:#475569;text-transform:uppercase;margin-bottom:4px;letter-spacing:0.3px;">📝 OBSERVACIÓN / COMMENTS</div>
+                <div style="font-size:10.5px;color:#334155;line-height:1.4;background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #64748b;padding:6px 8px;border-radius:3px;">
+                  ${_esc(finalObs)}
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:8px 10px;border:1px solid #e2e8f0;vertical-align:top;background:#fbfbfb;">
+                <div style="font-size:8.5px;font-weight:700;color:#6d28d9;text-transform:uppercase;margin-bottom:4px;letter-spacing:0.3px;">🔧 EVALUACIÓN TÉCNICA / TECHNICAL DIAGNOSIS</div>
+                <div style="font-size:10.5px;color:#334155;line-height:1.5;white-space:pre-wrap;word-break:break-word;font-family:inherit;background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #7c3aed;padding:8px 10px;border-radius:3px;">
+                  ${techDiag ? _esc(techDiag) : '<span style="color:#94a3b8;font-style:italic">Sin diagnóstico registrado / No technical diagnosis recorded</span>'}
+                </div>
+                ${geminiHtml}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+    }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // GENERACIÓN DEL HTML DEL TICKET
-    // ══════════════════════════════════════════════════════════════════════════
+    // ── SECCIÓN 3: REPUESTOS SOLICITADOS (CRÍTICO) ────────────
+    let repuestosTableHtml = '';
+    if (opc.mostrarRepuestos) {
+      const repuestosArr = eq._repuestosUsados || [];
+      if (repuestosArr.length > 0) {
+        repuestosTableHtml = `
+          <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10.5px;font-family:inherit;">
+            <thead>
+              <tr style="background:#f1f5f9;border-bottom:2px solid #cbd5e1;">
+                <th colspan="3" style="text-align:left;padding:6px 10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.5px;font-size:9px;">
+                  🔩 REPUESTOS SOLICITADOS / REPLACEMENT PARTS &amp; PART NUMBERS (PN)
+                </th>
+              </tr>
+              <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                <th style="text-align:left;padding:5px 10px;font-weight:600;color:#475569;font-size:9px;width:50%;">REPUESTO / PART DESCRIPTION</th>
+                <th style="text-align:left;padding:5px 10px;font-weight:600;color:#475569;font-size:9px;width:30%;">PART NUMBER (PN)</th>
+                <th style="text-align:left;padding:5px 10px;font-weight:600;color:#475569;font-size:9px;width:20%;">FECHA SOLICITADA / DATE REQUESTED</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${repuestosArr.map(r => `
+                <tr>
+                  <td style="padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;color:#0f172a;">
+                    ${_esc(r.repuesto || r.nombre).toUpperCase()}
+                  </td>
+                  <td style="padding:6px 10px;border:1px solid #cbd5e1;font-weight:800;color:#5b21b6;font-family:monospace;font-size:12px;background:#f5f3ff;border-left:3px solid #7c3aed;">
+                    ${_esc(r.pn || '—').toUpperCase()}
+                  </td>
+                  <td style="padding:6px 10px;border:1px solid #e2e8f0;color:#64748b;font-size:9.5px;">
+                    ${r.timestamp ? new Date(r.timestamp).toLocaleDateString('es-PE') : '—'}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } else {
+        repuestosTableHtml = `
+          <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:10.5px;font-family:inherit;">
+            <thead>
+              <tr style="background:#f1f5f9;border-bottom:2px solid #cbd5e1;">
+                <th style="text-align:left;padding:6px 10px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.5px;font-size:9px;">
+                  🔩 REPUESTOS SOLICITADOS / REPLACEMENT PARTS
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-style:italic;">
+                  Sin repuestos registrados para este equipo / No replacement parts requested for this device
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    // ── SECCIÓN 4: EVIDENCIA FOTOGRÁFICA (VISTA COMPLETA) ─────
+    let fotosHtml = '';
+    if (hasFotos) {
+      const numFotos = fotosArr.length;
+      let gridCols = '1fr';
+      if (numFotos === 2) gridCols = '1fr 1fr';
+      else if (numFotos >= 3) gridCols = '1fr 1fr 1fr';
+
+      fotosHtml = `
+        <div style="margin-top:14px;page-break-inside:avoid;break-inside:avoid;">
+          <div style="font-size:9px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;
+            display:flex;align-items:center;gap:6px">
+            <span style="flex:1;height:1px;background:#cbd5e1"></span>
+            <span>📷 EVIDENCIA FOTOGRÁFICA / PHOTOGRAPHIC EVIDENCE</span>
+            <span style="background:#0284c7;color:#ffffff;border-radius:10px;padding:1px 6px;font-size:9px;font-weight:700">${numFotos}</span>
+            <span style="flex:1;height:1px;background:#cbd5e1"></span>
+          </div>
+          <div style="display:grid;grid-template-columns:${gridCols};gap:8px;">
+            ${fotosSrc.map((src) => `
+              <div style="
+                border-radius:6px;
+                overflow:hidden;
+                border:1px solid #cbd5e1;
+                background:#f8fafc;
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                padding:4px;
+                height:260px;
+              ">
+                <img src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous"
+                  style="max-width:100%;max-height:100%;object-fit:contain;display:block;"
+                  onerror="this.onerror=null;this.src='${src.replace('/uc?','/thumbnail?sz=s800&')}';this.onerror=function(){this.style.display='none'}">
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // ── FOOTER DE DOCUMENTO ──────────────────────────────────
+    const footerHtml = `
+      <div style="
+        background:#f8fafc;
+        border-top:1px solid #e2e8f0;
+        padding:8px 18px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        font-size:9px;
+        color:#94a3b8;
+      ">
+        <span>${_esc(lote?.titulo || '')} · INVENTARIO PRO v2.0 · PETULAP S.A.C.</span>
+        <span>REGISTRY ID: <strong style="color:#64748b;font-family:monospace;font-size:9.5px">${_esc(eq._registroId)}</strong></span>
+      </div>
+    `;
+
+    // ── RENDER COMPLETO DEL TICKET (DISEÑO VERTICAL ESTRUCTURADO) ──
     return `
-<div id="ticket-soporte-${eq._registroId}" class="ticket-soporte-doc" style="
-  background:#ffffff;
-  border-radius:10px;
-  overflow:hidden;
-  font-family:'Segoe UI',system-ui,Arial,sans-serif;
-  color:#1e293b;
-  font-size:12px;
-  box-shadow:0 1px 4px rgba(0,0,0,0.08);
-  border:1px solid #e2e8f0;
-">
-
-  ${opc.mostrarEncabezado ? `
-  <!-- ═══════ HEADER ═══════ -->
-  <div style="
-    background:linear-gradient(135deg,#0f172a 0%,#1e293b 60%,#1e3a5f 100%);
-    padding:16px 20px;
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    flex-wrap:wrap;
-    gap:10px;
-  ">
-    <div>
-      <div style="font-size:15px;font-weight:800;color:#ffffff;letter-spacing:-0.3px">
-        🔧 Ticket de Soporte Técnico
-      </div>
-      <div style="font-size:10.5px;color:#94a3b8;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap">
-        ${opc.mostrarLote ? `<span>📦 Lote: <strong style="color:#cbd5e1">${_esc(lote?.titulo || '—')}</strong></span>` : ''}
-        ${opc.mostrarFecha ? `<span>📅 ${ahora}</span>` : ''}
-        <span style="color:#64748b">·</span>
-        <span>🕐 ${fechaMod}</span>
-      </div>
-    </div>
-    <div style="
-      background:${est.bg};
-      border:1.5px solid ${est.border};
-      border-radius:20px;
-      padding:5px 14px;
-      font-size:11px;
-      font-weight:700;
-      color:${est.color};
-      white-space:nowrap;
-      align-self:center;
-    ">
-      ${est.icon} ${_esc(estado)}
-    </div>
-  </div>` : ''}
-
-  <!-- ═══════ CUERPO ═══════ -->
-  <div style="padding:16px 20px;">
-
-    ${hasFotos ? `
-    <!-- ╔═════ LAYOUT 2 COL: INFO + FOTOS ════╗ -->
-    <div style="display:grid;grid-template-columns:1fr 45%;gap:16px;align-items:start">
-
-      <!-- Columna izquierda: datos del equipo + falla + diagnóstico + repuestos -->
-      <div>
-    ` : '<div>'}
-
-    ${(opc.mostrarDatosEquipo && CAMPO_CONFIG.length) ? `
-    <!-- DATOS EQUIPO -->
-    <div style="margin-bottom:14px">
-      <div style="font-size:9px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;
-        display:flex;align-items:center;gap:6px">
-        <span style="flex:1;height:1px;background:#e2e8f0"></span>
-        <span>Información del equipo</span>
-        <span style="flex:1;height:1px;background:#e2e8f0"></span>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
-        ${CAMPO_CONFIG.map(c => `
-          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px;${c.key==='CODIGO'?'border-left:3px solid #7c3aed;':c.key==='SERIE'?'border-left:3px solid #0891b2;':''}">
-            <div style="font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px">${c.icon} ${_esc(c.label)}</div>
-            <div style="font-size:12px;font-weight:700;color:#0f172a;word-break:break-word">${_esc(c.val || '—')}</div>
-          </div>`).join('')}
-      </div>
-    </div>` : ''}
-
-    ${(opc.mostrarFalla || opc.mostrarObservacion) ? `
-    <!-- FALLA + OBSERVACIÓN -->
-    <div style="display:grid;grid-template-columns:${opc.mostrarFalla && opc.mostrarObservacion ? '1fr 1fr' : '1fr'};gap:8px;margin-bottom:12px">
-      ${opc.mostrarFalla ? `
-      <div>
-        <div style="font-size:9px;font-weight:700;color:#b45309;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">⚠️ Falla Reportada</div>
-        <div style="background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;padding:8px 10px;font-size:11px;min-height:36px;color:#78350f;line-height:1.5">
-          ${_esc(eq._fallaReportada || 'Sin falla reportada')}
+      <div id="ticket-soporte-${eq._registroId}" class="ticket-soporte-doc" style="
+        background:#ffffff;
+        border-radius:8px;
+        overflow:hidden;
+        font-family:'Segoe UI',system-ui,Arial,sans-serif;
+        color:#1e293b;
+        font-size:11px;
+        border:1px solid #cbd5e1;
+        box-shadow:0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom:6px;
+        page-break-inside:avoid;
+        break-inside:avoid;
+      ">
+        ${headerHtml}
+        <div style="padding:14px 18px;">
+          ${infoTableHtml}
+          ${diagnosisTableHtml}
+          ${repuestosTableHtml}
+          ${fotosHtml}
         </div>
-      </div>` : ''}
-      ${opc.mostrarObservacion ? `
-      <div>
-        <div style="font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">📝 Observación Final</div>
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #64748b;border-radius:0 6px 6px 0;padding:8px 10px;font-size:11px;min-height:36px;color:#374151;line-height:1.5">
-          ${_esc(eq._obsSoporte || eq._obsPersonal || '—')}
-        </div>
-      </div>` : ''}
-    </div>` : ''}
-
-    ${diagHtml !== null ? `
-    <!-- DIAGNÓSTICO -->
-    <div style="margin-bottom:12px">
-      <div style="font-size:9px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px">🤖 Diagnóstico IA / Técnico</div>
-      ${diagHtml}
-      ${geminiHtml}
-    </div>` : (geminiHtml ? `<div style="margin-bottom:12px">${geminiHtml}</div>` : '')}
-
-    ${repuestosHtml !== null ? `
-    <!-- REPUESTOS -->
-    <div style="margin-bottom:4px">
-      <div style="font-size:9px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">🔩 Repuestos Utilizados</div>
-      <div style="display:flex;flex-wrap:wrap;gap:5px">${repuestosHtml}</div>
-    </div>` : ''}
-
-    ${hasFotos ? `
-      </div><!-- fin columna izquierda -->
-
-      <!-- ═══ Columna derecha: FOTOS ═══ -->
-      <div>
-        <div style="font-size:9px;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;
-          display:flex;align-items:center;gap:5px">
-          📷 Evidencia fotográfica
-          <span style="background:#0284c7;color:#fff;border-radius:10px;padding:1px 7px;font-size:9px;font-weight:700">${fotosArr.length}</span>
-        </div>
-        <!-- Imagen principal grande -->
-        <div style="border-radius:8px;overflow:hidden;border:2px solid #e0f2fe;margin-bottom:6px;background:#f0f9ff">
-          <img src="${fotosSrc[0]}" referrerpolicy="no-referrer" crossorigin="anonymous"
-            style="width:100%;max-height:260px;object-fit:cover;display:block"
-            onerror="this.onerror=null;this.src='${fotosSrc[0].replace('/uc?','/thumbnail?sz=s800&')}';this.onerror=function(){this.style.display='none'}">
-        </div>
-        ${fotosArr.length > 1 ? `
-        <!-- Miniaturas adicionales -->
-        <div style="display:grid;grid-template-columns:repeat(${Math.min(fotosArr.length-1, 3)},1fr);gap:4px">
-          ${fotosSrc.slice(1, 4).map((src, i) => `
-            <div style="border-radius:5px;overflow:hidden;border:1px solid #e0f2fe;background:#f0f9ff;aspect-ratio:4/3">
-              <img src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous"
-                style="width:100%;height:100%;object-fit:cover;display:block"
-                onerror="this.onerror=null;this.src='${src.replace('/uc?','/thumbnail?sz=s400&')}';this.onerror=function(){this.style.display='none'}">
-            </div>`).join('')}
-          ${fotosArr.length > 4 ? `
-            <div style="border-radius:5px;background:#e0f2fe;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3">
-              <span style="font-size:14px;font-weight:700;color:#0369a1">+${fotosArr.length - 4}</span>
-            </div>` : ''}
-        </div>` : ''}
-      </div><!-- fin columna fotos -->
-    </div><!-- fin grid 2 col -->
-    ` : '</div><!-- fin columna única -->'}
-
-  </div><!-- fin cuerpo -->
-
-  <!-- ═══════ FOOTER ═══════ -->
-  <div style="
-    background:#f8fafc;
-    border-top:1px solid #e2e8f0;
-    padding:8px 20px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    font-size:9.5px;
-    color:#94a3b8;
-  ">
-    <span>${_esc(lote?.titulo || '')} · Inventario Pro v2</span>
-    <span>ID: ${_esc(eq._registroId?.slice(-8) || '—')}</span>
-  </div>
-
-</div>`;
+        ${footerHtml}
+      </div>
+    `;
   }
 
   function _buildCodigosHtml(codigos) {
     if (!codigos || typeof codigos !== 'object') return '';
     const pairs = Object.entries(codigos).filter(([,v]) => v);
     if (!pairs.length) return '';
-    return `<div style="font-size:11px;margin-top:4px">${pairs.map(([k,v]) =>
-      `<span style="background:#ede9fe;border:1px solid #c4b5fd;border-radius:3px;padding:1px 6px;font-size:10px;margin-right:3px"><strong>${_esc(k)}:</strong> ${_esc(v)}</span>`
-    ).join('')}</div>`;
+    return `
+      <div style="font-size:9.5px;margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">
+        ${pairs.map(([k,v]) => `
+          <span style="background:#ede9fe;border:1px solid #cbd5e1;border-radius:3px;padding:2px 6px;font-size:9px;color:#5b21b6;display:inline-block;">
+            <strong>${_esc(k)}:</strong> ${_esc(v).toUpperCase()}
+          </span>
+        `).join('')}
+      </div>
+    `;
   }
 
   function _esc(str) {
