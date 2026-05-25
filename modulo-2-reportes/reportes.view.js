@@ -140,10 +140,10 @@ const ReportesView = (() => {
 
       <!-- TAB: REPORTES CLÁSICOS -->
       <div id="tab-panel-reportes">
-        <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start" class="rep-grid">
+        <div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start" class="rep-grid" id="rep-grid-reportes">
 
           <!-- Panel control -->
-          <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;flex-direction:column;gap:12px" id="rep-sidebar-reportes">
             <div class="card">
               <div class="card-title">Configuración</div>
               <div class="form-group">
@@ -179,8 +179,13 @@ const ReportesView = (() => {
           </div>
 
           <!-- Preview -->
-          <div>
-            <div id="rep-preview-area" style="color:var(--text-muted);text-align:center;padding:60px">
+          <div style="min-width:0">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+              <button class="btn btn-secondary btn-sm" id="btn-toggle-rep-sidebar"
+                onclick="ReportesView.toggleRepSidebar()"
+                style="font-size:0.7rem;padding:4px 10px">◀ Ocultar panel</button>
+            </div>
+            <div id="rep-preview-area" style="color:var(--text-muted);text-align:center;padding:60px;overflow-x:auto;max-width:100%">
               <div style="font-size:3rem">📄</div>
               <div style="margin-top:10px">Selecciona un lote y tipo de documento,<br>luego haz clic en Vista Previa</div>
             </div>
@@ -1016,7 +1021,25 @@ ${(()=>{
   }
 
 
-  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig, renderOrdenCompra, exportOrdenCompraPDF, exportOrdenCompraExcel, toggleComprasColPanel, _onComprasColChange, _resetComprasCols };
+  // ── TOGGLE SIDEBAR REP ────────────────────────────────────────
+  function toggleRepSidebar() {
+    const sidebar = document.getElementById('rep-sidebar-reportes');
+    const grid    = document.getElementById('rep-grid-reportes');
+    const btn     = document.getElementById('btn-toggle-rep-sidebar');
+    if (!sidebar || !grid) return;
+    const collapsed = sidebar.style.display === 'none';
+    if (collapsed) {
+      sidebar.style.display = '';
+      grid.style.gridTemplateColumns = '280px 1fr';
+      if (btn) btn.textContent = '◀ Ocultar panel';
+    } else {
+      sidebar.style.display = 'none';
+      grid.style.gridTemplateColumns = '1fr';
+      if (btn) btn.textContent = '▶ Mostrar panel';
+    }
+  }
+
+  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig, renderOrdenCompra, exportOrdenCompraPDF, exportOrdenCompraExcel, toggleComprasColPanel, _onComprasColChange, _resetComprasCols, toggleRepSidebar };
 })();
 
 window.ReportesView = ReportesView;

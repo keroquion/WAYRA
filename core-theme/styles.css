@@ -208,7 +208,7 @@ select.form-control option{background:var(--bg-card)}
 .crud-table tr:hover td{background:var(--bg-hover)}
 
 /* ── REPORT DOC ── */
-.report-doc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:32px;max-width:800px;margin:0 auto}
+.report-doc{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:32px;max-width:100%;overflow-x:auto}
 .report-doc h1{font-size:1.2rem;font-weight:800;text-align:center;margin-bottom:4px}
 .report-doc .report-meta{text-align:center;font-size:0.78rem;color:var(--text-secondary);margin-bottom:20px}
 .report-doc table{width:100%;border-collapse:collapse;font-size:0.78rem;margin-top:12px}
@@ -454,10 +454,19 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
   }
 
   /* ── REPORTES LAYOUT ── */
-  #view-reportes [style*="grid-template-columns:280px 1fr"]{
+  .rep-grid{
     grid-template-columns:1fr!important;
   }
-  .report-doc{padding:16px}
+  #rep-sidebar-reportes{
+    display:none!important;  /* ocultar sidebar en móvil por defecto */
+  }
+  #btn-toggle-rep-sidebar{
+    display:none;  /* no necesario en móvil */
+  }
+  #rep-preview-area{
+    padding:20px!important;
+  }
+  .report-doc{padding:12px;max-width:100%}
   .report-doc h1{font-size:1rem}
   .report-doc table{font-size:0.7rem}
   .report-doc table th,.report-doc table td{padding:5px 7px}
