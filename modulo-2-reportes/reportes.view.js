@@ -199,8 +199,9 @@ const ReportesView = (() => {
             </select>
           </div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="ReportesView.exportOrdenCompraPDF()">🖨️ Imprimir / PDF</button>
-            <button class="btn btn-secondary btn-sm" onclick="ReportesView.exportOrdenCompraExcel()">📊 Exportar Excel</button>
+            <button class="btn btn-secondary btn-sm" id="btn-compras-cols" onclick="ReportesView.toggleComprasColPanel()">&#9881;&#65039; Columnas</button>
+            <button class="btn btn-secondary btn-sm" onclick="ReportesView.exportOrdenCompraPDF()">&#128438; Imprimir / PDF</button>
+            <button class="btn btn-secondary btn-sm" onclick="ReportesView.exportOrdenCompraExcel()">&#128202; Exportar Excel</button>
           </div>
         </div>
         <div id="compras-tabla-wrapper">
@@ -421,42 +422,93 @@ const ReportesView = (() => {
     document.getElementById('btn-sop-pdf-all')?.addEventListener('click', () => _exportarTodosPDF(allTickets));
   }
 
-
-  // ── VENTANA DE IMPRESIÓN (reemplaza html2pdf — funciona siempre) ───────────
-  function _abrirVentanaImpresion(ticketsHtml, filename) {
-    const win = window.open('', '_blank', 'width=900,height=700');
+  function _abrirVentanaImpresion(ticketsHtml, filename, cols = 2) {
+    const win = window.open('', '_blank', 'width=1000,height=750');
     if (!win) { Toast.error('Activa las ventanas emergentes para imprimir'); return; }
-    const fecha = new Date().toLocaleDateString('es-PE');
+
+    // Calcular escala de columna
+    const colWidth = cols === 1 ? '100%' : cols === 4 ? 'calc(50% - 8px)' : 'calc(50% - 8px)';
+    const gridCols = cols === 1 ? '1fr' : cols === 4 ? '1fr 1fr' : '1fr 1fr';
+    // Para 4 columnas usamos 2 por fila pero con fuente más pequeña
+    const bodyFontSize = cols === 4 ? '9px' : cols === 2 ? '11px' : '12px';
+
     win.document.write(`<!DOCTYPE html><html lang="es"><head>
       <meta charset="UTF-8">
-      <title>` + filename + `</title>
+      <title>${filename}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1e293b; font-size: 12px; padding: 20px; }
-        .ticket-page { page-break-after: always; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px dashed #e2e8f0; }
-        .ticket-page:last-child { page-break-after: auto; border-bottom: none; }
-        img { max-width: 100%; }
-        @media print {
-          body { padding: 0; }
-          .ticket-page { border-bottom: none; margin: 0; padding: 0; }
-          @page { margin: 10mm; size: A4; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1e293b; font-size: ${bodyFontSize}; padding: 12px; }
+
+        /* Grid de tickets */
+        .tickets-grid {
+          display: grid;
+          grid-template-columns: ${gridCols};
+          gap: 12px;
         }
-        .no-print { display: none !important; }
+
+        /* Cada ticket */
+        .ticket-page {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 14px;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+
+        img { max-width: 100%; height: auto; }
+
+        @media print {
+          body { padding: 6px; }
+          .no-print { display: none !important; }
+          .tickets-grid { gap: 8px; }
+          .ticket-page { border: 1px solid #ccc; padding: 10px; }
+          @page { margin: 8mm; size: A4; }
+        }
+
+        .no-print { display: flex; }
       </style>
     </head><body>
-      <div class="no-print" style="position:sticky;top:0;background:#f1f5f9;padding:10px;display:flex;gap:8px;align-items:center;z-index:999;border-bottom:1px solid #e2e8f0">
-        <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">
+      <div class="no-print" style="position:sticky;top:0;background:#f1f5f9;padding:10px 16px;display:flex;gap:10px;align-items:center;z-index:999;border-bottom:1px solid #e2e8f0;margin:-12px -12px 12px;flex-wrap:wrap">
+        <button onclick="window.print()" style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;font-weight:700">
           🖨️ Imprimir / Guardar PDF
         </button>
-        <span style="font-size:12px;color:#64748b">Usa Ctrl+P o el botón para imprimir. Para guardar como PDF selecciona "Guardar como PDF" en el diálogo.</span>
-        <button onclick="window.close()" style="margin-left:auto;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer">✕ Cerrar</button>
+        <span style="font-size:11px;color:#64748b">
+          En el diálogo de impresión, selecciona <strong>"Guardar como PDF"</strong> como destino para descargar el PDF.
+        </span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <label style="font-size:11px;color:#475569">Tickets por fila:</label>
+          <select onchange="_cambiarDensidad(this.value)" style="padding:4px 8px;border-radius:4px;border:1px solid #cbd5e1;font-size:12px">
+            <option value="1" ${cols===1?'selected':''}>1 (grande)</option>
+            <option value="2" ${cols!==1&&cols!==4?'selected':''}>2 (estándar)</option>
+            <option value="4" ${cols===4?'selected':''}>4 (compacto)</option>
+          </select>
+        </div>
+        <button onclick="window.close()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer">✕ Cerrar</button>
       </div>
-    ` + ticketsHtml + `</body></html>`);
+      <div class="tickets-grid" id="tickets-grid">
+        ${ticketsHtml}
+      </div>
+    </body></html>`);
+
+    // Script para cambiar densidad sin recargar
+    win.document.write(`<script>
+      function _cambiarDensidad(v) {
+        const g = document.getElementById('tickets-grid');
+        if (!g) return;
+        const cols = parseInt(v);
+        const gridCols = cols === 1 ? '1fr' : '1fr 1fr';
+        const fs = cols >= 4 ? '9px' : cols === 2 ? '11px' : '12px';
+        g.style.gridTemplateColumns = gridCols;
+        document.body.style.fontSize = fs;
+      }
+    <\/script>`);
+
     win.document.close();
     win.focus();
   }
 
-  // ── EXPORTAR TICKET INDIVIDUAL PDF ────────────────────────────────────────
+  // ── EXPORTAR TICKET INDIVIDUAL PDF ────────────────────────────────────
   async function exportTicketPDF(registroId) {
     const lotes = await LocalCache.getLotes();
     let eq = null, lote = null;
@@ -466,22 +518,20 @@ const ReportesView = (() => {
     }
     if (!eq) { Toast.error('Ticket no encontrado'); return; }
     const html = `<div class="ticket-page">${PlantillaTicketSoporte.generar(eq, lote, _getOpciones())}</div>`;
-    _abrirVentanaImpresion(html, 'Ticket_' + (eq.CODIGO || registroId));
+    _abrirVentanaImpresion(html, 'Ticket_' + (eq.CODIGO || registroId), 1);
   }
 
-  // ── EXPORTAR TODOS PDF (todos los tickets visibles) ────────────────────────
+  // ── EXPORTAR TODOS PDF (todos los tickets visibles) ─────────────────────────
   async function _exportarTodosPDF(allTickets) {
     if (!allTickets.length) { Toast.warning('Sin tickets para exportar'); return; }
     const opc  = _getOpciones();
     const html = allTickets.map(({ eq, lote }) =>
       `<div class="ticket-page">${PlantillaTicketSoporte.generar(eq, lote, opc)}</div>`
     ).join('');
-    _abrirVentanaImpresion(html, 'Tickets_Soporte_' + new Date().toISOString().slice(0,10));
+    _abrirVentanaImpresion(html, 'Tickets_Soporte_' + new Date().toISOString().slice(0,10), 2);
   }
 
-
-
-  // ── EXPORTAR PDF DE UN LOTE COMPLETO ────────────────────────────────────────
+  // ── EXPORTAR PDF DE UN LOTE COMPLETO ───────────────────────────────────────
   async function exportPDFPorLote(loteId) {
     const lotes = await LocalCache.getLotes();
     const lote  = loteId ? lotes.find(l => l.id === loteId) : lotes.find(l => l.activo);
@@ -493,7 +543,7 @@ const ReportesView = (() => {
     const html = lote.equipos.map(eq =>
       `<div class="ticket-page">${PlantillaTicketSoporte.generar(eq, lote, opc)}</div>`
     ).join('');
-    _abrirVentanaImpresion(html, 'Lote_' + lote.titulo.replace(/\s+/g,'_'));
+    _abrirVentanaImpresion(html, 'Lote_' + lote.titulo.replace(/\s+/g,'_'), 2);
     Toast.info(`Preparando PDF con ${lote.equipos.length} equipos del lote "${lote.titulo}"`);
   }
 
@@ -628,7 +678,83 @@ const ReportesView = (() => {
     resumenContent.innerHTML  = AgrupadorLotes.renderResumen(lote.equipos);
   }
 
-  // ── ORDEN DE COMPRA ───────────────────────────────────────────────────────
+  // ── ORDEN DE COMPRA ─────────────────────────────────────────────
+
+  // Columnas disponibles para Orden de Compra
+  const COMPRAS_COLS = [
+    { key: 'num',     label: '#',                 default: true },
+    { key: 'lote',    label: 'Lote',               default: true },
+    { key: 'codigo',  label: 'Código',             default: true },
+    { key: 'marca',   label: 'Marca',              default: true },
+    { key: 'modelo',  label: 'Modelo',             default: true },
+    { key: 'serie',   label: 'Serie',              default: true },
+    { key: 'repuesto',label: 'Repuesto a comprar', default: true },
+    { key: 'pn',      label: 'PN / Código',        default: true },
+    { key: 'fecha',   label: 'Fecha solicitud',    default: true },
+    { key: 'llego',   label: '\u25a1 Llegó',            default: true },
+    { key: 'fecha_col', label: 'Fecha colocación', default: true },
+    { key: 'tecnico', label: 'Técnico instalación', default: true },
+  ];
+
+  function _getComprasCols() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('compras-col-vis') || 'null');
+      if (saved) return saved;
+    } catch {}
+    const def = {};
+    COMPRAS_COLS.forEach(c => { def[c.key] = c.default; });
+    return def;
+  }
+
+  function _saveComprasCols(vis) {
+    localStorage.setItem('compras-col-vis', JSON.stringify(vis));
+  }
+
+  function toggleComprasColPanel() {
+    const panel = document.getElementById('compras-col-panel');
+    const btn   = document.getElementById('btn-compras-cols');
+    if (!panel) return;
+    const visible = panel.style.display !== 'none';
+    panel.style.display = visible ? 'none' : '';
+    if (btn) { btn.style.background = visible ? '' : 'var(--accent)'; btn.style.color = visible ? '' : '#fff'; }
+  }
+
+  function _renderComprasColPanel() {
+    const vis = _getComprasCols();
+    return `<div id="compras-col-panel" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--text-primary);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+        Columnas visibles
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-secondary btn-sm" style="font-size:0.68rem" onclick="ReportesView._resetComprasCols()">Restaurar</button>
+          <button class="btn btn-primary btn-sm" style="font-size:0.68rem" onclick="ReportesView.toggleComprasColPanel()">Cerrar</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${COMPRAS_COLS.map(c => `
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.75rem;cursor:pointer;background:var(--bg-hover);padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--border)">
+            <input type="checkbox" id="cc-${c.key}" ${vis[c.key]!==false?'checked':''}
+              onchange="ReportesView._onComprasColChange()" style="accent-color:var(--accent)">
+            ${c.label}
+          </label>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  function _onComprasColChange() {
+    const vis = {};
+    COMPRAS_COLS.forEach(c => { vis[c.key] = document.getElementById('cc-' + c.key)?.checked !== false; });
+    _saveComprasCols(vis);
+    renderOrdenCompra();
+  }
+
+  function _resetComprasCols() {
+    const def = {};
+    COMPRAS_COLS.forEach(c => { def[c.key] = c.default; });
+    _saveComprasCols(def);
+    COMPRAS_COLS.forEach(c => { const el = document.getElementById('cc-' + c.key); if (el) el.checked = true; });
+    renderOrdenCompra();
+    Toast.info('Columnas restauradas');
+  }
 
   async function renderOrdenCompra() {
     const wrapper = document.getElementById('compras-tabla-wrapper');
@@ -636,6 +762,7 @@ const ReportesView = (() => {
     const loteId = document.getElementById('compras-filter-lote')?.value || '';
     const lotes  = await LocalCache.getLotes();
     const empresa = APP_CONFIG.empresa?.nombre || 'Empresa';
+    const vis     = _getComprasCols();
 
     // Collect rows: one per repuesto per equipment
     const filas = [];
@@ -667,41 +794,40 @@ const ReportesView = (() => {
       return;
     }
 
+    // Generar cabeceras según columnas visibles
+    const cols = COMPRAS_COLS.filter(c => vis[c.key] !== false);
+    const thCells = cols.map(c => `<th style="border:1px solid #ccc;padding:6px 8px">${c.label}</th>`).join('');
+
+    const tdRow = (f, i) => cols.map(c => {
+      switch(c.key) {
+        case 'num':      return `<td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:var(--text-muted);font-size:0.7rem">${i+1}</td>`;
+        case 'lote':     return `<td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.lote.titulo}</td>`;
+        case 'codigo':   return `<td style="border:1px solid #ccc;padding:5px 8px;font-weight:600">${f.eq.CODIGO||'—'}</td>`;
+        case 'marca':    return `<td style="border:1px solid #ccc;padding:5px 8px">${f.eq.MARCA||'—'}</td>`;
+        case 'modelo':   return `<td style="border:1px solid #ccc;padding:5px 8px">${f.eq.MODELO||'—'}</td>`;
+        case 'serie':    return `<td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.eq.SERIE||'—'}</td>`;
+        case 'repuesto': return `<td style="border:1px solid #ccc;padding:5px 8px;font-weight:600;color:var(--accent)">${f.repuesto}</td>`;
+        case 'pn':       return `<td style="border:1px solid #ccc;padding:5px 8px;font-family:monospace">${f.pn}</td>`;
+        case 'fecha':    return `<td style="border:1px solid #ccc;padding:5px 8px;white-space:nowrap">${f.fecha}</td>`;
+        case 'llego':    return `<td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-size:1.1rem">□</td>`;
+        case 'fecha_col':return `<td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>`;
+        case 'tecnico':  return `<td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>`;
+        default:         return `<td style="border:1px solid #ccc;padding:5px 8px">—</td>`;
+      }
+    }).join('');
+
     wrapper.innerHTML = `
+      ${_renderComprasColPanel()}
       <div id="compras-printable" style="overflow-x:auto">
         <table class="data-table" style="border-collapse:collapse;width:100%;font-size:0.8rem">
           <thead>
             <tr style="background:var(--accent);color:#fff">
-              <th style="border:1px solid #ccc;padding:6px 8px;text-align:center">#</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Lote</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Código</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Marca</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Modelo</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Serie</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Repuesto a comprar</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">PN / Código</th>
-              <th style="border:1px solid #ccc;padding:6px 8px">Fecha solicitud</th>
-              <th style="border:1px solid #ccc;padding:6px 8px;text-align:center;min-width:50px">□ Llegó</th>
-              <th style="border:1px solid #ccc;padding:6px 8px;min-width:100px">Fecha colocación</th>
-              <th style="border:1px solid #ccc;padding:6px 8px;min-width:120px">Técnico instalación</th>
+              ${thCells}
             </tr>
           </thead>
           <tbody>
             ${filas.map((f, i) => `
-              <tr style="background:${i%2===0?'var(--bg-card)':'var(--bg-hover)'}">
-                <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;color:var(--text-muted);font-size:0.7rem">${i+1}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.lote.titulo}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;font-weight:600">${f.eq.CODIGO||'—'}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px">${f.eq.MARCA||'—'}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px">${f.eq.MODELO||'—'}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;font-size:0.72rem">${f.eq.SERIE||'—'}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;font-weight:600;color:var(--accent)">${f.repuesto}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;font-family:monospace">${f.pn}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;white-space:nowrap">${f.fecha}</td>
-                <td style="border:1px solid #ccc;padding:5px 8px;text-align:center;font-size:1.1rem">□</td>
-                <td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>
-                <td style="border:1px solid #ccc;padding:5px 8px">&nbsp;</td>
-              </tr>
+              <tr style="background:${i%2===0?'var(--bg-card)':'var(--bg-hover)'}">${tdRow(f, i)}</tr>
             `).join('')}
           </tbody>
         </table>
@@ -864,7 +990,7 @@ ${(()=>{
   }
 
 
-  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig, renderOrdenCompra, exportOrdenCompraPDF, exportOrdenCompraExcel };
+  return { render, switchTab, exportTicketPDF, exportPDFPorLote, toggleConfigPanel, _onConfigChange, _resetConfig, _guardarConfig, renderOrdenCompra, exportOrdenCompraPDF, exportOrdenCompraExcel, toggleComprasColPanel, _onComprasColChange, _resetComprasCols };
 })();
 
 window.ReportesView = ReportesView;

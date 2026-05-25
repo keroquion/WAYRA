@@ -145,6 +145,7 @@ const IngresoView = (() => {
     _renderTabla();
     _bindEvents();
     ScannerBarras.init('ingreso-codigo', _onScan);
+    ScannerBarras.setGlobalActive(true);  // activar scanner global al entrar a Ingreso
     _renderSyncInfo(); // mostrar info de última sync
   }
 
@@ -349,18 +350,21 @@ const IngresoView = (() => {
         <!-- Fila de nuevo repuesto -->
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap" id="sop-row-${eq._registroId}">
           <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}')">
+            onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}'); _sopAutoAgregar('${eq._registroId}')">
             <option value="">Repuesto…</option>
             ${tiposR.map(t => `<option value="${t}" ${!repuestos.length && t === _stickyRepuesto ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
-          <input type="text" id="sop-pn-${eq._registroId}" class="form-control" placeholder="PN / código" list="pn-list-${eq._registroId}"
+          <input type="text" id="sop-pn-${eq._registroId}" class="form-control" placeholder="PN / código (Enter=guardar)" list="pn-list-${eq._registroId}"
             value="${repuestos.length ? '' : (_stickyPN || '')}"
-            style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            oninput="_sopOnPNInput('${eq._registroId}',this.value)">
+            style="width:110px;font-size:0.72rem;padding:3px 6px;height:26px"
+            oninput="_sopOnPNInput('${eq._registroId}',this.value)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();_sopAgregarRepuesto('${eq._registroId}');}"
+            onblur="_sopAgregarSiTieneRepuesto('${eq._registroId}')">
           <datalist id="pn-list-${eq._registroId}"></datalist>
           <button onclick="_sopAgregarRepuesto('${eq._registroId}')"
-            style="background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:0.7rem;cursor:pointer;height:26px;white-space:nowrap">
-            ➕ Añadir
+            style="background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:0.7rem;cursor:pointer;height:26px;white-space:nowrap"
+            title="Agregar repuesto manualmente">
+            ➕
           </button>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
           <button class="btn btn-sm btn-icon" title="Soporte Avanzado" style="font-size:1.1rem"
@@ -419,7 +423,28 @@ const IngresoView = (() => {
     }
   };
 
-    window._sopOnPNInput = (regId, val) => { _saveStickyPN(val); };
+  window._sopOnPNInput = (regId, val) => { _saveStickyPN(val); };
+
+  /**
+   * Auto-agregar repuesto al cambiar el select (si hay tipo seleccionado).
+   * Se llama después de _sopOnRepuestoChange para respetar el auto-fill de PN.
+   */
+  window._sopAutoAgregar = (regId) => {
+    const sel = document.getElementById('sop-rep-' + regId);
+    if (!sel || !sel.value) return;
+    // Pequeño delay para que el auto-fill de PN tenga tiempo de cargar
+    setTimeout(() => _sopAgregarRepuesto(regId), 180);
+  };
+
+  /**
+   * Agrega el repuesto al perder el foco del campo PN, pero SOLO si hay
+   * un tipo de repuesto seleccionado (evita agregar cosas vacías).
+   */
+  window._sopAgregarSiTieneRepuesto = (regId) => {
+    const sel = document.getElementById('sop-rep-' + regId);
+    if (!sel || !sel.value) return;
+    _sopAgregarRepuesto(regId);
+  };
   // ── Handlers inline soporte ────────────────────────────────────────────────
   window._sopAgregarRepuesto = async (regId) => {
     const sel = document.getElementById('sop-rep-' + regId);
@@ -617,7 +642,15 @@ const IngresoView = (() => {
     }
   }
 
-  return { render, syncBase, confirmarNuevoLote };
+  /**
+   * Llamar al salir de la vista de ingreso para desactivar el scanner global.
+   * Se invoca desde el router (app.js) cuando se navega a otra vista.
+   */
+  function onLeave() {
+    ScannerBarras.setGlobalActive(false);
+  }
+
+  return { render, syncBase, confirmarNuevoLote, onLeave };
 })();
 
 window.IngresoView = IngresoView;

@@ -16,6 +16,14 @@ const Views = (() => {
   function go(viewName) {
     const view = VIEWS[viewName];
     if (!view) return;
+
+    // Notificar a la vista saliente (desactiva scanner global si salimos de ingreso)
+    if (_current && _current !== viewName) {
+      if (_current === 'ingreso' && window.IngresoView?.onLeave) {
+        IngresoView.onLeave();
+      }
+    }
+
     Object.values(VIEWS).forEach(v => {
       document.getElementById(v.el)?.classList.remove('active');
       document.getElementById(v.nav)?.classList.remove('active');

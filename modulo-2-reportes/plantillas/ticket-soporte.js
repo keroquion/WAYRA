@@ -40,16 +40,17 @@ const PlantillaTicketSoporte = (() => {
       'Pendiente':          '#6b7280',
     }[estado] || '#6b7280';
 
-    // Fotos
-    const fotosHtml = opc.mostrarFotos
-      ? (eq._fotos || []).slice(0, 6).map(f => {
-          const src = f.thumbUrl || f.url || f.preview || '';
-          if (!src) return '';
-          return `<img src="${src}" referrerpolicy="no-referrer"
-            style="width:80px;height:60px;object-fit:cover;border-radius:4px;border:1px solid #e2e8f0"
-            onerror="this.style.display='none'">`;
-        }).filter(Boolean).join('')
-      : '';
+    // Fotos — layout mejorado con imágenes grandes
+    const fotosArr = opc.mostrarFotos ? (eq._fotos || []).slice(0, 6).filter(f => f.thumbUrl || f.url || f.preview) : [];
+    const fotosHtml = fotosArr.map(f => {
+        const src = f.thumbUrl || f.url || f.preview || '';
+        if (!src) return '';
+        return `<img src="${src}" referrerpolicy="no-referrer"
+          style="width:100%;max-width:180px;height:140px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;display:block"
+          onerror="this.style.display='none'">`;
+      }).filter(Boolean).join('');
+
+    const hasFotos = fotosHtml.length > 0;
 
     // Repuestos
     const repuestosHtml = opc.mostrarRepuestos
@@ -100,6 +101,55 @@ const PlantillaTicketSoporte = (() => {
     // Determinar columnas de la grilla de campos
     const numCols = camposActivos.length <= 3 ? camposActivos.length : camposActivos.length <= 6 ? 3 : 3;
 
+    // Sección de info del ticket (lado izquierdo o ancho completo)
+    const infoSection = `
+      ${(opc.mostrarDatosEquipo && camposActivos.length) ? `
+      <!-- INFO EQUIPO -->
+      <div style="display:grid;grid-template-columns:repeat(${numCols},1fr);gap:8px;margin-bottom:12px">
+        ${camposActivos.join('')}
+      </div>` : ''}
+
+      ${(opc.mostrarFalla || opc.mostrarObservacion) ? `
+      <!-- FALLA + OBSERVACIÓN -->
+      <div style="display:grid;grid-template-columns:${opc.mostrarFalla && opc.mostrarObservacion ? '1fr 1fr' : '1fr'};gap:8px;margin-bottom:12px">
+        ${opc.mostrarFalla ? `
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⚠️ Falla Reportada</div>
+          <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:4px;padding:8px;font-size:11px;min-height:40px">${_esc(eq._fallaReportada || 'Sin falla reportada')}</div>
+        </div>` : ''}
+        ${opc.mostrarObservacion ? `
+        <div>
+          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📝 Observación Final</div>
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:8px;font-size:11px;min-height:40px">${_esc(eq._obsSoporte || eq._obsPersonal || '—')}</div>
+        </div>` : ''}
+      </div>` : ''}
+
+      ${diagHtml !== null ? `
+      <!-- DIAGNÓSTICO -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🤖 Diagnóstico IA / Técnico</div>
+        ${diagHtml}
+        ${geminiHtml}
+      </div>` : (geminiHtml ? `<div style="margin-bottom:12px">${geminiHtml}</div>` : '')}
+
+      ${repuestosHtml !== null ? `
+      <!-- REPUESTOS -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔩 Repuestos Utilizados</div>
+        <div>${repuestosHtml}</div>
+      </div>` : ''}
+    `;
+
+    // Sección de fotos (lado derecho cuando hay fotos)
+    const fotosSection = hasFotos ? `
+      <div>
+        <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">📷 Evidencia Fotográfica</div>
+        <div style="display:grid;grid-template-columns:repeat(${fotosArr.length === 1 ? '1' : '2'},1fr);gap:6px">
+          ${fotosHtml}
+        </div>
+      </div>
+    ` : '';
+
     return `
       <div id="ticket-soporte-${eq._registroId}" class="ticket-soporte-doc"
         style="background:#fff;border-radius:8px;padding:20px;margin-bottom:0;font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;font-size:12px;max-width:900px">
@@ -122,48 +172,13 @@ const PlantillaTicketSoporte = (() => {
           </div>
         </div>` : ''}
 
-        ${(opc.mostrarDatosEquipo && camposActivos.length) ? `
-        <!-- INFO EQUIPO -->
-        <div style="display:grid;grid-template-columns:repeat(${numCols},1fr);gap:10px;margin-bottom:14px">
-          ${camposActivos.join('')}
-        </div>` : ''}
-
-        ${(opc.mostrarFalla || opc.mostrarObservacion) ? `
-        <!-- FALLA + OBSERVACIÓN -->
-        <div style="display:grid;grid-template-columns:${opc.mostrarFalla && opc.mostrarObservacion ? '1fr 1fr' : '1fr'};gap:10px;margin-bottom:14px">
-          ${opc.mostrarFalla ? `
-          <div>
-            <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⚠️ Falla Reportada</div>
-            <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:4px;padding:8px;font-size:11px;min-height:40px">${_esc(eq._fallaReportada || 'Sin falla reportada')}</div>
-          </div>` : ''}
-          ${opc.mostrarObservacion ? `
-          <div>
-            <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📝 Observación Final</div>
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:8px;font-size:11px;min-height:40px">${_esc(eq._obsSoporte || eq._obsPersonal || '—')}</div>
-          </div>` : ''}
-        </div>` : ''}
-
-        ${diagHtml !== null ? `
-        <!-- DIAGNÓSTICO -->
-        <div style="margin-bottom:14px">
-          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🤖 Diagnóstico IA / Técnico</div>
-          ${diagHtml}
-          ${geminiHtml}
-        </div>` : (geminiHtml ? `<div style="margin-bottom:14px">${geminiHtml}</div>` : '')}
-
-        ${repuestosHtml !== null ? `
-        <!-- REPUESTOS -->
-        <div style="margin-bottom:14px">
-          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">🔩 Repuestos Utilizados</div>
-          <div>${repuestosHtml}</div>
-        </div>` : ''}
-
-        ${(opc.mostrarFotos && fotosHtml) ? `
-        <!-- FOTOS -->
-        <div style="margin-bottom:8px">
-          <div style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📷 Evidencia Fotográfica</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">${fotosHtml}</div>
-        </div>` : ''}
+        <!-- LAYOUT: info + fotos lado a lado si hay fotos -->
+        ${hasFotos ? `
+        <div style="display:grid;grid-template-columns:1fr minmax(200px,42%);gap:16px;align-items:start">
+          <div>${infoSection}</div>
+          <div>${fotosSection}</div>
+        </div>
+        ` : `<div>${infoSection}</div>`}
 
       </div>`;
   }
