@@ -48,7 +48,7 @@ const Views = (() => {
     go(VIEWS[hash] ? hash : 'ingreso');
   }
 
-  // ── Sidebar móvil ──
+  // ── Sidebar móvil y escritorio ──
   function _openSidebar() {
     document.getElementById('sidebar')?.classList.add('open');
     document.getElementById('sidebar-overlay')?.classList.add('active');
@@ -60,9 +60,18 @@ const Views = (() => {
   }
 
   function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar?.classList.contains('open')) _closeSidebar();
-    else _openSidebar();
+    if (window.innerWidth > 768) {
+      const shell = document.getElementById('app-shell');
+      if (shell) {
+        shell.classList.toggle('sidebar-collapsed');
+        const isCollapsed = shell.classList.contains('sidebar-collapsed');
+        localStorage.setItem('sidebar-collapsed', isCollapsed ? 'true' : 'false');
+      }
+    } else {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar?.classList.contains('open')) _closeSidebar();
+      else _openSidebar();
+    }
   }
 
   return { go, init, getCurrent: () => _current, toggleSidebar };
@@ -115,6 +124,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 9. Iniciar motor de sync
   SyncEngine.start();
+
+  // 9.5. Restaurar estado de la barra lateral en PC
+  if (window.innerWidth > 768) {
+    const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+    if (isCollapsed) {
+      document.getElementById('app-shell')?.classList.add('sidebar-collapsed');
+    }
+  }
 
   // 10. Router
   Views.init();

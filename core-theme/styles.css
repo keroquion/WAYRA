@@ -5,7 +5,7 @@ html{font-size:14px;scroll-behavior:smooth}
 body{font-family:'Inter',sans-serif;background:var(--bg-primary);color:var(--text-primary);transition:background var(--transition),color var(--transition);min-height:100vh;overflow:hidden}
 
 /* ── LAYOUT ── */
-#app-shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden}
+#app-shell{display:grid;grid-template-columns:240px 1fr;grid-template-rows:56px 1fr;height:100vh;overflow:hidden;transition:grid-template-columns 0.25s cubic-bezier(0.4,0,0.2,1)}
 
 /* ── TOPBAR ── */
 #topbar{grid-column:1/-1;background:var(--bg-sidebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:16px;z-index:100;box-shadow:var(--shadow-md)}
@@ -33,8 +33,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg-primary);color:var(--tex
 #btn-theme-toggle{background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 10px;cursor:pointer;font-size:1rem;transition:all var(--transition);color:var(--text-primary)}
 #btn-theme-toggle:hover{border-color:var(--accent)}
 
+#btn-hamburger{display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--bg-hover);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:1.1rem;cursor:pointer;color:var(--text-primary);transition:all var(--transition);flex-shrink:0}
+#btn-hamburger:hover{border-color:var(--accent);color:var(--accent)}
+
 /* ── SIDEBAR ── */
-#sidebar{background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+#sidebar{background:var(--bg-sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;transition:width 0.25s cubic-bezier(0.4,0,0.2,1),opacity 0.25s cubic-bezier(0.4,0,0.2,1),border-right-width 0.25s cubic-bezier(0.4,0,0.2,1)}
 .sidebar-section-label{font-size:0.62rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-muted);padding:14px 18px 5px}
 .nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;color:var(--text-secondary);cursor:pointer;transition:all var(--transition);font-size:0.83rem;font-weight:500;border-left:3px solid transparent;text-decoration:none}
 .nav-item:hover{background:var(--bg-hover);color:var(--text-primary)}
@@ -286,19 +289,6 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
   .brand-name{font-size:0.85rem}
   .brand-sub{display:none}
   .topbar-center{display:none}
-
-  /* ── HAMBURGER ── */
-  #btn-hamburger{
-    display:flex!important;
-    align-items:center;justify-content:center;
-    width:36px;height:36px;
-    background:var(--bg-hover);border:1px solid var(--border);
-    border-radius:var(--radius-sm);
-    font-size:1.1rem;cursor:pointer;color:var(--text-primary);
-    transition:all var(--transition);
-    order:-1;flex-shrink:0;
-  }
-  #btn-hamburger:hover{border-color:var(--accent);color:var(--accent)}
 
   /* ── SIDEBAR MOBILE (slide-in) ── */
   #sidebar{
@@ -564,7 +554,17 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
    DESKTOP: Ocultar elementos móviles
    ══════════════════════════════════════════════════════════════════ */
 @media(min-width:769px){
-  #btn-hamburger{display:none!important}
   #bottom-nav{display:none!important}
   #sidebar-overlay{display:none!important}
+
+  #app-shell.sidebar-collapsed {
+    grid-template-columns: 0px 1fr;
+  }
+  #app-shell.sidebar-collapsed #sidebar {
+    width: 0;
+    opacity: 0;
+    overflow: hidden;
+    border-right-width: 0;
+    pointer-events: none;
+  }
 }
