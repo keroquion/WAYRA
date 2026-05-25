@@ -216,7 +216,7 @@ const LocalCache = (() => {
             await put('lotes', l);
           }
         }
-        await setConfig('deleted_lote_ids', []);
+        // Eliminado: await setConfig('deleted_lote_ids', []); // NO LIMPIAR, para evitar que lotes borrados vuelvan de Sheets
         console.log('✅ Lotes sincronizados a Sheets (' + lotes.length + ')');
       } catch (err) {
         console.warn('[LocalCache] Error sincronizando lotes:', err.message);
@@ -238,7 +238,7 @@ const LocalCache = (() => {
           await put('lotes', l);
         }
       }
-      await setConfig('deleted_lote_ids', []);
+      // Eliminado: await setConfig('deleted_lote_ids', []); // NO LIMPIAR
       console.log('✅ Lotes sincronizados a Sheets inmediatamente (' + lotes.length + ')');
     } catch (err) {
       console.warn('[LocalCache] Error sincronizando lotes inmediatamente:', err.message);
@@ -371,3 +371,34 @@ const LocalCache = (() => {
 window.LocalCache = LocalCache;
 // Alias para compatibilidad con código v1
 window.LocalDB = LocalCache;
+
+// Utilidad de emergencia para depurar lotes "fantasma" que se quedan pegados
+window.depurarLotesBugeados = async () => {
+  const lotes = await LocalCache.getLotes();
+  const deletedIds = await LocalCache.getConfig('deleted_lote_ids', []);
+  let purgados = 0;
+  for (const lote of lotes) {
+    if (deletedIds.includes(lote.id)) {
+      await LocalCache.del('lotes', lote.id);
+      purgados++;
+      console.log('Purgado lote fantasma:', lote.titulo);
+    }
+  }
+  // Asegurar que solo haya 1 lote activo
+  const remaining = await LocalCache.getLotes();
+  let activos = remaining.filter(l => l.activo);
+  if (activos.length > 1) {
+    // Dejar solo el primero activo
+    for (let i = 1; i < activos.length; i++) {
+      activos[i].activo = false;
+      await LocalCache.put('lotes', activos[i]);
+    }
+  } else if (activos.length === 0 && remaining.length > 0) {
+    remaining[0].activo = true;
+    await LocalCache.put('lotes', remaining[0]);
+  }
+  console.log(`Depuración completa. Lotes purgados: ${purgados}`);
+  alert(`Depuración completa. Se purgaron ${purgados} lotes fantasma. Por favor recarga la página.`);
+  location.reload();
+};
+

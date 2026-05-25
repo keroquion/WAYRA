@@ -11,6 +11,7 @@ const HistorialView = (() => {
       <div class="page-header">
         <div><div class="page-title">📋 Historial de Lotes</div><div class="page-subtitle">${lotes.length} lote(s) registrados</div></div>
         <div class="page-actions">
+          <button class="btn btn-secondary btn-sm" onclick="window.depurarLotesBugeados && window.depurarLotesBugeados()" title="Purga lotes que se quedan pegados o reaparecen" style="background:#ff9800;color:white;border:none">🔧 Depurar</button>
           <button class="btn btn-secondary btn-sm" onclick="LocalCache.exportBackup();Toast.success('Backup exportado')">💾 Backup</button>
           <button class="btn btn-primary btn-sm" onclick="Views.go('ingreso')">➕ Nuevo Registro</button>
         </div>
