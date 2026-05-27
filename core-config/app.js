@@ -77,8 +77,46 @@ const Views = (() => {
   return { go, init, getCurrent: () => _current, toggleSidebar };
 })();
 
+// ── Verificación de versión (auto-update en todos los dispositivos) ──────────
+async function _checkAppVersion() {
+  try {
+    // Fetch con no-store para NUNCA usar caché del navegador
+    const res = await fetch('/version.json?_=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const { version, notes } = await res.json();
+    const storedVersion = localStorage.getItem('inv-pro-app-version');
+
+    if (storedVersion && storedVersion !== version) {
+      console.log(`[App] 🔄 Nueva versión detectada: ${storedVersion} → ${version}`);
+      localStorage.setItem('inv-pro-app-version', version);
+      // Limpiar todos los caches del Service Worker / browser cache
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      // Notificar y recargar
+      if (typeof Toast !== 'undefined') {
+        Toast.info('🔄 Nueva versión disponible. Actualizando…');
+      }
+      setTimeout(() => location.reload(true), 1200);
+      return true; // indica que se va a recargar
+    }
+
+    // Primera vez o misma versión: guardar
+    localStorage.setItem('inv-pro-app-version', version);
+    return false;
+  } catch {
+    // Sin red o sin version.json → continuar normalmente
+    return false;
+  }
+}
+
 // ── Bootstrap ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  // 0. Verificar versión — si hay nueva, se recarga antes de iniciar
+  const _reloading = await _checkAppVersion();
+  if (_reloading) return; // no iniciar nada, viene la recarga
+
   // 1. Tema
   ThemeManager.init();
 
