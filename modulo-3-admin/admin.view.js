@@ -56,7 +56,7 @@ const AdminView = (() => {
 
       <!-- Tabs -->
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
-        ${['Empresa','Catálogos','Conexión','Seguridad','Auditoría','Portabilidad','🤖 Gemini IA'].map((t,i)=>`
+        ${['Empresa','Catálogos','Conexión','Seguridad','Auditoría','Portabilidad','🤖 Gemini IA','🗄️ Repuestos DB'].map((t,i)=>`
           <button class="btn btn-ghost admin-tab" id="admin-tab-${i}" onclick="_adminTab(${i})" style="border-radius:0;border-bottom:2px solid transparent;padding:10px 16px;font-size:0.82rem">${t}</button>
         `).join('')}
       </div>
@@ -310,6 +310,41 @@ const AdminView = (() => {
 
         </div>
       </div>
+
+      <!-- TAB REPUESTOS DB (tab 7) -->
+      <div class="admin-panel" id="admin-panel-7" style="display:none">
+        <!-- Buscador -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <input type="text" class="form-control" id="rep-db-search"
+            placeholder="🔍 Buscar por modelo, repuesto o PN…"
+            oninput="_adminFiltrarRepuestos(this.value)"
+            style="flex:1;min-width:200px">
+          <button class="btn btn-secondary btn-sm" onclick="_adminSyncRepuestosDB()">☁️ Sincronizar con Sheets</button>
+        </div>
+        <!-- Tabla -->
+        <div class="card" style="padding:0;overflow:hidden">
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span class="card-title" style="margin:0">🗄️ Base de Datos Repuestos × Modelo</span>
+            <span id="rep-db-count" style="font-size:0.75rem;color:var(--text-muted)"></span>
+          </div>
+          <div style="overflow-x:auto" id="rep-db-tabla"></div>
+        </div>
+
+        <!-- Aliases de modelos -->
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">🔗 Aliases de Modelos</div>
+          <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px">
+            Agrupa nombres de modelos que son lo mismo. Ej: <code class="inline-code">HP ProBook 640 G8</code> = <code class="inline-code">PROBOOK 640G8</code>.<br>
+            El sistema ya normaliza automáticamente, pero aquí puedes forzar equivalencias manuales.
+          </div>
+          <div id="aliases-lista" style="margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="text" class="form-control" id="alias-modelo-a" placeholder="Modelo A (nombre en la base)" style="flex:1;min-width:160px">
+            <input type="text" class="form-control" id="alias-modelo-b" placeholder="Modelo B (alias equivalente)" style="flex:1;min-width:160px">
+            <button class="btn btn-primary" onclick="_adminGuardarAlias()">➕ Agregar alias</button>
+          </div>
+        </div>
+      </div>
     `;
 
     // ── Handlers globales (ANTES de _adminTab) ──────────────────────
@@ -320,6 +355,7 @@ const AdminView = (() => {
         b.style.color = j===i ? 'var(--accent)' : '';
       });
       if (i===4) AuditTrail.renderTo('audit-container');
+      if (i===7) _adminRenderRepuestosDB();
     };
 
     // ── Preview de imagen en drop zone ──────────────────────────────
@@ -538,3 +574,158 @@ const AdminView = (() => {
 })();
 
 window.AdminView = AdminView;
+
+// ── Funciones del Tab Repuestos DB ────────────────────────────────────────────
+let _repDBEntries = []; // cache local para filtrar sin re-fetch
+
+function _adminRenderRepuestosDB() {
+  _repDBEntries = ModoRapido.getAll();
+  _adminRenderTablaRepuestos(_repDBEntries);
+  _adminRenderAliases();
+}
+
+function _adminRenderTablaRepuestos(entries) {
+  const el = document.getElementById('rep-db-tabla');
+  const count = document.getElementById('rep-db-count');
+  if (!el) return;
+
+  // Aplanar: una fila por modelo
+  const rows = [];
+  for (const e of entries) {
+    for (const m of (e.modelos || [])) {
+      rows.push({ key: e.key, repuesto: e.repuesto, modelo: m.modelo, pn: m.pn || '—', usos: m.usos || 1 });
+    }
+  }
+
+  if (count) count.textContent = `${rows.length} registro(s) · ${entries.length} combinaciones`;
+
+  if (!rows.length) {
+    el.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">
+      <div style="font-size:2rem">🗄️</div>
+      <div style="margin-top:8px;font-size:0.85rem">La base está vacía.<br>Se llena automáticamente al registrar equipos con repuesto y PN.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = `<table class="data-table" style="font-size:0.8rem">
+    <thead><tr>
+      <th>Repuesto</th><th>Modelo</th>
+      <th>PN</th><th style="text-align:center">Usos</th><th>Acciones</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map((r,i) => `<tr>
+        <td><strong>${r.repuesto}</strong></td>
+        <td style="color:var(--text-secondary)">${r.modelo}</td>
+        <td>
+          <span id="rep-pn-display-${i}" style="background:var(--bg-hover);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:0.75rem">${r.pn}</span>
+          <input type="text" id="rep-pn-input-${i}" value="${r.pn === '—' ? '' : r.pn}"
+            style="display:none;width:110px;font-size:0.75rem;padding:2px 6px;border:1px solid var(--accent);border-radius:4px"
+            onkeydown="if(event.key==='Enter') _adminGuardarPN('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})">
+        </td>
+        <td style="text-align:center;color:var(--text-muted)">${r.usos}x</td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button onclick="_adminEditarPN(${i})" style="background:none;border:none;cursor:pointer;font-size:1rem" title="Editar PN">✏️</button>
+            <button onclick="_adminEliminarEntrada('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})"
+              style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--danger)" title="Eliminar">🗑️</button>
+          </div>
+        </td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+// Editar PN inline (toggle input)
+window._adminEditarPN = (idx) => {
+  const display = document.getElementById(`rep-pn-display-${idx}`);
+  const input   = document.getElementById(`rep-pn-input-${idx}`);
+  if (!display || !input) return;
+  display.style.display = 'none';
+  input.style.display   = 'inline-block';
+  input.focus(); input.select();
+};
+
+window._adminGuardarPN = async (key, modelo, idx) => {
+  const input = document.getElementById(`rep-pn-input-${idx}`);
+  if (!input) return;
+  const nuevoPn = input.value.trim();
+  await ModoRapido.editarPN(key, modelo, nuevoPn);
+  Toast.success(`PN actualizado → ${nuevoPn || '(vacío)'}`);
+  _adminRenderRepuestosDB();
+};
+
+window._adminEliminarEntrada = async (key, modelo, idx) => {
+  if (!confirm(`¿Eliminar "${modelo}" de la base de repuestos?`)) return;
+  await ModoRapido.eliminarEntrada(key, modelo);
+  Toast.success('Entrada eliminada');
+  _adminRenderRepuestosDB();
+};
+
+// Filtrar tabla en tiempo real (sin recargar)
+window._adminFiltrarRepuestos = (query) => {
+  const q = query.toLowerCase();
+  const filtered = q
+    ? _repDBEntries.filter(e =>
+        e.repuesto.toLowerCase().includes(q) ||
+        (e.modelos || []).some(m =>
+          m.modelo.toLowerCase().includes(q) || (m.pn || '').toLowerCase().includes(q)
+        )
+      )
+    : _repDBEntries;
+  _adminRenderTablaRepuestos(filtered);
+};
+
+// Sync manual con Sheets
+window._adminSyncRepuestosDB = async () => {
+  const btn = document.querySelector('[onclick="_adminSyncRepuestosDB()"]');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sincronizando…'; }
+  try {
+    await AppsScriptBridge.saveRepuestosDB(ModoRapido.getAll());
+    Toast.success('✅ Base de repuestos sincronizada con Sheets');
+    _adminRenderRepuestosDB();
+  } catch (e) {
+    Toast.error('Error al sincronizar: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '☁️ Sincronizar con Sheets'; }
+  }
+};
+
+// ── Aliases de modelos ────────────────────────────────────────────────────────
+function _adminRenderAliases() {
+  const el = document.getElementById('aliases-lista');
+  if (!el) return;
+  const aliases = JSON.parse(localStorage.getItem('model-aliases-v1') || '[]');
+  if (!aliases.length) { el.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted)">Sin aliases registrados aún.</div>'; return; }
+  el.innerHTML = aliases.map((a, i) => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;background:var(--bg-hover);padding:6px 10px;border-radius:6px;font-size:0.82rem">
+      <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px">${a.modeloA}</code>
+      <span style="color:var(--text-muted)">≡</span>
+      <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px">${a.modeloB}</code>
+      <button onclick="_adminEliminarAlias(${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:0.9rem">✕</button>
+    </div>`).join('');
+}
+
+window._adminGuardarAlias = () => {
+  const a = document.getElementById('alias-modelo-a')?.value.trim();
+  const b = document.getElementById('alias-modelo-b')?.value.trim();
+  if (!a || !b) { Toast.warning('Completa ambos campos'); return; }
+  if (a === b)  { Toast.warning('Los modelos son idénticos'); return; }
+  const aliases = JSON.parse(localStorage.getItem('model-aliases-v1') || '[]');
+  const dup = aliases.find(x => (x.modeloA===a && x.modeloB===b) || (x.modeloA===b && x.modeloB===a));
+  if (dup) { Toast.warning('Alias ya existe'); return; }
+  aliases.push({ modeloA: a, modeloB: b });
+  localStorage.setItem('model-aliases-v1', JSON.stringify(aliases));
+  document.getElementById('alias-modelo-a').value = '';
+  document.getElementById('alias-modelo-b').value = '';
+  _adminRenderAliases();
+  Toast.success(`✅ Alias guardado: "${a}" ≡ "${b}"`);
+};
+
+window._adminEliminarAlias = (idx) => {
+  const aliases = JSON.parse(localStorage.getItem('model-aliases-v1') || '[]');
+  aliases.splice(idx, 1);
+  localStorage.setItem('model-aliases-v1', JSON.stringify(aliases));
+  _adminRenderAliases();
+  Toast.info('Alias eliminado');
+};
+

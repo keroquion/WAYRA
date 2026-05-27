@@ -168,6 +168,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         IngresoView.render();
       }
     }).catch(() => {});
+
+    // Cargar Repuestos DB en paralelo (Memory Map)
+    ModoRapido.loadFromRemote().catch(() => {});
   }
 
   // 9. Iniciar motor de sync

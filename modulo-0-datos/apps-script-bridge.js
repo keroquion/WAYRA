@@ -112,10 +112,19 @@ const AppsScriptBridge = (() => {
     return _call('saveSoporte', { ticket }, 2);
   }
 
+  // ── Repuestos DB ──────────────────────────────────────────────────
+  async function saveRepuestosDB(entries) {
+    return _call('saveRepuestosDB', { entries }, 2);
+  }
+
+  async function loadRepuestosDB() {
+    return _call('loadRepuestosDB', {}, 2);
+  }
+
   return {
     init, getRowCount, readSheet, writeRow, updateRow, deleteRow,
     uploadToDrive, appendAudit, testConnection, testDrive, saveLotes, loadLotes,
-    geminiOCR, saveSoporte,
+    geminiOCR, saveSoporte, saveRepuestosDB, loadRepuestosDB,
     getStatus: () => _status,
     setUrl: (u) => { _url = u; APP_CONFIG.appsScript.webAppUrl = u; },
   };

@@ -233,6 +233,11 @@ const IngresoView = (() => {
         return;
       }
 
+      // Autocompletar PN sticky si hay modelo conocido en DB de repuestos
+      if (window.ModoRapido?.autocompletarParaEquipo) {
+        await ModoRapido.autocompletarParaEquipo(equipo.MODELO);
+      }
+
       // Verificar duplicado
       if (_loteActivo.equipos?.find(e => e.CODIGO === equipo.CODIGO)) {
         Toast.warning(`Código ${codigo} ya registrado en este lote`);

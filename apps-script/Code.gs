@@ -89,6 +89,12 @@ function doPost(e) {
       case 'getAuditHistory':
         result = _getAuditHistory();
         break;
+      case 'saveRepuestosDB':
+        result = _saveRepuestosDB(body.entries);
+        break;
+      case 'loadRepuestosDB':
+        result = _loadRepuestosDB();
+        break;
       default:
         throw new Error('Acción desconocida: ' + action);
     }
@@ -443,6 +449,73 @@ function _cors(output) {
   return output
     .setMimeType(ContentService.MimeType.JSON);
 }
+
+// ── Guardar Repuestos DB en hoja _RepuestosDB ──────────────────────
+function _saveRepuestosDB(entries) {
+  if (!entries || !Array.isArray(entries)) return { saved: 0 };
+  const ss    = _getSpreadsheet();
+  const SHEET = '_RepuestosDB';
+  let sheet   = ss.getSheetByName(SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET);
+    const headers = ['key', 'repuesto', 'modelo', 'modelo_normalizado', 'pn', 'usos', 'updatedAt'];
+    sheet.appendRow(headers);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setBackground('#0f766e').setFontColor('#ffffff').setFontWeight('bold');
+    sheet.setFrozenRows(1);
+  }
+
+  // Limpiar datos (preservar cabecera)
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) sheet.getRange(2, 1, lastRow - 1, 7).clearContent();
+
+  // Escribir todas las entradas (cada entry puede tener varios modelos)
+  const rows = [];
+  for (const e of entries) {
+    if (!e.modelos || !e.modelos.length) continue;
+    for (const m of e.modelos) {
+      rows.push([
+        e.key        || '',
+        e.repuesto   || '',
+        m.modelo     || '',
+        (m.modelo||'').toLowerCase().replace(/[^a-z0-9]/g,''),
+        m.pn         || '',
+        m.usos       || 1,
+        e.updatedAt  || new Date().toISOString(),
+      ]);
+    }
+  }
+
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, 7).setValues(rows);
+  }
+  return { saved: rows.length };
+}
+
+// ── Cargar Repuestos DB desde _RepuestosDB ─────────────────────────
+function _loadRepuestosDB() {
+  const ss    = _getSpreadsheet();
+  const SHEET = '_RepuestosDB';
+  const sheet = ss.getSheetByName(SHEET);
+  if (!sheet || sheet.getLastRow() <= 1) return { entries: [] };
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
+
+  // Reconstruir estructura agrupada por key
+  const map = {};
+  for (const row of data) {
+    const [key, repuesto, modelo, , pn, usos, updatedAt] = row;
+    if (!key) continue;
+    if (!map[key]) map[key] = { key, repuesto, modelos: [], pn: '', updatedAt };
+    if (modelo) {
+      map[key].modelos.push({ modelo, pn: pn || '', usos: Number(usos) || 1 });
+      if (pn) map[key].pn = pn;
+    }
+  }
+
+  return { entries: Object.values(map) };
+}
+
 
 // ══════════════════════════════════════════════════════════════════
 //  Módulo: Auditoría de Hardware (desde HardwareAuditApp C#)

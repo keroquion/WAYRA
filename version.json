@@ -1,5 +1,5 @@
-{
-  "version": "2.0.2",
-  "deployedAt": "2026-05-27T00:39:00Z",
-  "notes": "fix: Sheets como fuente de verdad, auto-refresh en todos los dispositivos"
+﻿{
+    "deployedAt":  "2026-05-27T22:47:40Z",
+    "version":  "2026.05.27.1747",
+    "notes":  "feat: Base de datos Repuestos x Modelo con sync Sheets, fuzzy match y tab Admin"
 }
