@@ -115,10 +115,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   PinAuth.init();
 
   // 8.5. Cargar lotes desde Sheets (si hay conexión configurada)
+  // Sheets es la fuente de verdad — al abrir la app en CUALQUIER dispositivo,
+  // se descarga el estado actual de Sheets y se reemplaza el IndexedDB local.
+  // Luego se refresca la vista activa para que el usuario vea datos correctos.
   if (gasUrl && navigator.onLine && window.location.protocol !== 'file:') {
-    LocalCache.loadLotesFromRemote().then(() => {
-      // Actualizar variable global con lotes mergeados
-      LocalCache.getLotes().then(lotes => { window._histLotes = lotes; });
+    LocalCache.loadLotesFromRemote().then(async () => {
+      const lotes = await LocalCache.getLotes();
+      window._histLotes = lotes;
+      // Refrescar la vista activa si muestra lotes (sin esperar intervención del usuario)
+      const current = Views.getCurrent();
+      if (current === 'historial' && window.HistorialView) {
+        HistorialView.render();
+      } else if (current === 'ingreso' && window.IngresoView) {
+        IngresoView.render();
+      }
     }).catch(() => {});
   }
 
