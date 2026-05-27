@@ -242,65 +242,29 @@ const LocalCache = (() => {
   }
 
   // ── CARGAR LOTES DESDE REMOTO ────────────────────────────────────
+  // SHEETS = FUENTE DE VERDAD.
+  // Al cargar, reemplazamos el estado local con exactamente lo que hay en Sheets,
+  // respetando solo deleted_lote_ids (lotes que se eliminaron explícitamente en este dispositivo).
+  // Esto evita que dispositivos con datos viejos (teléfono, otra PC) resuciten lotes borrados.
   async function loadLotesFromRemote() {
     if (!APP_CONFIG.appsScript.webAppUrl) return { added: 0, total: 0 };
     try {
       const result = await AppsScriptBridge.loadLotes();
-      const remoteLotes = result.lotes || [];
-      
-      // Marcar todos los descargados como synced
-      remoteLotes.forEach(l => { l.synced = true; });
+      const remoteLotes = (result.lotes || []).map(l => ({ ...l, synced: true }));
+      const deletedIds  = await getConfig('deleted_lote_ids', []);
 
-      const localLotes = await getLotes();
-      const deletedIds = await getConfig('deleted_lote_ids', []);
+      // Filtrar: ignorar cualquier lote que fue eliminado explícitamente en este dispositivo
+      const lotesValidos = remoteLotes.filter(l => !deletedIds.includes(l.id));
 
-      // Si no hay lotes locales, cargar remotos respetando eliminados
-      if (localLotes.length === 0) {
-        let added = 0;
-        for (const lote of remoteLotes) {
-          if (!deletedIds.includes(lote.id)) {
-            await put('lotes', lote);
-            added++;
-          }
-        }
-        console.log('✅ Cargados ' + added + ' lotes desde Sheets');
-        return { added: remoteLotes.length, total: remoteLotes.length };
+      // ── Reemplazar el store 'lotes' COMPLETO con los remotos válidos ──
+      // Así no quedan fantasmas de sesiones antiguas en ningún dispositivo.
+      await clear('lotes');
+      for (const lote of lotesValidos) {
+        await put('lotes', lote);
       }
 
-      const remoteIds = new Set(remoteLotes.map(l => l.id));
-
-      // 1. Eliminar localmente los lotes que tienen synced: true pero NO están en remoteLotes
-      for (const local of localLotes) {
-        if (local.synced && !remoteIds.has(local.id)) {
-          await del('lotes', local.id);
-          console.log(`🗑️ Lote ${local.titulo} eliminado localmente por no existir en Sheets`);
-        }
-      }
-
-      // Volver a obtener locales tras posible purga
-      const activeLocalLotes = await getLotes();
-      const localIds = new Set(activeLocalLotes.map(l => l.id));
-      let added = 0;
-
-      // 2. Merge: remotos que no existen localmente y no están eliminados se agregan
-      for (const remoteLote of remoteLotes) {
-        if (deletedIds.includes(remoteLote.id)) {
-          continue;
-        }
-        if (!localIds.has(remoteLote.id)) {
-          await put('lotes', remoteLote);
-          added++;
-        } else {
-          // Si existe en ambos, el que tenga más equipos gana
-          const local = activeLocalLotes.find(l => l.id === remoteLote.id);
-          if (local && remoteLote.equipos.length > local.equipos.length) {
-            await put('lotes', remoteLote);
-            added++;
-          }
-        }
-      }
-      if (added > 0) console.log('✅ Mergeados ' + added + ' lotes desde Sheets');
-      return { added, total: remoteLotes.length };
+      console.log(`✅ Lotes sincronizados desde Sheets: ${lotesValidos.length} activos (${deletedIds.length} ignorados por borrado local)`);
+      return { added: lotesValidos.length, total: remoteLotes.length };
     } catch (err) {
       console.warn('[LocalCache] Error cargando lotes remotos:', err.message);
       throw err;
@@ -369,30 +333,26 @@ window.LocalCache = LocalCache;
 window.LocalDB = LocalCache;
 
 // Utilidad de emergencia para depurar lotes "fantasma" que se quedan pegados
+// Ahora usa el enfoque: Sheets = fuente de verdad. Borra local y recarga desde remoto.
 window.depurarLotesBugeados = async () => {
-  const lotes = await LocalCache.getLotes();
-  const deletedIds = await LocalCache.getConfig('deleted_lote_ids', []);
-  let purgados = 0;
-  for (const lote of lotes) {
-    if (deletedIds.includes(lote.id)) {
-      await LocalCache.del('lotes', lote.id);
-      purgados++;
-      console.log('Purgado lote fantasma:', lote.titulo);
+  if (!confirm('⚠️ Esto limpiará los lotes locales y recargará solo lo que hay en Google Sheets.\n\n¿Continuar?')) return;
+  try {
+    // 1. Borrar TODO el store de lotes local
+    await LocalCache.clear('lotes');
+    console.log('[Depurar] 🗑️ Store de lotes local borrado');
+
+    // 2. Recargar desde Sheets (fuente de verdad)
+    if (APP_CONFIG.appsScript.webAppUrl) {
+      const stats = await LocalCache.loadLotesFromRemote();
+      console.log(`[Depurar] ✅ Recargados ${stats.added} lotes desde Sheets`);
+      alert(`✅ Limpieza completa.\n${stats.added} lote(s) cargado(s) desde Google Sheets.\n\nLa página se recargará.`);
+    } else {
+      alert('✅ Lotes locales limpiados.\n\nNota: No hay URL de Sheets configurada. No se recargaron lotes remotos.');
     }
+    location.reload();
+  } catch (err) {
+    alert('❌ Error durante depuración: ' + err.message);
+    console.error('[Depurar]', err);
   }
-  // Asegurar que solo haya 1 lote activo
-  const remaining = await LocalCache.getLotes();
-  let activos = remaining.filter(l => l.activo);
-  if (activos.length > 1) {
-    // Dejar solo el primero activo
-    for (let i = 1; i < activos.length; i++) {
-      activos[i].activo = false;
-      await LocalCache.put('lotes', activos[i]);
-    }
-  }
-  // Eliminado: auto-activar el primer lote si no hay activo
-  console.log(`Depuración completa. Lotes purgados: ${purgados}`);
-  alert(`Depuración completa. Se purgaron ${purgados} lotes fantasma. Por favor recarga la página.`);
-  location.reload();
 };
 
