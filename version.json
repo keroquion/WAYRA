@@ -1,5 +1,1 @@
-﻿{
-    "deployedAt":  "2026-05-27T22:47:40Z",
-    "version":  "2026.05.27.1747",
-    "notes":  "feat: Base de datos Repuestos x Modelo con sync Sheets, fuzzy match y tab Admin"
-}
+{"version":"2026.05.27.1754","deployedAt":"2026-05-27T17:54:43.4773410-05:00","notes":"fix: buscador manual ?? repuestos, desactivar autocompletado agresivo"}

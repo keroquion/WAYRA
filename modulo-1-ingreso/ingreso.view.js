@@ -233,11 +233,6 @@ const IngresoView = (() => {
         return;
       }
 
-      // Autocompletar PN sticky si hay modelo conocido en DB de repuestos
-      if (window.ModoRapido?.autocompletarParaEquipo) {
-        await ModoRapido.autocompletarParaEquipo(equipo.MODELO);
-      }
-
       // Verificar duplicado
       if (_loteActivo.equipos?.find(e => e.CODIGO === equipo.CODIGO)) {
         Toast.warning(`Código ${codigo} ya registrado en este lote`);
@@ -413,28 +408,32 @@ const IngresoView = (() => {
       </span>`
     ).join('');
 
-    return `<td style="min-width:340px">
+    return `<td style="min-width:360px">
       <div style="display:flex;flex-direction:column;gap:5px">
         <!-- Chips existentes -->
         ${chipsHtml ? `<div style="display:flex;flex-wrap:wrap;gap:3px">${chipsHtml}</div>` : ''}
 
-        <!-- Fila de nuevo repuesto -->
+        <!-- Fila de nuevo repuesto: solo registra con Enter o clic + -->
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap" id="sop-row-${eq._registroId}">
           <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}'); _sopAutoAgregar('${eq._registroId}')">
+            onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}')">
             <option value="">Repuesto…</option>
             ${tiposR.map(t => `<option value="${t}" ${!repuestos.length && t === _stickyRepuesto ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
-          <input type="text" id="sop-pn-${eq._registroId}" class="form-control" placeholder="PN / código (Enter=guardar)" list="pn-list-${eq._registroId}"
+          <input type="text" id="sop-pn-${eq._registroId}" class="form-control"
+            placeholder="PN (Enter = guardar)"
             value="${repuestos.length ? '' : (_stickyPN || '')}"
-            style="width:110px;font-size:0.72rem;padding:3px 6px;height:26px"
+            style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
             oninput="_sopOnPNInput('${eq._registroId}',this.value)"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();_sopAgregarRepuesto('${eq._registroId}');}"
-            onblur="_sopAgregarSiTieneRepuesto('${eq._registroId}')">
-          <datalist id="pn-list-${eq._registroId}"></datalist>
+            onkeydown="if(event.key==='Enter'){event.preventDefault();_sopAgregarRepuesto('${eq._registroId}');}">
+          <!-- 🔍 Buscador DB de repuestos (manual, sin autocompletado agresivo) -->
+          <button onclick="_sopAbrirBuscador('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}','${(eq.SERIE||'').replace(/'/g,'')}')" title="Buscar en base de repuestos"
+            style="background:var(--bg-hover);border:1px solid var(--border);border-radius:4px;cursor:pointer;height:26px;padding:0 7px;font-size:0.85rem;color:var(--text-secondary)">
+            🔍
+          </button>
           <button onclick="_sopAgregarRepuesto('${eq._registroId}')"
             style="background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:0.7rem;cursor:pointer;height:26px;white-space:nowrap"
-            title="Agregar repuesto manualmente">
+            title="Agregar repuesto">
             ➕
           </button>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
@@ -444,6 +443,8 @@ const IngresoView = (() => {
             onmouseover="this.style.filter='grayscale(0)'" onmouseout="this.style.filter='grayscale(100%)'"
             onclick="_ingresoQuitarEquipo('${_loteActivo.id}','${eq._registroId}')">🗑️</button>
         </div>
+        <!-- Panel buscador inline (se despliega aqui) -->
+        <div id="sop-search-${eq._registroId}" style="display:none"></div>
       </div>
     </td>`;
   }
@@ -563,6 +564,121 @@ const IngresoView = (() => {
       return;
     }
   };
+
+  // ── 🔍 Buscador inline de DB de Repuestos ─────────────────────────────────
+  // Se abre al hacer clic en la lupita. Muestra resultados desde Memory Map (sin I/O).
+  // Filtra automáticamente por el repuesto seleccionado y modelo del equipo.
+  window._sopAbrirBuscador = (regId, modelo, serie) => {
+    const panelEl = document.getElementById('sop-search-' + regId);
+    if (!panelEl) return;
+
+    // Toggle: si ya está abierto, cerrarlo
+    if (panelEl.style.display !== 'none') {
+      panelEl.style.display = 'none';
+      return;
+    }
+
+    const repuestoSel = document.getElementById('sop-rep-' + regId)?.value || '';
+    _sopRenderBuscador(panelEl, regId, modelo, repuestoSel, '');
+    panelEl.style.display = 'block';
+  };
+
+  function _sopRenderBuscador(panelEl, regId, modelo, repuestoFiltro, textoBusqueda) {
+    if (!window.ModoRapido) return;
+    const todos = ModoRapido.getAll(); // desde Memory Map, instantáneo
+    const q = textoBusqueda.toLowerCase();
+
+    // Aplanar entradas
+    let rows = [];
+    for (const entry of todos) {
+      for (const m of (entry.modelos || [])) {
+        rows.push({ repuesto: entry.repuesto, modelo: m.modelo, pn: m.pn || '', usos: m.usos || 1 });
+      }
+    }
+
+    // Filtrar por repuesto seleccionado (si hay)
+    if (repuestoFiltro) rows = rows.filter(r => r.repuesto === repuestoFiltro);
+
+    // Filtrar por texto: modelo, pn, repuesto
+    if (q) rows = rows.filter(r =>
+      r.modelo.toLowerCase().includes(q) ||
+      r.pn.toLowerCase().includes(q) ||
+      r.repuesto.toLowerCase().includes(q)
+    );
+
+    // Ordenar por modelo más similar al actual primero
+    if (modelo) {
+      const modeloNorm = modelo.toLowerCase().replace(/[^a-z0-9]/g, '');
+      rows.sort((a, b) => {
+        const aN = a.modelo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const bN = b.modelo.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const aM = aN.includes(modeloNorm) || modeloNorm.includes(aN) ? 0 : 1;
+        const bM = bN.includes(modeloNorm) || modeloNorm.includes(bN) ? 0 : 1;
+        return aM - bM || b.usos - a.usos;
+      });
+    }
+
+    const modeloEsc = (modelo || '').replace(/'/g, "\\'");
+    panelEl.innerHTML = `
+      <div style="margin-top:4px;background:var(--bg-card);border:1px solid var(--accent);border-radius:6px;padding:8px;font-size:0.75rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:420px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <input type="text" placeholder="🔍 Buscar modelo, repuesto o PN…"
+            value="${textoBusqueda}"
+            oninput="_sopFiltrarBuscador('${regId}','${modeloEsc}','${repuestoFiltro.replace(/'/g,"\\'")}',this.value)"
+            style="flex:1;font-size:0.73rem;padding:3px 6px;height:24px;border:1px solid var(--border);border-radius:4px;background:var(--bg-hover);color:var(--text)">
+          <button onclick="document.getElementById('sop-search-${regId}').style.display='none'"
+            style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:0.9rem;padding:0 2px">✕</button>
+        </div>
+        ${!rows.length ? `<div style="color:var(--text-muted);text-align:center;padding:8px 0">Sin resultados en la base</div>` :
+          `<div style="max-height:160px;overflow-y:auto">
+            ${rows.slice(0, 30).map(r => `
+              <div onclick="_sopSeleccionarDeBuscador('${regId}','${r.pn.replace(/'/g,"\\'")}','${r.repuesto.replace(/'/g,"\\'")}','${r.modelo.replace(/'/g,"\\'")}',this)"
+                style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:4px;cursor:pointer;transition:background 0.1s"
+                onmouseover="this.style.background='var(--bg-hover)'"
+                onmouseout="this.style.background='transparent'">
+                <span style="color:var(--text-muted);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.repuesto}</span>
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-secondary)">${r.modelo}</span>
+                <code style="background:rgba(99,102,241,0.1);padding:1px 6px;border-radius:3px;font-size:0.7rem;white-space:nowrap;flex-shrink:0">${r.pn || '<span style="color:var(--text-muted)">sin PN</span>'}</code>
+                <span style="color:var(--text-muted);font-size:0.65rem;flex-shrink:0">${r.usos}x</span>
+              </div>`).join('')}
+          </div>`
+        }
+        <div style="margin-top:6px;border-top:1px solid var(--border);padding-top:5px;font-size:0.68rem;color:var(--text-muted)">
+          ${rows.length} resultado(s) · Clic en una fila para usar ese PN
+        </div>
+      </div>`;
+  }
+
+  window._sopFiltrarBuscador = (regId, modelo, repuesto, texto) => {
+    const panelEl = document.getElementById('sop-search-' + regId);
+    if (!panelEl) return;
+    _sopRenderBuscador(panelEl, regId, modelo, repuesto, texto);
+  };
+
+  window._sopSeleccionarDeBuscador = (regId, pn, repuesto, modelo, rowEl) => {
+    // Rellenar el select de repuesto si coincide
+    const selRepuesto = document.getElementById('sop-rep-' + regId);
+    if (selRepuesto && repuesto) {
+      const opt = [...selRepuesto.options].find(o => o.value === repuesto);
+      if (opt) { selRepuesto.value = repuesto; _saveStickyRepuesto(repuesto); }
+    }
+    // Rellenar el PN
+    const pnEl = document.getElementById('sop-pn-' + regId);
+    if (pnEl) {
+      pnEl.value = pn;
+      pnEl.style.borderColor = 'var(--success)';
+      setTimeout(() => { pnEl.style.borderColor = ''; }, 1500);
+      _saveStickyPN(pn);
+    }
+    // Cerrar el buscador
+    const panelEl = document.getElementById('sop-search-' + regId);
+    if (panelEl) panelEl.style.display = 'none';
+    // Feedback visual
+    if (rowEl) { rowEl.style.background = 'rgba(34,197,94,0.1)'; }
+    Toast.success(`🔍 Seleccionado: ${repuesto}${pn ? ' · PN: ' + pn : ''}`, { duration: 1800 });
+  };
+
+
 
   window._sopAutocompletarPN = async (regId, modelo) => {
     if (!window.ModoRapido?.buscarPN) return;
