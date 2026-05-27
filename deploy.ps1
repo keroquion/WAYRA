@@ -23,7 +23,8 @@ Write-Host "✅ version.json actualizado → v$version" -ForegroundColor Green
 
 # Git: stage, commit, push
 git add .
-git commit -m "deploy: v$version — $mensaje"
+$commitMsg = "deploy: v$version - $mensaje"
+git commit -m $commitMsg
 git push origin main
 
 Write-Host ""
