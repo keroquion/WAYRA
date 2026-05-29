@@ -948,6 +948,7 @@ const ReportesView = (() => {
       </div>
       <div class="header">
         <h1>🛒 ORDEN DE COMPRA DE REPUESTOS</h1>
+${(()=>{
           const loteObj = lotes.find(l=>l.id===loteId) || lotes.find(l=>l.activo) || lotes[0];
           const loteFecha = loteObj?.fechaCreacion ? new Date(loteObj.fechaCreacion).toLocaleDateString('es-PE') : '—';
           const loteTecnico = loteObj?.tecnico || '';
