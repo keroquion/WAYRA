@@ -928,10 +928,14 @@ const ReportesView = (() => {
         tr:nth-child(even) td { background:#f5f5ff; }
         .empty-cell { min-width:90px; }
         .checkbox-cell { text-align:center; font-size:14px; }
-        .no-print { display:block; }
         @media print {
           .no-print { display:none !important; }
-          body { padding:10px; }
+          @page { margin: 0; }
+          body { padding: 15mm; }
+          .print-footer { position: fixed; bottom: 10mm; left: 15mm; font-size: 11px; font-weight: bold; color: #555; }
+        }
+        @media screen {
+          .print-footer { display: none; }
         }
       </style>
     </head><body>
@@ -944,11 +948,10 @@ const ReportesView = (() => {
       </div>
       <div class="header">
         <h1>🛒 ORDEN DE COMPRA DE REPUESTOS</h1>
-${(()=>{
           const loteObj = lotes.find(l=>l.id===loteId) || lotes.find(l=>l.activo) || lotes[0];
           const loteFecha = loteObj?.fechaCreacion ? new Date(loteObj.fechaCreacion).toLocaleDateString('es-PE') : '—';
-          const loteTecnico = loteObj?.tecnico || '—';
-          return `<p><strong>${empresa}</strong> · Lote: <strong>${loteTitulo}</strong> · Fecha creación lote: <strong>${loteFecha}</strong> · Técnico: <strong>${loteTecnico}</strong></p>
+          const loteTecnico = loteObj?.tecnico || '';
+          return `<p><strong>${empresa}</strong> · Lote: <strong>${loteTitulo}</strong> · Fecha creación lote: <strong>${loteFecha}</strong> · Técnico: <strong contenteditable="true" style="padding: 2px 8px; border-bottom: 1px dashed #1a1aff; min-width: 80px; display: inline-block; outline: none; background: #fffadc;">${loteTecnico}</strong> <span class="no-print" style="font-size:9px;color:#888;">(Clica para editar)</span></p>
         <p style="margin-top:3px;color:#777">Documento generado: ${new Date().toLocaleString('es-PE')}</p>`;
         })()}
       </div>
@@ -985,6 +988,9 @@ ${(()=>{
         </tbody>
       </table>
       <p style="margin-top:14px;font-size:10px;color:#888">Total repuestos: <strong>${filas.length}</strong></p>
+      
+      <!-- Footer estático personalizado para impresión -->
+      <div class="print-footer">Kevin R.</div>
     </body></html>`);
     win.document.close();
     Toast.success('Ventana de impresión abierta');
