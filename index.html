@@ -19,6 +19,8 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
   <!-- html2pdf.js para exportar PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- html5-qrcode para el escáner de cámara -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
 
@@ -65,6 +67,9 @@
     <a class="nav-item" id="nav-inventario" onclick="Views.go('inventario')">
       <span class="nav-icon">📦</span> Inventario Completo
     </a>
+    <a class="nav-item" id="nav-escaner" onclick="Views.go('escaner')">
+      <span class="nav-icon">📷</span> Búsqueda por Escáner
+    </a>
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-section-label">Herramientas</div>
@@ -91,6 +96,7 @@
     <div class="view" id="view-ingreso"></div>
     <div class="view" id="view-historial"></div>
     <div class="view" id="view-inventario"></div>
+    <div class="view" id="view-escaner"></div>
     <div class="view" id="view-reportes"></div>
     <div class="view" id="view-admin"></div>
   </main>
@@ -105,6 +111,9 @@
     </button>
     <button class="bottom-nav-item" data-view="inventario" onclick="Views.go('inventario')">
       <span class="bnav-icon">📦</span>Inventario
+    </button>
+    <button class="bottom-nav-item" data-view="escaner" onclick="Views.go('escaner')">
+      <span class="bnav-icon">📷</span>Escáner
     </button>
     <button class="bottom-nav-item" data-view="reportes" onclick="Views.go('reportes')">
       <span class="bnav-icon">📊</span>Reportes
@@ -170,7 +179,10 @@
 <script src="modulo-3-admin/perfil-config.js"></script>
 <script src="modulo-3-admin/admin.view.js"></script>
 
-<!-- 10. Bootstrap -->
+<!-- 10. Módulo 4 — Escáner -->
+<script src="modulo-4-escaner/escaner.view.js"></script>
+
+<!-- 11. Bootstrap -->
 <script src="core-config/app.js"></script>
 
 </body>

@@ -7,6 +7,7 @@ const Views = (() => {
     ingreso:     { el: 'view-ingreso',     render: () => IngresoView.render(),    nav: 'nav-ingreso'     },
     historial:   { el: 'view-historial',   render: () => HistorialView.render(),  nav: 'nav-historial'   },
     inventario:  { el: 'view-inventario',  render: () => InventarioView.render(), nav: 'nav-inventario'  },
+    escaner:     { el: 'view-escaner',     render: () => EscanerView.render(),    nav: 'nav-escaner'     },
     reportes:    { el: 'view-reportes',    render: () => ReportesView.render(),   nav: 'nav-reportes'    },
     admin:       { el: 'view-admin',       render: () => AdminView.render(),      nav: 'nav-admin'       },
   };
@@ -21,6 +22,9 @@ const Views = (() => {
     if (_current && _current !== viewName) {
       if (_current === 'ingreso' && window.IngresoView?.onLeave) {
         IngresoView.onLeave();
+      }
+      if (_current === 'escaner' && window.EscanerView?.onLeave) {
+        EscanerView.onLeave();
       }
     }
 
