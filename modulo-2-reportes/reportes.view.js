@@ -932,10 +932,6 @@ const ReportesView = (() => {
           .no-print { display:none !important; }
           @page { margin: 0; }
           body { padding: 15mm; }
-          .print-footer { position: fixed; bottom: 10mm; left: 15mm; font-size: 11px; font-weight: bold; color: #555; }
-        }
-        @media screen {
-          .print-footer { display: none; }
         }
       </style>
     </head><body>
@@ -989,9 +985,7 @@ ${(()=>{
         </tbody>
       </table>
       <p style="margin-top:14px;font-size:10px;color:#888">Total repuestos: <strong>${filas.length}</strong></p>
-      
-      <!-- Footer estático personalizado para impresión -->
-      <div class="print-footer">Kevin R.</div>
+
     </body></html>`);
     win.document.close();
     Toast.success('Ventana de impresión abierta');
