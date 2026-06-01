@@ -13,6 +13,10 @@ const HistorialView = (() => {
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" onclick="window.depurarLotesBugeados && window.depurarLotesBugeados()" title="Purga lotes que se quedan pegados o reaparecen" style="background:#ff9800;color:white;border:none">🔧 Depurar</button>
           <button class="btn btn-secondary btn-sm" onclick="LocalCache.exportBackup();Toast.success('Backup exportado')">💾 Backup</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px" title="Importar lote desde archivo JSON">
+            📥 Importar Lote
+            <input type="file" accept=".json" style="display:none" onchange="_histImportarLote(this)">
+          </label>
           <button class="btn btn-primary btn-sm" onclick="Views.go('ingreso')">➕ Nuevo Registro</button>
         </div>
       </div>
@@ -47,6 +51,7 @@ const HistorialView = (() => {
           <div style="display:flex;gap:5px;align-items:center">
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();ImportExport.exportLote(window._histLotes?.find(l=>l.id==='${lote.id}'),'csv')">CSV</button>
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();ImportExport.exportLote(window._histLotes?.find(l=>l.id==='${lote.id}'),'xlsx')">Excel</button>
+            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();LotePortable.exportar('${lote.id}')" title="Descargar lote completo como JSON portable">📦 JSON</button>
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();_histEditar('${lote.id}')" title="Editar lote">✏️</button>
             ${!lote.activo?`<button class="btn btn-sm btn-success" style="background:var(--success);border:none;color:#fff" onclick="event.stopPropagation();_histContinuar('${lote.id}')" title="Continuar trabajando en este lote">▶️ Continuar</button>`:''}
             ${!lote.activo?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();_histEliminar('${lote.id}')">🗑️</button>`:''}
@@ -54,6 +59,7 @@ const HistorialView = (() => {
           </div>
         </div>
         <div id="hist-body-${lote.id}" style="display:${lote.activo?'block':'none'}">
+          ${lote._importado ? `<div style="font-size:0.72rem;padding:6px 10px;margin:8px 0 0;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:6px;color:var(--text-secondary)">📥 Importado de: <strong>${DOM.esc(lote._importadoDesde?.empresa || '?')}</strong> · ${Formatters.fechaCorta(lote._importadoDesde?.fechaExportacion)} · Lote original: ${DOM.esc(lote._importadoDesde?.idOriginal || '?')}</div>` : ''}
           ${eq.length?`
             <div style="overflow-x:auto;margin-top:12px;border-radius:var(--radius-sm);border:1px solid var(--border)">
               <table class="data-table">
@@ -142,10 +148,21 @@ const HistorialView = (() => {
     const lote = await LocalCache.continuarLote(id);
     if (lote) {
       Toast.success(`Trabajando ahora en: ${lote.titulo}`);
-      // Ir a la vista de ingreso
       Views.go('ingreso');
     } else {
       Toast.error('No se pudo reactivar el lote');
+    }
+  };
+
+  window._histImportarLote = async (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    input.value = '';
+    try {
+      const result = await LotePortable.importar(file);
+      HistorialView.render();
+    } catch (err) {
+      Toast.error('Error al importar: ' + err.message);
     }
   };
 

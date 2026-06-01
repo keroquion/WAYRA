@@ -1,125 +1,128 @@
 /**
- * modulo-4-escaner/escaner.view.js
- * Módulo de escáner móvil para consultar información del equipo o buscar por serie.
+ * modulo-4-escaner/escaner.view.js — Inventario Pro v3
+ * Módulo de escáner para consultar información completa del equipo.
+ *
+ * v3 MEJORAS:
+ *   - Reporte de cobertura: Garantía (6 meses) + Soporte Técnico (3 años) desde FEC_COMPRA
+ *   - Documento de Compra (DOC_COMPRA) visible en resultados
+ *   - Specs ampliados: Procesador, RAM, HD/SSD, Pantalla, Pulgadas
+ *   - Historial en lotes: en qué lotes aparece este equipo
+ *   - Fotos del equipo (si existen en algún lote)
+ *   - Botones de acción: Agregar a Lote Activo, Imprimir Ficha
  */
 
 const EscanerView = (() => {
   let _html5QrcodeScanner = null;
-  
+
   async function render() {
     const el = document.getElementById('view-escaner');
     if (!el) return;
-    
+
     el.innerHTML = `
       <div class="page-header">
         <div>
           <div class="page-title">📷 Búsqueda por Escáner</div>
-          <div class="page-subtitle">Escanea un código de barras o busca manualmente para ver detalles del equipo</div>
+          <div class="page-subtitle">Escanea un código de barras o busca manualmente para ver reporte completo del equipo</div>
         </div>
       </div>
-      
-      <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        
+
+      <div style="max-width:700px;margin:0 auto;padding:20px">
+
         <!-- Búsqueda Manual -->
-        <div class="card" style="padding: 15px; margin-bottom: 20px;">
+        <div class="card" style="padding:15px;margin-bottom:20px">
           <label class="form-label">Buscar por Serie o Código</label>
-          <div style="display:flex; gap:10px;">
-            <input type="text" id="escaner-input" class="form-control" placeholder="Ej: ABC12345..." onkeydown="if(event.key==='Enter') EscanerView.buscar(this.value)">
-            <button class="btn btn-primary" onclick="EscanerView.buscar(document.getElementById('escaner-input').value)">🔍 Buscar</button>
+          <div style="display:flex;gap:10px">
+            <input type="text" id="escaner-input" class="form-control"
+              placeholder="Ej: ABC12345..."
+              onkeydown="if(event.key==='Enter') EscanerView.buscar(this.value)"
+              style="font-size:1.05rem">
+            <button class="btn btn-primary" onclick="EscanerView.buscar(document.getElementById('escaner-input').value)"
+              style="white-space:nowrap;padding:8px 20px">
+              🔍 Buscar
+            </button>
           </div>
         </div>
-        
+
         <!-- Botón de Cámara -->
-        <div style="text-align:center; margin-bottom: 20px;">
-          <button class="btn btn-secondary" id="btn-toggle-camera" onclick="EscanerView.toggleCamera()" style="width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 12px;">
+        <div style="text-align:center;margin-bottom:20px">
+          <button class="btn btn-secondary" id="btn-toggle-camera"
+            onclick="EscanerView.toggleCamera()"
+            style="width:100%;padding:15px;font-size:1.1rem;border-radius:12px">
             📸 Activar Cámara para Escanear
           </button>
         </div>
-        
+
         <!-- Contenedor del Escáner -->
-        <div id="reader-container" style="display:none; margin-bottom: 20px;">
-          <div id="reader" style="width:100%; border-radius: 8px; overflow: hidden; border: 2px solid var(--border);"></div>
-          <p style="text-align:center; font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">Apunta la cámara al código de barras o QR</p>
+        <div id="reader-container" style="display:none;margin-bottom:20px">
+          <div id="reader" style="width:100%;border-radius:8px;overflow:hidden;border:2px solid var(--border)"></div>
+          <p style="text-align:center;font-size:0.85rem;color:var(--text-muted);margin-top:8px">
+            Apunta la cámara al código de barras o QR
+          </p>
         </div>
-        
+
         <!-- Resultados -->
         <div id="escaner-resultado">
-          <div style="text-align:center; padding: 40px; color: var(--text-muted);">
-            <div style="font-size: 3rem; margin-bottom: 10px;">🔎</div>
-            Ingresa un código o activa la cámara para buscar un equipo en la base de datos.
-          </div>
+          ${DOM.emptyState('🔎', 'Busca un equipo', 'Ingresa un código o activa la cámara para buscar un equipo en la base de datos.')}
         </div>
-        
       </div>
     `;
-
-    // Si había un valor anterior en el input, podemos mantenerlo, pero por ahora lo dejamos vacío.
   }
+
+  // ── Cámara ──────────────────────────────────────────────────────────
 
   function toggleCamera() {
     const readerContainer = document.getElementById('reader-container');
     const btn = document.getElementById('btn-toggle-camera');
-    
+
     if (readerContainer.style.display === 'none') {
       readerContainer.style.display = 'block';
       btn.innerHTML = '🛑 Detener Cámara';
       btn.classList.replace('btn-secondary', 'btn-danger');
-      iniciarEscaner();
+      _iniciarEscaner();
     } else {
       readerContainer.style.display = 'none';
       btn.innerHTML = '📸 Activar Cámara para Escanear';
       btn.classList.replace('btn-danger', 'btn-secondary');
-      detenerEscaner();
+      _detenerEscaner();
     }
   }
 
-  function iniciarEscaner() {
+  function _iniciarEscaner() {
     if (typeof Html5Qrcode === 'undefined') {
       Toast.error('La librería del escáner no está cargada. Verifica tu conexión a internet.');
       toggleCamera();
       return;
     }
-    
-    _html5QrcodeScanner = new Html5Qrcode("reader");
-    const config = {
-      fps: 10,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
-    };
 
+    _html5QrcodeScanner = new Html5Qrcode('reader');
     _html5QrcodeScanner.start(
-      { facingMode: "environment" }, 
-      config,
-      (decodedText, decodedResult) => {
-        // Éxito al escanear
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+      (decodedText) => {
         document.getElementById('escaner-input').value = decodedText;
         if (navigator.vibrate) navigator.vibrate(200);
         Toast.success('Código detectado: ' + decodedText);
         buscar(decodedText);
-        
-        // Detener cámara automáticamente después de escanear
-        toggleCamera(); 
+        toggleCamera();
       },
-      (errorMessage) => {
-        // Ignorar errores continuos de escaneo ya que se disparan en cada frame sin éxito
-      }
+      () => { /* ignore per-frame errors */ }
     ).catch((err) => {
-      Toast.error("Error al iniciar cámara. Comprueba los permisos.");
+      Toast.error('Error al iniciar cámara. Comprueba los permisos.');
       console.error(err);
       toggleCamera();
     });
   }
 
-  function detenerEscaner() {
+  function _detenerEscaner() {
     if (_html5QrcodeScanner) {
       _html5QrcodeScanner.stop().then(() => {
         _html5QrcodeScanner.clear();
         _html5QrcodeScanner = null;
-      }).catch(err => {
-        console.error("Error al detener escáner", err);
-      });
+      }).catch(err => console.error('Error al detener escáner', err));
     }
   }
+
+  // ── Búsqueda ────────────────────────────────────────────────────────
 
   async function buscar(query) {
     query = query.trim();
@@ -128,103 +131,301 @@ const EscanerView = (() => {
       document.getElementById('escaner-input').focus();
       return;
     }
-    
+
     const resEl = document.getElementById('escaner-resultado');
-    resEl.innerHTML = `<div style="text-align:center; padding: 40px;"><span class="spinner"></span><div style="margin-top:10px; color:var(--text-muted)">Buscando equipo en la base de datos...</div></div>`;
-    
+    resEl.innerHTML = `<div style="text-align:center;padding:40px"><span class="spinner"></span><div style="margin-top:10px;color:var(--text-muted)">Buscando equipo en la base de datos…</div></div>`;
+
     try {
-      // Buscar en la base local (o remota si no está en caché) a través de SheetsAPI
       const data = await SheetsAPI.fetchAll();
       const qLower = query.toLowerCase();
-      
-      // Buscar coincidencias exactas o parciales en CODIGO, SERIE, etc
-      const resultados = data.filter(r => {
-        return (r.CODIGO && r.CODIGO.toLowerCase().includes(qLower)) ||
-               (r.SERIE && r.SERIE.toLowerCase().includes(qLower));
-      });
-      
-      mostrarResultados(resultados, query);
+
+      const resultados = data.filter(r =>
+        (r.CODIGO && r.CODIGO.toLowerCase().includes(qLower)) ||
+        (r.SERIE  && r.SERIE.toLowerCase().includes(qLower))
+      );
+
+      await _mostrarResultados(resultados, query);
     } catch (err) {
       resEl.innerHTML = `
-        <div class="card" style="padding:20px; text-align:center; color:var(--danger); border-left: 4px solid var(--danger);">
-          <div style="font-size:2rem; margin-bottom:10px;">⚠️</div>
-          Error al buscar: ${err.message}
+        <div class="card" style="padding:20px;text-align:center;color:var(--danger);border-left:4px solid var(--danger)">
+          <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+          Error al buscar: ${DOM.esc(err.message)}
         </div>`;
     }
   }
-  
-  function mostrarResultados(resultados, query) {
+
+  // ── Resultados ──────────────────────────────────────────────────────
+
+  async function _mostrarResultados(resultados, query) {
     const resEl = document.getElementById('escaner-resultado');
-    
+
     if (!resultados || resultados.length === 0) {
       resEl.innerHTML = `
-        <div class="card" style="padding:30px; text-align:center; color:var(--text-muted);">
-          <div style="font-size:2.5rem; margin-bottom:10px;">📭</div>
-          <div style="font-size: 1.1rem; font-weight: 500; color: var(--text-color);">No se encontró ningún equipo</div>
-          <div style="margin-top: 5px;">No hay coincidencias para: <strong>${query}</strong></div>
-          <button class="btn btn-secondary btn-sm" style="margin-top: 15px;" onclick="document.getElementById('escaner-input').value=''; document.getElementById('escaner-input').focus();">Nueva búsqueda</button>
+        <div class="card" style="padding:30px;text-align:center;color:var(--text-muted)">
+          ${DOM.emptyState('📭', 'No se encontró ningún equipo', `No hay coincidencias para: <strong>${DOM.esc(query)}</strong>`)}
+          <button class="btn btn-secondary btn-sm" style="margin-top:15px"
+            onclick="document.getElementById('escaner-input').value='';document.getElementById('escaner-input').focus()">
+            Nueva búsqueda
+          </button>
         </div>`;
       return;
     }
-    
-    let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
-                  <h4 style="margin:0;">Resultados Encontrados: <span style="background:var(--accent); color:white; padding:2px 8px; border-radius:12px; font-size:0.9rem;">${resultados.length}</span></h4>
-                </div>
-                <div style="display:flex; flex-direction:column; gap:15px;">`;
-    
-    resultados.forEach(r => {
-      // Extraemos la fecha si existe (usando un campo común como FECHA o FECHA_INGRESO)
-      const fechaInfo = r.FECHA || r.FECHA_INGRESO || r.FECHA_COMPRA;
-      
-      html += `
-        <div class="card" style="padding:15px; border-left: 4px solid var(--accent); position: relative;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-            <div>
-              <strong style="font-size:1.2rem; display:block;">${Formatters.safe(r.CODIGO)}</strong>
-              <span style="font-size:0.85rem; color:var(--text-muted);">${Formatters.safe(r.TIP_EQUIP)} • ${Formatters.safe(r.MARCA)}</span>
-            </div>
-            ${Formatters.estadoBadge(r.ESTADO)}
-          </div>
-          
-          <div style="display:grid; grid-template-columns: 1fr; gap:8px; font-size:0.95rem; background: var(--bg-hover); padding: 10px; border-radius: 6px;">
-            <div style="display:flex; justify-content:space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px;">
-              <span style="color:var(--text-muted)">N° Serie:</span> 
-              <strong style="font-family: monospace; font-size:1.05rem;">${Formatters.safe(r.SERIE) || '-'}</strong>
-            </div>
-            <div style="display:flex; justify-content:space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px;">
-              <span style="color:var(--text-muted)">Modelo:</span> 
-              <span>${Formatters.safe(r.MODELO) || '-'}</span>
-            </div>
-            <div style="display:flex; justify-content:space-between; border-bottom: 1px solid var(--border); padding-bottom: 4px;">
-              <span style="color:var(--text-muted)">Sucursal:</span> 
-              <span>${Formatters.safe(r.SUCURSAL) || '-'}</span>
-            </div>
-            ${fechaInfo ? `
-            <div style="display:flex; justify-content:space-between;">
-              <span style="color:var(--text-muted)">Fecha:</span> 
-              <span>${Formatters.safe(fechaInfo)}</span>
-            </div>` : ''}
-          </div>
-          
-          ${(r.DETALLES || r.FALLA || r.OBSERVACIONES) ? `
-          <div style="margin-top:12px; font-size:0.9rem; padding:10px; border: 1px dashed var(--border); border-radius:6px;">
-            ${r.DETALLES ? `<div style="margin-bottom:4px;"><strong>Detalles:</strong> ${Formatters.safe(r.DETALLES)}</div>` : ''}
-            ${r.FALLA ? `<div style="margin-bottom:4px;"><strong style="color:var(--warning);">Falla:</strong> ${Formatters.safe(r.FALLA)}</div>` : ''}
-            ${r.OBSERVACIONES ? `<div><strong>Obs:</strong> ${Formatters.safe(r.OBSERVACIONES)}</div>` : ''}
-          </div>` : ''}
-        </div>
-      `;
-    });
-    
+
+    let html = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+        <h4 style="margin:0">Resultados Encontrados:
+          <span style="background:var(--accent);color:white;padding:2px 8px;border-radius:12px;font-size:0.9rem">${resultados.length}</span>
+        </h4>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">`;
+
+    for (const r of resultados) {
+      html += await _renderEquipoCard(r, query);
+    }
+
     html += `</div>`;
     resEl.innerHTML = html;
   }
 
-  function onLeave() {
-    detenerEscaner();
+  // ── Ficha de equipo individual ───────────────────────────────────────
+
+  async function _renderEquipoCard(r, query) {
+    const safe = Formatters.safe;
+    const esc = DOM.esc;
+
+    // Calcular cobertura desde FEC_COMPRA
+    const cobertura = GarantiaCalculator.calcular(r.FEC_COMPRA);
+
+    // Buscar este equipo en los lotes locales
+    const codigoOSerie = r.CODIGO || r.SERIE || '';
+    const enLotes = await LotesService.findEnLotesPorCodigo(codigoOSerie);
+
+    // Recoger fotos de todos los lotes donde aparece
+    const todasFotos = [];
+    for (const { equipo } of enLotes) {
+      if (equipo._fotos?.length) {
+        todasFotos.push(...equipo._fotos);
+      }
+    }
+
+    // Determinar color del borde según cobertura
+    const borderColor = cobertura.status === 'CON_GARANTIA' ? 'var(--success)'
+      : cobertura.status === 'SOLO_SOPORTE' ? 'var(--warning)'
+      : cobertura.status === 'SIN_COBERTURA' ? 'var(--danger)' : 'var(--accent)';
+
+    return `
+      <div class="card" style="padding:0;border-left:4px solid ${borderColor};overflow:hidden">
+
+        <!-- Header -->
+        <div style="padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;background:var(--bg-hover)">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <strong style="font-size:1.3rem;font-family:monospace;letter-spacing:1px">${safe(r.CODIGO)}</strong>
+              ${Formatters.estadoBadge(r.ESTADO)}
+            </div>
+            <div style="font-size:0.9rem;color:var(--text-secondary)">
+              ${safe(r.MARCA)} <strong>${safe(r.MODELO)}</strong> · ${safe(r.TIP_EQUIP)}
+            </div>
+            ${r.SERIE ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">Serie: <code style="background:var(--bg-card);padding:1px 6px;border-radius:3px;font-size:0.85rem">${esc(r.SERIE)}</code></div>` : ''}
+          </div>
+        </div>
+
+        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+
+          <!-- Specs -->
+          <div>
+            ${DOM.sectionTitle('⚙️ Especificaciones')}
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;background:var(--bg-hover);padding:10px;border-radius:8px;font-size:0.88rem">
+              ${_specRow('Procesador', r.PROCESADOR)}
+              ${_specRow('RAM', r.RAM)}
+              ${_specRow('HD/SSD', r.HD_SSD)}
+              ${_specRow('Pantalla', r.PANTALLA)}
+              ${_specRow('Pulgadas', r.PULGADAS)}
+              ${_specRow('Sucursal', r.SUCURSAL)}
+              ${r.CASE ? _specRow('Case', r.CASE) : ''}
+              ${r.RESOLUCION ? _specRow('Resolución', r.RESOLUCION) : ''}
+            </div>
+          </div>
+
+          <!-- Cobertura Garantía / Soporte -->
+          <div>
+            ${DOM.sectionTitle('🛡️ Cobertura')}
+            ${Formatters.coberturaSection(cobertura)}
+          </div>
+
+          <!-- Documento de Compra -->
+          ${r.DOC_COMPRA ? `
+          <div>
+            ${DOM.sectionTitle('📄 Documento de Compra')}
+            <div style="background:var(--bg-hover);padding:10px 14px;border-radius:8px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:1.3rem">🧾</span>
+              <div>
+                ${_isUrl(r.DOC_COMPRA)
+                  ? `<a href="${esc(r.DOC_COMPRA)}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;font-size:0.9rem">${esc(r.DOC_COMPRA)}</a>`
+                  : `<strong style="font-size:0.95rem">${esc(r.DOC_COMPRA)}</strong>`}
+                ${r.FEC_COMPRA ? `<div style="font-size:0.75rem;color:var(--text-muted)">Fecha de compra: ${Formatters.fechaCorta(r.FEC_COMPRA)}</div>` : ''}
+              </div>
+            </div>
+          </div>` : ''}
+
+          <!-- Venta (si existe) -->
+          ${r.DOC_VENTA || r.FEC_VENTA ? `
+          <div>
+            ${DOM.sectionTitle('💰 Datos de Venta')}
+            <div style="background:var(--bg-hover);padding:10px 14px;border-radius:8px;font-size:0.88rem">
+              ${r.DOC_VENTA ? `<div>Documento: <strong>${esc(r.DOC_VENTA)}</strong></div>` : ''}
+              ${r.FEC_VENTA ? `<div>Fecha: ${Formatters.fechaCorta(r.FEC_VENTA)}</div>` : ''}
+            </div>
+          </div>` : ''}
+
+          <!-- Observaciones -->
+          ${r.OBSERVACION ? `
+          <div>
+            ${DOM.sectionTitle('📝 Observaciones')}
+            <div style="padding:10px 14px;border:1px dashed var(--border);border-radius:8px;font-size:0.88rem;color:var(--text-secondary)">
+              ${esc(r.OBSERVACION)}
+            </div>
+          </div>` : ''}
+
+          <!-- Fotos del equipo (de lotes locales) -->
+          ${todasFotos.length > 0 ? `
+          <div>
+            ${DOM.sectionTitle('📷 Fotos (' + todasFotos.length + ')')}
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              ${todasFotos.slice(0, 6).map(f => {
+                const src = f.thumbUrl || f.url || f.preview || '';
+                return `<img src="${src}" referrerpolicy="no-referrer" crossorigin="anonymous"
+                  style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer"
+                  onerror="this.style.display='none'"
+                  title="${esc(f.nombre || 'foto')}">`;
+              }).join('')}
+              ${todasFotos.length > 6 ? `<div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:var(--bg-hover);border-radius:6px;font-size:0.85rem;font-weight:700;color:var(--text-muted)">+${todasFotos.length - 6}</div>` : ''}
+            </div>
+          </div>` : ''}
+
+          <!-- Historial en lotes -->
+          ${enLotes.length > 0 ? `
+          <div>
+            ${DOM.sectionTitle('📦 Historial en Lotes (' + enLotes.length + ')')}
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${enLotes.map(({ lote, equipo }) => {
+                const estadoSop = equipo._estadoSoporte;
+                const estadoGar = equipo._estadoGarantia;
+                const badges = [];
+                if (estadoSop) badges.push(`<span style="font-size:0.65rem">🔧 ${estadoSop}</span>`);
+                if (estadoGar) badges.push(`<span style="font-size:0.65rem">🛡️ ${estadoGar}</span>`);
+                return `<div style="background:var(--bg-hover);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:0.8rem">
+                  <strong>${esc(lote.titulo || lote.id)}</strong>
+                  ${lote.fechaCreacion ? `<span style="color:var(--text-muted);margin-left:6px;font-size:0.72rem">${Formatters.fechaCorta(lote.fechaCreacion)}</span>` : ''}
+                  ${badges.length ? `<div style="margin-top:2px">${badges.join(' ')}</div>` : ''}
+                </div>`;
+              }).join('')}
+            </div>
+          </div>` : ''}
+
+          <!-- Acciones -->
+          <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)">
+            <button class="btn btn-primary btn-sm" onclick="EscanerView.agregarALoteActivo('${esc(codigoOSerie)}')" style="gap:4px">
+              ➕ Agregar a Lote Activo
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="EscanerView.imprimirFicha('${esc(codigoOSerie)}')" style="gap:4px">
+              🖨️ Imprimir Ficha
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('escaner-input').value='';document.getElementById('escaner-input').focus()">
+              🔄 Nueva búsqueda
+            </button>
+          </div>
+        </div>
+      </div>`;
   }
 
-  return { render, toggleCamera, buscar, onLeave };
+  // ── Helpers ──────────────────────────────────────────────────────────
+
+  function _specRow(label, value) {
+    if (!value || value === '.' || value === '*') return '';
+    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text-muted)">${DOM.esc(label)}</span>
+      <strong>${DOM.esc(value)}</strong>
+    </div>`;
+  }
+
+  function _isUrl(str) {
+    if (!str) return false;
+    return /^https?:\/\//i.test(str.trim());
+  }
+
+  // ── Acciones ────────────────────────────────────────────────────────
+
+  async function agregarALoteActivo(codigoOSerie) {
+    const lote = await LotesService.getLoteActivo();
+    if (!lote) {
+      Toast.warning('No hay un lote activo. Crea o abre un lote primero.');
+      return;
+    }
+
+    // Verificar si ya está en el lote
+    const yaExiste = lote.equipos?.some(e =>
+      (e.CODIGO || '').toUpperCase() === codigoOSerie.toUpperCase() ||
+      (e.SERIE  || '').toUpperCase() === codigoOSerie.toUpperCase()
+    );
+    if (yaExiste) {
+      Toast.info('Este equipo ya está en el lote activo.');
+      return;
+    }
+
+    // Buscar datos completos del equipo
+    const equipo = await SheetsAPI.findByCodigoOSerie(codigoOSerie);
+    if (!equipo) {
+      Toast.error('No se encontró el equipo en la base de datos.');
+      return;
+    }
+
+    // Agregar al lote activo
+    if (!lote.equipos) lote.equipos = [];
+    equipo._registroId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    equipo._addedAt = new Date().toISOString();
+    lote.equipos.push(equipo);
+    await LocalCache.updateLote(lote);
+
+    EventBus.emit('equipo:added', { equipo, lote });
+    Toast.success(`✅ ${codigoOSerie} agregado a "${lote.titulo || lote.id}"`);
+  }
+
+  function imprimirFicha(codigoOSerie) {
+    // Obtener el card del resultado y usar su HTML para imprimir
+    const resEl = document.getElementById('escaner-resultado');
+    if (!resEl) return;
+
+    const w = window.open('', '_blank', 'width=800,height=600');
+    if (!w) { Toast.error('No se pudo abrir ventana de impresión'); return; }
+
+    w.document.write(`<!DOCTYPE html><html><head>
+      <title>Ficha ${codigoOSerie}</title>
+      <style>
+        * { box-sizing:border-box; margin:0; padding:0; }
+        body { font-family:'Segoe UI','Roboto',sans-serif; padding:20px; color:#333; }
+        .card { border:1px solid #ddd; border-radius:8px; margin-bottom:15px; }
+        .badge { padding:2px 8px; border-radius:10px; font-size:0.75rem; font-weight:700; }
+        strong { font-weight:600; }
+        code { background:#f1f1f1; padding:1px 4px; border-radius:3px; }
+        @media print { body { padding:10px; } }
+      </style>
+    </head><body>
+      <h2 style="margin-bottom:15px">📋 Ficha de Equipo — ${codigoOSerie}</h2>
+      ${resEl.innerHTML}
+      <div style="margin-top:20px;text-align:center;font-size:0.75rem;color:#999">
+        Generado por ${APP_CONFIG.appName} · ${new Date().toLocaleDateString('es-PE')}
+      </div>
+    </body></html>`);
+    w.document.close();
+    setTimeout(() => w.print(), 400);
+  }
+
+  function onLeave() {
+    _detenerEscaner();
+  }
+
+  return { render, toggleCamera, buscar, agregarALoteActivo, imprimirFicha, onLeave };
 })();
 
 window.EscanerView = EscanerView;

@@ -1,26 +1,12 @@
 /**
  * modulo-1-ingreso/modo-rapido.js
- * Panel sticky para ingreso masivo + Base de datos de Repuestos/PN.
- *
- * ARQUITECTURA DE LA DB:
- *   Memory Map (O(1)) ←→ IndexedDB (offline) ←→ Sheets _RepuestosDB (compartida)
- *
- * Flujo:
- *   1. Al iniciar → carga Sheets → IDB → Memory Map
- *   2. Al guardar → Memory Map → IDB → Sheets (debounced 3s)
- *   3. Al buscar  → Memory Map (instantáneo, sin I/O)
- *   4. Fuzzy match → normaliza modelo para tolerar variaciones (HP, sin HP, espacios, etc.)
+ * Panel sticky para ingreso masivo.
+ * Delega la persistencia y búsqueda de Repuestos/PN a RepuestosDB.
  */
 
 const ModoRapido = (() => {
   const LS_KEY = 'modo-rapido-sticky-v1';
 
-  // ── Memory Map: key → entry (carga completa en RAM al iniciar) ────
-  let _memMap = new Map(); // key="repuesto|modelo_norm" → { pn, usos, modelos, repuesto }
-  let _syncTimer = null;
-  let _loaded = false;
-
-  // Estado sticky en memoria
   let _state = _loadState();
 
   function _loadState() {
@@ -38,180 +24,6 @@ const ModoRapido = (() => {
     try { localStorage.setItem(LS_KEY, JSON.stringify(_state)); } catch {}
   }
 
-  // ── Normalización de modelo (fuzzy match) ─────────────────────────
-  // "HP ProBook 640 G8" → "probook640g8"
-  // "PROBOOK 640G8"     → "probook640g8"  ← mismo resultado → match!
-  const _BRAND_PREFIXES = /\b(hp|dell|lenovo|asus|acer|toshiba|samsung|lg|msi|fujitsu|sony|panasonic|huawei|microsoft|apple|mac)\b/gi;
-
-  function _norm(str) {
-    return (str || '')
-      .toLowerCase()
-      .replace(_BRAND_PREFIXES, '')   // quitar marcas
-      .replace(/[^a-z0-9]/g, '')     // solo alfanumérico
-      .trim();
-  }
-
-  function _makeKey(repuesto, modelo) {
-    return (repuesto || '') + '|' + _norm(modelo);
-  }
-
-  // ── Cargar DB desde Sheets → IDB → Memory Map ────────────────────
-  async function loadFromRemote() {
-    if (!APP_CONFIG.appsScript.webAppUrl) return;
-    try {
-      const res = await AppsScriptBridge.loadRepuestosDB();
-      const entries = res.entries || [];
-      // Guardar en IDB y poblar Memory Map
-      for (const entry of entries) {
-        await LocalCache.put('repuestos_db', entry);
-        _memMap.set(entry.key, entry);
-      }
-      _loaded = true;
-      console.log(`[RepuestosDB] ✅ Cargados ${entries.length} entradas desde Sheets`);
-    } catch (e) {
-      console.warn('[RepuestosDB] Error cargando desde Sheets:', e.message);
-      // Fallback: cargar desde IDB local
-      await _loadFromIDB();
-    }
-  }
-
-  async function _loadFromIDB() {
-    try {
-      const todos = await LocalCache.getAll('repuestos_db');
-      for (const entry of todos) {
-        _memMap.set(entry.key, entry);
-      }
-      _loaded = true;
-      console.log(`[RepuestosDB] 📦 ${_memMap.size} entradas cargadas desde IDB local`);
-    } catch (e) {
-      console.warn('[RepuestosDB] Error cargando IDB:', e.message);
-    }
-  }
-
-  // ── Guardar PN (Memory Map + IDB + Sheets debounced) ─────────────
-  async function guardarPN(repuesto, modelo, pn) {
-    if (!repuesto || !modelo) return;
-    const key = _makeKey(repuesto, modelo);
-
-    // 1. Actualizar Memory Map
-    let entry = _memMap.get(key) || { key, repuesto, modelos: [], pn: '', updatedAt: '' };
-    const mIdx = entry.modelos.findIndex(m => _norm(m.modelo) === _norm(modelo));
-    if (mIdx >= 0) {
-      entry.modelos[mIdx].usos = (entry.modelos[mIdx].usos || 0) + 1;
-      if (pn) entry.modelos[mIdx].pn = pn;
-    } else {
-      entry.modelos.push({ modelo, pn: pn || '', usos: 1 });
-    }
-    if (pn) entry.pn = pn;
-    entry.updatedAt = new Date().toISOString();
-    _memMap.set(key, entry);
-
-    // 2. Guardar en IDB
-    try { await LocalCache.put('repuestos_db', entry); } catch {}
-
-    // 3. Sync a Sheets (debounced 3s para agrupar cambios rápidos)
-    _scheduleSyncToSheets();
-
-    console.log(`[RepuestosDB] 💾 ${repuesto} + ${modelo}${pn?' → PN: '+pn:' (sin PN)'}`);
-  }
-
-  // ── Buscar PN — Fuzzy (Memory Map, instantáneo) ───────────────────
-  // Busca primero por coincidencia exacta normalizada.
-  // Si no hay, busca por similitud (modelo normalizado contenido en la key).
-  function buscarPN(repuesto, modelo) {
-    if (!repuesto || !modelo) return null;
-    const keyExact = _makeKey(repuesto, modelo);
-    const modeloNorm = _norm(modelo);
-
-    // 1. Exacto
-    const exact = _memMap.get(keyExact);
-    if (exact?.pn) return exact.pn;
-
-    // 2. Fuzzy: buscar entradas del mismo repuesto con modelo similar
-    let bestPn = null;
-    let bestUsos = 0;
-    for (const [k, entry] of _memMap) {
-      if (entry.repuesto !== repuesto) continue;
-      // Verificar si el modelo normalizado está contenido o contiene el buscado
-      const entryNorm = k.split('|')[1] || '';
-      const isSimilar = entryNorm === modeloNorm ||
-        (entryNorm.length > 4 && modeloNorm.includes(entryNorm)) ||
-        (modeloNorm.length > 4 && entryNorm.includes(modeloNorm));
-      if (!isSimilar) continue;
-      // Tomar el modelo con más usos dentro de esta entry
-      for (const m of (entry.modelos || [])) {
-        if (m.pn && m.usos > bestUsos) { bestPn = m.pn; bestUsos = m.usos; }
-      }
-      if (!bestPn && entry.pn) bestPn = entry.pn;
-    }
-    return bestPn || null;
-  }
-
-  // ── Obtener todas las sugerencias de PN para un repuesto ──────────
-  function getSugerenciasPN(repuesto) {
-    if (!repuesto) return [];
-    const pns = new Set();
-    for (const [, entry] of _memMap) {
-      if (entry.repuesto !== repuesto) continue;
-      for (const m of (entry.modelos || [])) { if (m.pn) pns.add(m.pn); }
-    }
-    return [...pns];
-  }
-
-  // ── Sync a Sheets (debounced) ─────────────────────────────────────
-  function _scheduleSyncToSheets() {
-    if (!APP_CONFIG.appsScript.webAppUrl) return;
-    clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(async () => {
-      try {
-        const entries = [..._memMap.values()];
-        await AppsScriptBridge.saveRepuestosDB(entries);
-        console.log(`[RepuestosDB] ☁️ Sincronizados ${entries.length} entradas a Sheets`);
-      } catch (e) {
-        console.warn('[RepuestosDB] Error sync a Sheets:', e.message);
-      }
-    }, 3000);
-  }
-
-  // ── Obtener toda la DB (para admin view) ─────────────────────────
-  function getAll() {
-    return [..._memMap.values()].sort((a, b) =>
-      (a.repuesto + a.key).localeCompare(b.repuesto + b.key)
-    );
-  }
-
-  // ── Eliminar entrada ──────────────────────────────────────────────
-  async function eliminarEntrada(key, modeloToRemove) {
-    const entry = _memMap.get(key);
-    if (!entry) return;
-    if (modeloToRemove) {
-      entry.modelos = entry.modelos.filter(m => m.modelo !== modeloToRemove);
-    }
-    if (!modeloToRemove || entry.modelos.length === 0) {
-      _memMap.delete(key);
-      try { await LocalCache.del('repuestos_db', key); } catch {}
-    } else {
-      entry.pn = entry.modelos[0]?.pn || '';
-      _memMap.set(key, entry);
-      try { await LocalCache.put('repuestos_db', entry); } catch {}
-    }
-    _scheduleSyncToSheets();
-  }
-
-  // ── Editar PN de una entrada ──────────────────────────────────────
-  async function editarPN(key, modelo, nuevoPn) {
-    const entry = _memMap.get(key);
-    if (!entry) return;
-    const m = entry.modelos.find(m => m.modelo === modelo);
-    if (m) m.pn = nuevoPn;
-    entry.pn = nuevoPn;
-    entry.updatedAt = new Date().toISOString();
-    _memMap.set(key, entry);
-    try { await LocalCache.put('repuestos_db', entry); } catch {}
-    _scheduleSyncToSheets();
-  }
-
-  // ── Panel UI (sticky) ─────────────────────────────────────────────
   function renderPanel() {
     const tiposRepuesto  = APP_CONFIG.catalogos.tiposRepuesto || [];
     const estadosSoporte = APP_CONFIG.estadosSoporte || [];
@@ -227,7 +39,6 @@ const ModoRapido = (() => {
       transition:all 0.2s;
     ">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <!-- Modo toggle -->
         <div style="display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--border);flex-shrink:0">
           <button id="modo-btn-ninguno" onclick="ModoRapido.setModo('ninguno')"
             style="padding:5px 10px;font-size:0.72rem;font-weight:600;border:none;cursor:pointer;
@@ -243,7 +54,6 @@ const ModoRapido = (() => {
               color:${_state.modo==='garantia'?'#fff':'var(--text-muted)'}">🛡️ Garantía</button>
         </div>
 
-        <!-- Técnico -->
         <div style="display:flex;align-items:center;gap:4px;flex:0 1 170px;min-width:120px">
           <label style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;font-weight:600">👨‍🔧 Técnico</label>
           <input type="text" id="sticky-tecnico" class="form-control"
@@ -252,7 +62,6 @@ const ModoRapido = (() => {
             style="font-size:0.75rem;padding:4px 8px;height:28px">
         </div>
 
-        <!-- Repuesto (solo en modo soporte) -->
         <div id="sticky-repuesto-wrap" style="display:${_state.modo==='soporte'?'flex':'none'};align-items:center;gap:4px;flex:0 1 160px;min-width:120px">
           <label style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;font-weight:600">🔩 Repuesto</label>
           <select id="sticky-repuesto" class="form-control"
@@ -263,7 +72,6 @@ const ModoRapido = (() => {
           </select>
         </div>
 
-        <!-- PN / Código repuesto -->
         <div id="sticky-pn-wrap" style="display:${_state.modo==='soporte'?'flex':'none'};align-items:center;gap:4px;flex:0 1 200px;min-width:130px">
           <label style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;font-weight:600">🔢 PN</label>
           <input type="text" id="sticky-pn" class="form-control"
@@ -274,7 +82,6 @@ const ModoRapido = (() => {
           <datalist id="pn-suggestions-list"></datalist>
         </div>
 
-        <!-- Falla rápida -->
         <div id="sticky-falla-wrap" style="display:${_state.modo==='soporte'?'flex':'none'};align-items:center;gap:4px;flex:1;min-width:140px">
           <label style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;font-weight:600">⚠️ Falla</label>
           <input type="text" id="sticky-falla" class="form-control"
@@ -283,7 +90,6 @@ const ModoRapido = (() => {
             style="font-size:0.75rem;padding:4px 8px;height:28px">
         </div>
 
-        <!-- Estado soporte -->
         <div id="sticky-estado-wrap" style="display:${_state.modo==='soporte'?'flex':'none'};align-items:center;gap:4px;flex:0 1 160px;min-width:120px">
           <label style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;font-weight:600">📋 Estado</label>
           <select id="sticky-estado" class="form-control"
@@ -294,12 +100,10 @@ const ModoRapido = (() => {
           </select>
         </div>
 
-        <!-- Limpiar -->
         <button onclick="ModoRapido.limpiar()" title="Limpiar valores sticky"
           style="flex-shrink:0;padding:4px 8px;font-size:0.68rem;border:1px solid var(--border);border-radius:4px;background:none;cursor:pointer;color:var(--text-muted)">↺</button>
       </div>
 
-      <!-- Indicador modo activo -->
       ${_state.modo !== 'ninguno' ? `
       <div style="margin-top:6px;font-size:0.68rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${_state.modo==='soporte'?'#7c3aed':'#0891b2'};animation:pulse 2s infinite"></span>
@@ -312,7 +116,6 @@ const ModoRapido = (() => {
     </div>`;
   }
 
-  // ── Acciones panel ────────────────────────────────────────────────
   function setModo(modo) {
     _state.modo = modo;
     _saveState();
@@ -359,19 +162,16 @@ const ModoRapido = (() => {
     panel.style.border = `1px solid ${modoBorder[_state.modo]}`;
   }
 
-  // Rellena el <datalist> de sugerencias de PN para el repuesto seleccionado
   function _actualizarSugerenciasPN(repuesto) {
     const datalist = document.getElementById('pn-suggestions-list');
-    if (!datalist) return;
-    const pns = getSugerenciasPN(repuesto);
+    if (!datalist || !window.RepuestosDB) return;
+    const pns = RepuestosDB.getSugerenciasPN(repuesto);
     datalist.innerHTML = pns.map(pn => `<option value="${_esc(pn)}">`).join('');
   }
 
-  // ── Autocompletar PN al escanear un equipo con modelo conocido ────
-  // Llamado desde ingreso.view.js después de identificar el equipo
   async function autocompletarParaEquipo(modelo) {
-    if (!_state.repuesto || !modelo) return null;
-    const pn = buscarPN(_state.repuesto, modelo);
+    if (!_state.repuesto || !modelo || !window.RepuestosDB) return null;
+    const pn = RepuestosDB.buscarPN(_state.repuesto, modelo);
     if (pn && !_state.pn) {
       _state.pn = pn;
       _saveState();
@@ -386,7 +186,6 @@ const ModoRapido = (() => {
     return pn;
   }
 
-  // ── Aplicar sticky al equipo recién registrado ────────────────────
   async function aplicarASiHayModo(registro, loteId) {
     if (_state.modo === 'ninguno') return;
     if (!registro?._registroId) return;
@@ -404,10 +203,8 @@ const ModoRapido = (() => {
         eq._lastModified   = new Date().toISOString();
 
         if (_state.repuesto) {
-          // Buscar PN: sticky primero, luego DB fuzzy
-          let pn = _state.pn || buscarPN(_state.repuesto, eq.MODELO) || '';
+          let pn = _state.pn || (window.RepuestosDB ? RepuestosDB.buscarPN(_state.repuesto, eq.MODELO) : '') || '';
 
-          // Si se encontró en DB y no estaba en sticky, actualizar sticky
           if (pn && !_state.pn) {
             _state.pn = pn; _saveState();
             const pnEl = document.getElementById('sticky-pn');
@@ -426,8 +223,7 @@ const ModoRapido = (() => {
               timestamp: new Date().toISOString(),
             });
           }
-          // Guardar en DB de PNs (solo si hay PN)
-          if (pn) await guardarPN(_state.repuesto, eq.MODELO, pn);
+          if (pn && window.RepuestosDB) await RepuestosDB.guardarPN(_state.repuesto, eq.MODELO, pn);
         }
       }
 
@@ -450,22 +246,14 @@ const ModoRapido = (() => {
     Toast.success(`${modoLabel} aplicado${repStr}${pnStr}`, { duration: 2000 });
   }
 
-  // ── Getters ───────────────────────────────────────────────────────
   function getModo()     { return _state.modo; }
   function getTecnico()  { return _state.tecnico; }
   function getRepuesto() { return _state.repuesto; }
   function getPN()       { return _state.pn; }
 
-  // ── Compatibilidad con código anterior ───────────────────────────
   async function mostrarDBPNs() {
-    // Redirige al tab de Admin → Repuestos DB
     if (window.Views) Views.go('admin');
     Toast.info('Abre el tab 🗄️ Repuestos en Administración');
-  }
-
-  async function eliminarEntradaPN(key, modelo) {
-    await eliminarEntrada(key, modelo);
-    Toast.success('Entrada eliminada');
   }
 
   function _esc(str) {
@@ -474,16 +262,9 @@ const ModoRapido = (() => {
   }
 
   return {
-    // Panel sticky
     renderPanel, setModo, updateField, onRepuestoChange, limpiar,
     aplicarASiHayModo, getModo, getTecnico, getRepuesto, getPN,
-    autocompletarParaEquipo,
-    // DB de repuestos/PN
-    guardarPN, buscarPN, getSugerenciasPN,
-    getAll, eliminarEntrada, editarPN,
-    loadFromRemote,
-    // Compatibilidad
-    mostrarDBPNs, eliminarEntradaPN,
+    autocompletarParaEquipo, mostrarDBPNs
   };
 })();
 

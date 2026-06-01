@@ -1,6 +1,7 @@
 /**
  * modulo-3-admin/admin.view.js
  * Vista protegida por PIN: empresa, catálogos, Apps Script, auditoría.
+ * ORQUESTADOR (Refactorizado)
  */
 
 const AdminView = (() => {
@@ -12,7 +13,6 @@ const AdminView = (() => {
     );
   }
 
-  // ── Helper: tarjeta de estado de conexión ─────────────────────────
   function _statusCard(icon, title, status, msg, hint) {
     const colors = {
       ok:    { bg: 'rgba(34,197,94,0.1)',  border: 'var(--success)', dot: 'var(--success)', label: 'CONECTADO' },
@@ -54,10 +54,9 @@ const AdminView = (() => {
         </div>
       </div>
 
-      <!-- Tabs -->
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
         ${['Empresa','Catálogos','Conexión','Seguridad','Auditoría','Portabilidad','🤖 Gemini IA','🗄️ Repuestos DB'].map((t,i)=>`
-          <button class="btn btn-ghost admin-tab" id="admin-tab-${i}" onclick="_adminTab(${i})" style="border-radius:0;border-bottom:2px solid transparent;padding:10px 16px;font-size:0.82rem">${t}</button>
+          <button class="btn btn-ghost admin-tab" id="admin-tab-${i}" onclick="window._adminTab(${i})" style="border-radius:0;border-bottom:2px solid transparent;padding:10px 16px;font-size:0.82rem">${t}</button>
         `).join('')}
       </div>
 
@@ -108,8 +107,6 @@ const AdminView = (() => {
 
       <!-- TAB CONEXIÓN -->
       <div class="admin-panel" id="admin-panel-2" style="display:none">
-
-        <!-- Panel de estado visual -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
           ${_statusCard('🌐', 'Protocolo',
             isFileProto ? 'warn' : 'ok',
@@ -126,7 +123,7 @@ const AdminView = (() => {
           <span style="font-size:1.5rem;line-height:1">⚠️</span>
           <div style="font-size:0.8rem;line-height:1.7">
             <strong style="color:var(--warning)">Estás abriendo la app como archivo local (file://)</strong><br>
-            Los navegadores bloquean las peticiones de red desde file://. Los botones <strong>Probar</strong> darán error <em>"Failed to fetch"</em>.<br><br>
+            Los navegadores bloquean las peticiones de red desde file://.<br><br>
             <strong>Solución (1 minuto):</strong><br>
             • En VS Code: instala la extensión <strong>Live Server</strong> → click derecho en <code class="inline-code">index.html</code> → <em>Open with Live Server</em><br>
             • O arrastra la carpeta <code class="inline-code">inventario-pro-v2</code> a <a href="https://app.netlify.com/drop" target="_blank" style="color:var(--accent);text-decoration:underline">netlify.com/drop</a> para URL pública gratis
@@ -134,7 +131,6 @@ const AdminView = (() => {
         </div>` : ''}
 
         <div class="grid-1" style="align-items:start">
-          <!-- Apps Script Único -->
           <div class="card" style="max-width: 600px;">
             <div class="card-title">🚀 Base de Datos en Google Sheets (Vía Apps Script)</div>
             <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">
@@ -153,29 +149,26 @@ const AdminView = (() => {
               </div>
             </details>
             <div class="form-group">
-              <label class="form-label">Nombre de la Hoja (Donde están tus datos base)</label>
+              <label class="form-label">Nombre de la Hoja</label>
               <input type="text" class="form-control" id="admin-sheets-sheet" value="${APP_CONFIG.sheets.sheetName || 'Buscador Historial'}" placeholder="Buscador Historial">
-              <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px">Ejemplo: Buscador Historial o VentasDetallado</div>
             </div>
             <div class="form-group">
               <label class="form-label">URL del Web App</label>
               <input type="text" class="form-control" id="admin-gas-url" value="${APP_CONFIG.appsScript.webAppUrl}" placeholder="https://script.google.com/macros/s/.../exec">
-              <div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px">Debe terminar en <code class="inline-code">/exec</code></div>
             </div>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-primary" onclick="_adminGuardarGAS()" style="flex:1">💾 Guardar Configuración</button>
-              <button class="btn btn-secondary" onclick="_adminTestGAS()">🔍 Probar Conexión</button>
+              <button class="btn btn-primary" onclick="window._adminGuardarGAS()" style="flex:1">💾 Guardar Configuración</button>
+              <button class="btn btn-secondary" onclick="window._adminTestGAS()">🔍 Probar Conexión</button>
             </div>
             <div id="admin-gas-result" style="margin-top:10px;font-size:0.78rem"></div>
           </div>
           
-          <!-- Google Drive Status -->
           <div class="card" style="max-width: 600px; margin-top: 16px;">
             <div class="card-title">📁 Google Drive (Evidencias fotográficas)</div>
             <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">
               Verifica si el sistema tiene permisos para crear la carpeta y guardar las imágenes en Google Drive correctamente.
             </div>
-            <button class="btn btn-secondary" onclick="_adminTestDrive()">🔍 Probar Conexión a Drive</button>
+            <button class="btn btn-secondary" onclick="window._adminTestDrive()">🔍 Probar Conexión a Drive</button>
             <div id="admin-drive-result" style="margin-top:10px;font-size:0.78rem"></div>
           </div>
         </div>
@@ -198,7 +191,7 @@ const AdminView = (() => {
             <label class="form-label">Confirmar Nuevo PIN</label>
             <input type="password" class="form-control" id="admin-pin-confirm" maxlength="4" placeholder="••••">
           </div>
-          <button class="btn btn-primary" onclick="_adminCambiarPin()">🔐 Cambiar PIN</button>
+          <button class="btn btn-primary" onclick="window._adminCambiarPin()">🔐 Cambiar PIN</button>
         </div>
       </div>
 
@@ -221,8 +214,7 @@ const AdminView = (() => {
           <div class="card">
             <div class="card-title">📤 Exportar Configuración</div>
             <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">
-              Exporta empresa, catálogos y preferencias a un archivo JSON.<br>
-              Útil para copiar la configuración a otra PC.
+              Exporta empresa, catálogos y preferencias a un archivo JSON.
             </div>
             <button class="btn btn-primary" onclick="PerfilConfig.exportarConfig()">⬇️ Descargar config.json</button>
           </div>
@@ -235,7 +227,7 @@ const AdminView = (() => {
               <div class="drop-icon">📂</div>
               <div style="font-weight:600">Arrastra o haz clic para seleccionar</div>
               <div style="font-size:0.75rem;margin-top:4px">Archivo .json</div>
-              <input type="file" accept=".json" style="display:none" onchange="_adminImportarConfig(this)">
+              <input type="file" accept=".json" style="display:none" onchange="window._adminImportarConfig(this)">
             </label>
           </div>
         </div>
@@ -244,16 +236,11 @@ const AdminView = (() => {
       <!-- TAB GEMINI IA -->
       <div class="admin-panel" id="admin-panel-6" style="display:none">
         <div class="grid-2" style="align-items:start">
-
-          <!-- Instrucciones -->
           <div class="card">
             <div class="card-title">🤖 Gemini IA — OCR de Etiquetas</div>
             <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:16px">
               Sube una foto de cualquier etiqueta de hardware para que Gemini extraiga los datos clave.
-              <br><br>
-              <strong>La API Key se guarda en Apps Script</strong>, funciona desde cualquier equipo.
             </div>
-
             <div style="background:linear-gradient(135deg,rgba(124,58,237,0.1),rgba(99,102,241,0.08));border:1px solid rgba(124,58,237,0.3);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:14px">
               <div style="font-weight:700;font-size:0.82rem;margin-bottom:10px;color:var(--accent)">📋 Configurar API Key (solo 1 vez):</div>
               <ol style="font-size:0.78rem;line-height:2.1;color:var(--text-secondary);margin:0;padding-left:18px">
@@ -264,21 +251,10 @@ const AdminView = (() => {
                 <li>Guardar ✅</li>
               </ol>
             </div>
-
-            <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius-md);padding:10px 12px;font-size:0.75rem">
-              <strong style="color:var(--warning)">⚠️ Error de permisos al primer uso:</strong><br>
-              <span style="color:var(--text-secondary)">En Apps Script, ve a <strong>Ejecutar → cualquier función</strong> → aparecerá un popup → <strong>"Revisar permisos"</strong> → acepta todo. Solo se hace una vez.</span>
-            </div>
           </div>
 
-          <!-- Probador de imagen -->
           <div class="card">
             <div class="card-title">🧪 Probar con imagen real</div>
-            <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px">
-              Sube una foto de etiqueta, teclado, pantalla o cualquier pieza de hardware.
-            </div>
-
-            <!-- Drop zone / preview -->
             <div id="gemini-dropzone" style="border:2px dashed var(--border);border-radius:var(--radius-md);min-height:140px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;margin-bottom:12px;cursor:pointer;transition:border-color 0.2s;overflow:hidden;position:relative"
                  onclick="document.getElementById('gemini-test-file').click()"
                  onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
@@ -288,40 +264,33 @@ const AdminView = (() => {
                 <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px">o toma foto con la cámara</div>
               </div>
             </div>
-
             <div style="display:flex;gap:8px;margin-bottom:12px">
               <label style="flex:1;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--bg-hover);border:1px dashed var(--border);border-radius:var(--radius-md);font-size:0.8rem" onclick="document.getElementById('gemini-test-file').click()">
                 📁 Archivo
               </label>
               <label style="flex:1;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--bg-hover);border:1px dashed var(--border);border-radius:var(--radius-md);font-size:0.8rem">
                 📷 Cámara
-                <input type="file" accept="image/*" capture="environment" style="display:none" onchange="_adminPreviewGemini(this)">
+                <input type="file" accept="image/*" capture="environment" style="display:none" onchange="window._adminPreviewGemini(this)">
               </label>
             </div>
-
-            <input type="file" id="gemini-test-file" accept="image/*" style="display:none" onchange="_adminPreviewGemini(this)">
-
-            <button id="gemini-test-btn" class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="_adminTestGemini()" disabled>
+            <input type="file" id="gemini-test-file" accept="image/*" style="display:none" onchange="window._adminPreviewGemini(this)">
+            <button id="gemini-test-btn" class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="window._adminTestGemini()" disabled>
               🤖 Analizar con Gemini
             </button>
-
             <div id="admin-gemini-result" style="font-size:0.78rem"></div>
           </div>
-
         </div>
       </div>
 
       <!-- TAB REPUESTOS DB (tab 7) -->
       <div class="admin-panel" id="admin-panel-7" style="display:none">
-        <!-- Buscador -->
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <input type="text" class="form-control" id="rep-db-search"
             placeholder="🔍 Buscar por modelo, repuesto o PN…"
-            oninput="_adminFiltrarRepuestos(this.value)"
+            oninput="window._adminFiltrarRepuestos(this.value)"
             style="flex:1;min-width:200px">
-          <button class="btn btn-secondary btn-sm" onclick="_adminSyncRepuestosDB()">☁️ Sincronizar con Sheets</button>
+          <button class="btn btn-secondary btn-sm" onclick="window._adminSyncRepuestosDB()">☁️ Sincronizar con Sheets</button>
         </div>
-        <!-- Tabla -->
         <div class="card" style="padding:0;overflow:hidden">
           <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
             <span class="card-title" style="margin:0">🗄️ Base de Datos Repuestos × Modelo</span>
@@ -329,8 +298,6 @@ const AdminView = (() => {
           </div>
           <div style="overflow-x:auto" id="rep-db-tabla"></div>
         </div>
-
-        <!-- Aliases de modelos -->
         <div class="card" style="margin-top:16px">
           <div class="card-title">🔗 Aliases de Modelos</div>
           <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px">
@@ -341,13 +308,15 @@ const AdminView = (() => {
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <input type="text" class="form-control" id="alias-modelo-a" placeholder="Modelo A (nombre en la base)" style="flex:1;min-width:160px">
             <input type="text" class="form-control" id="alias-modelo-b" placeholder="Modelo B (alias equivalente)" style="flex:1;min-width:160px">
-            <button class="btn btn-primary" onclick="_adminGuardarAlias()">➕ Agregar alias</button>
+            <button class="btn btn-primary" onclick="window._adminGuardarAlias()">➕ Agregar alias</button>
           </div>
         </div>
       </div>
     `;
 
-    // ── Handlers globales (ANTES de _adminTab) ──────────────────────
+    AdminConexion.init();
+    AdminRepuestosDB.init();
+
     window._adminTab = (i) => {
       document.querySelectorAll('.admin-panel').forEach((p,j)=> p.style.display = j===i?'':'none');
       document.querySelectorAll('.admin-tab').forEach((b,j)=>{
@@ -355,193 +324,7 @@ const AdminView = (() => {
         b.style.color = j===i ? 'var(--accent)' : '';
       });
       if (i===4) AuditTrail.renderTo('audit-container');
-      if (i===7) _adminRenderRepuestosDB();
-    };
-
-    // ── Preview de imagen en drop zone ──────────────────────────────
-    window._adminPreviewGemini = (input) => {
-      const file = input.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dz = document.getElementById('gemini-dropzone');
-        const inner = document.getElementById('gemini-dropzone-inner');
-        if (inner) {
-          inner.innerHTML = `<img src="${e.target.result}" style="max-width:100%;max-height:200px;object-fit:contain;border-radius:6px">`;
-        }
-        // Guardar archivo en variable global para el botón Analizar
-        window._geminiTestFile = file;
-        const btn = document.getElementById('gemini-test-btn');
-        if (btn) btn.disabled = false;
-        // Limpiar resultado anterior
-        const r = document.getElementById('admin-gemini-result');
-        if (r) r.innerHTML = '';
-      };
-      reader.readAsDataURL(file);
-    };
-
-    window._adminTestGemini = async () => {
-      const r = document.getElementById('admin-gemini-result');
-      if (!r) return;
-      if (!APP_CONFIG.appsScript.webAppUrl) {
-        r.innerHTML = '<span style="color:var(--warning)">⚠️ Configura la URL de Apps Script primero (Tab Conexión).</span>';
-        return;
-      }
-      if (!window._geminiTestFile) {
-        r.innerHTML = '<span style="color:var(--warning)">⚠️ Selecciona una imagen primero.</span>';
-        return;
-      }
-
-      const btn = document.getElementById('gemini-test-btn');
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ Analizando…'; }
-      r.innerHTML = '<span class="spinner"></span> Enviando imagen a Gemini IA…';
-
-      try {
-        // Convertir y comprimir imagen (resize max 1024px) para evitar payload enorme en móviles
-        const dataUrl = await new Promise((res, rej) => {
-          const fr = new FileReader();
-          fr.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              let { width, height } = img;
-              const maxDim = 1024;
-              if (width > maxDim || height > maxDim) {
-                if (width > height) { height = Math.round((height * maxDim) / width); width = maxDim; }
-                else { width = Math.round((width * maxDim) / height); height = maxDim; }
-              }
-              canvas.width = width; canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, width, height);
-              res(canvas.toDataURL('image/jpeg', 0.8));
-            };
-            img.onerror = () => rej(new Error('Error al procesar imagen'));
-            img.src = e.target.result;
-          };
-          fr.onerror = () => rej(new Error('Error leyendo imagen'));
-          fr.readAsDataURL(window._geminiTestFile);
-        });
-        const [header, base64] = dataUrl.split(',');
-        const mimeType = 'image/jpeg';
-
-        const res = await AppsScriptBridge.geminiOCR(base64, mimeType);
-        const data = res.data || {};
-
-        // Mapeo de labels para mostrar
-        const labels = {
-          descripcion: '🏷️ Descripción', marca: '🏭 Marca', modelo: '💻 Modelo', pn: '🔩 Part Number (PN)',
-          serie: '🔢 Serie', sku: '📦 SKU', procesador: '⚡ Procesador',
-          ram: '🧠 RAM', pantalla: '🖥️ Pantalla', notas: '📝 Notas'
-        };
-
-        const rows = Object.entries(labels)
-          .filter(([k]) => data[k])
-          .map(([k, label]) => `
-            <tr>
-              <td style="padding:7px 10px;font-size:0.75rem;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">${label}</td>
-              <td style="padding:7px 10px;font-size:0.82rem;color:var(--text-primary);border-bottom:1px solid var(--border);font-weight:${k==='pn'?'700':'400'};color:${k==='pn'?'var(--accent)':'var(--text-primary)'}">${data[k]}</td>
-            </tr>`).join('');
-
-        if (rows) {
-          r.innerHTML = `
-            <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.3);border-radius:var(--radius-md);overflow:hidden;margin-top:8px">
-              <div style="padding:10px 14px;background:rgba(34,197,94,0.12);font-weight:700;font-size:0.8rem;color:var(--success);display:flex;align-items:center;gap:6px">
-                ✅ Gemini identificó los siguientes datos:
-              </div>
-              <table style="width:100%;border-collapse:collapse">${rows}</table>
-              ${data.pn ? `
-                <div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--bg-hover)">
-                  <span style="font-size:0.72rem;color:var(--text-muted)">Buscar repuesto compatible:</span><br>
-                  <a href="https://www.google.com/search?q=${encodeURIComponent((data.pn||'')+' '+(data.modelo||'')+' repuesto compatible')}" target="_blank" style="color:var(--accent);font-size:0.8rem;text-decoration:underline">🔍 Buscar "${data.pn} ${data.modelo||''}" en Google</a>
-                </div>` : ''}
-            </div>`;
-        } else {
-          r.innerHTML = `<div style="color:var(--warning);font-size:0.8rem;margin-top:8px">⚠️ Gemini no pudo extraer datos de esta imagen. Intenta con una foto más clara y cerca de la etiqueta.</div>`;
-        }
-      } catch (err) {
-        const isPermError = err.message.toLowerCase().includes('urlfetch') || err.message.toLowerCase().includes('permission') || err.message.toLowerCase().includes('authorization');
-        const isKeyError  = err.message.includes('GEMINI_API_KEY no configurada');
-        r.innerHTML = `
-          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:var(--radius-md);padding:12px;margin-top:8px">
-            <div style="color:var(--danger);font-weight:700;font-size:0.8rem;margin-bottom:6px">❌ ${err.message}</div>
-            ${isPermError ? '<div style="font-size:0.75rem;color:var(--text-secondary)">💡 <strong>Fix:</strong> En Apps Script editor → Ejecutar → cualquier función → aparece popup → "Revisar permisos" → Aceptar todo. Solo se hace 1 vez.</div>' : ''}
-            ${isKeyError  ? '<div style="font-size:0.75rem;color:var(--text-secondary)">💡 Sigue los pasos de la izquierda para agregar la propiedad <code>GEMINI_API_KEY</code> en Apps Script.</div>' : ''}
-          </div>`;
-      } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🤖 Analizar con Gemini'; }
-      }
-    };
-
-    window._adminGuardarGAS = async () => {
-      const url = document.getElementById('admin-gas-url')?.value?.trim() || '';
-      const sheetName = document.getElementById('admin-sheets-sheet')?.value?.trim() || 'Buscador Historial';
-      
-      APP_CONFIG.sheets.sheetName = sheetName;
-      localStorage.setItem('inv-pro-sheets-cfg', JSON.stringify({ sid: '', key: '', name: sheetName }));
-      
-      AppsScriptBridge.setUrl(url);
-      localStorage.setItem('inv-pro-gas-url', url);
-      Toast.success('Configuración guardada correctamente');
-      SheetsAPI.invalidateCache();
-      
-      // Intentar cargar lotes automáticamente
-      try {
-        const stats = await LocalCache.loadLotesFromRemote();
-        if (stats && stats.total > 0) {
-          Toast.success(`Historial sincronizado: ${stats.total} lotes cargados`);
-          window._histLotes = await LocalCache.getLotes();
-        }
-      } catch(e) {
-        // Ignorar silenciosamente si no hay red o da error, el Test mostrará el error real.
-      }
-    };
-
-    window._adminTestGAS = async () => {
-      const r = document.getElementById('admin-gas-result');
-      if (!r) return;
-      if (window.location.protocol === 'file:') {
-        r.innerHTML = '<span style="color:var(--warning)">⚠️ Error: "Failed to fetch" — Abre la app usando Live Server (Servidor local) y no file://</span>';
-        return;
-      }
-      r.innerHTML = '<span class="spinner"></span> Probando conexión de Lectura y Escritura…';
-      try {
-        await window._adminGuardarGAS();
-        // Solo hacemos un ping ultra-rápido para probar que los permisos están bien
-        await AppsScriptBridge.testConnection();
-        r.innerHTML = `<span style="color:var(--success)">✅ ¡Todo listo! Conexión exitosa a Google. Cargando lotes...</span>`;
-        
-        // Cargar lotes con notificación
-        try {
-          const stats = await LocalCache.loadLotesFromRemote();
-          window._histLotes = await LocalCache.getLotes();
-          let lotesMsg = stats && stats.total > 0 ? `<br>📦 Historial recuperado: <strong>${stats.total}</strong> lote(s)` : `<br>📦 No hay lotes históricos en la nube.`;
-          r.innerHTML = `<span style="color:var(--success)">✅ ¡Todo listo! Conexión exitosa a Google.</span>${lotesMsg}`;
-        } catch (e) {
-          r.innerHTML = `<span style="color:var(--warning)">✅ Conexión exitosa, pero no se pudieron descargar los lotes: ${e.message}</span>`;
-        }
-      } catch (err) {
-        let hint = '';
-        if (err.message.includes('Failed to fetch') || err.name === 'AbortError' || err.message.includes('aborted')) {
-          hint = '<br><span style="font-size:0.72rem;color:var(--text-muted)">💡 La conexión se está bloqueando. Si usas antivirus (Kaspersky, ESET) desactiva el escudo web un minuto. O prueba abriendo el link en pestaña de incógnito.</span>';
-        }
-        r.innerHTML = `<span style="color:var(--danger)">❌ ${err.message}</span>${hint}`;
-      }
-    };
-
-    window._adminTestDrive = async () => {
-      const r = document.getElementById('admin-drive-result');
-      if (!r) return;
-      if (!APP_CONFIG.appsScript.webAppUrl) {
-        r.innerHTML = '<span style="color:var(--warning)">⚠️ Primero debes configurar la URL del Web App arriba.</span>';
-        return;
-      }
-      r.innerHTML = '<span class="spinner"></span> Probando permisos de Google Drive…';
-      try {
-        const res = await AppsScriptBridge.testDrive();
-        r.innerHTML = `<span style="color:var(--success)">✅ ¡Drive conectado! Carpeta: <strong>${res.name}</strong> <a href="${res.folderUrl}" target="_blank" style="margin-left:8px;color:var(--accent);text-decoration:underline">Abrir Carpeta</a></span>`;
-      } catch (err) {
-        r.innerHTML = `<span style="color:var(--danger)">❌ Error al conectar con Drive: ${err.message}</span>`;
-      }
+      if (i===7) window._adminRenderRepuestosDB();
     };
 
     window._adminCambiarPin = async () => {
@@ -566,7 +349,6 @@ const AdminView = (() => {
       render();
     };
 
-    // Activar primer tab
     _adminTab(0);
   }
 
@@ -574,158 +356,3 @@ const AdminView = (() => {
 })();
 
 window.AdminView = AdminView;
-
-// ── Funciones del Tab Repuestos DB ────────────────────────────────────────────
-let _repDBEntries = []; // cache local para filtrar sin re-fetch
-
-function _adminRenderRepuestosDB() {
-  _repDBEntries = ModoRapido.getAll();
-  _adminRenderTablaRepuestos(_repDBEntries);
-  _adminRenderAliases();
-}
-
-function _adminRenderTablaRepuestos(entries) {
-  const el = document.getElementById('rep-db-tabla');
-  const count = document.getElementById('rep-db-count');
-  if (!el) return;
-
-  // Aplanar: una fila por modelo
-  const rows = [];
-  for (const e of entries) {
-    for (const m of (e.modelos || [])) {
-      rows.push({ key: e.key, repuesto: e.repuesto, modelo: m.modelo, pn: m.pn || '—', usos: m.usos || 1 });
-    }
-  }
-
-  if (count) count.textContent = `${rows.length} registro(s) · ${entries.length} combinaciones`;
-
-  if (!rows.length) {
-    el.innerHTML = `<div style="padding:32px;text-align:center;color:var(--text-muted)">
-      <div style="font-size:2rem">🗄️</div>
-      <div style="margin-top:8px;font-size:0.85rem">La base está vacía.<br>Se llena automáticamente al registrar equipos con repuesto y PN.</div>
-    </div>`;
-    return;
-  }
-
-  el.innerHTML = `<table class="data-table" style="font-size:0.8rem">
-    <thead><tr>
-      <th>Repuesto</th><th>Modelo</th>
-      <th>PN</th><th style="text-align:center">Usos</th><th>Acciones</th>
-    </tr></thead>
-    <tbody>
-      ${rows.map((r,i) => `<tr>
-        <td><strong>${r.repuesto}</strong></td>
-        <td style="color:var(--text-secondary)">${r.modelo}</td>
-        <td>
-          <span id="rep-pn-display-${i}" style="background:var(--bg-hover);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:0.75rem">${r.pn}</span>
-          <input type="text" id="rep-pn-input-${i}" value="${r.pn === '—' ? '' : r.pn}"
-            style="display:none;width:110px;font-size:0.75rem;padding:2px 6px;border:1px solid var(--accent);border-radius:4px"
-            onkeydown="if(event.key==='Enter') _adminGuardarPN('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})">
-        </td>
-        <td style="text-align:center;color:var(--text-muted)">${r.usos}x</td>
-        <td>
-          <div style="display:flex;gap:6px;align-items:center">
-            <button onclick="_adminEditarPN(${i})" style="background:none;border:none;cursor:pointer;font-size:1rem" title="Editar PN">✏️</button>
-            <button onclick="_adminEliminarEntrada('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})"
-              style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--danger)" title="Eliminar">🗑️</button>
-          </div>
-        </td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-
-// Editar PN inline (toggle input)
-window._adminEditarPN = (idx) => {
-  const display = document.getElementById(`rep-pn-display-${idx}`);
-  const input   = document.getElementById(`rep-pn-input-${idx}`);
-  if (!display || !input) return;
-  display.style.display = 'none';
-  input.style.display   = 'inline-block';
-  input.focus(); input.select();
-};
-
-window._adminGuardarPN = async (key, modelo, idx) => {
-  const input = document.getElementById(`rep-pn-input-${idx}`);
-  if (!input) return;
-  const nuevoPn = input.value.trim();
-  await ModoRapido.editarPN(key, modelo, nuevoPn);
-  Toast.success(`PN actualizado → ${nuevoPn || '(vacío)'}`);
-  _adminRenderRepuestosDB();
-};
-
-window._adminEliminarEntrada = async (key, modelo, idx) => {
-  if (!confirm(`¿Eliminar "${modelo}" de la base de repuestos?`)) return;
-  await ModoRapido.eliminarEntrada(key, modelo);
-  Toast.success('Entrada eliminada');
-  _adminRenderRepuestosDB();
-};
-
-// Filtrar tabla en tiempo real (sin recargar)
-window._adminFiltrarRepuestos = (query) => {
-  const q = query.toLowerCase();
-  const filtered = q
-    ? _repDBEntries.filter(e =>
-        e.repuesto.toLowerCase().includes(q) ||
-        (e.modelos || []).some(m =>
-          m.modelo.toLowerCase().includes(q) || (m.pn || '').toLowerCase().includes(q)
-        )
-      )
-    : _repDBEntries;
-  _adminRenderTablaRepuestos(filtered);
-};
-
-// Sync manual con Sheets
-window._adminSyncRepuestosDB = async () => {
-  const btn = document.querySelector('[onclick="_adminSyncRepuestosDB()"]');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sincronizando…'; }
-  try {
-    await AppsScriptBridge.saveRepuestosDB(ModoRapido.getAll());
-    Toast.success('✅ Base de repuestos sincronizada con Sheets');
-    _adminRenderRepuestosDB();
-  } catch (e) {
-    Toast.error('Error al sincronizar: ' + e.message);
-  } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = '☁️ Sincronizar con Sheets'; }
-  }
-};
-
-// ── Aliases de modelos ────────────────────────────────────────────────────────
-function _adminRenderAliases() {
-  const el = document.getElementById('aliases-lista');
-  if (!el) return;
-  const aliases = JSON.parse(localStorage.getItem('model-aliases-v1') || '[]');
-  if (!aliases.length) { el.innerHTML = '<div style="font-size:0.8rem;color:var(--text-muted)">Sin aliases registrados aún.</div>'; return; }
-  el.innerHTML = aliases.map((a, i) => `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;background:var(--bg-hover);padding:6px 10px;border-radius:6px;font-size:0.82rem">
-      <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px">${a.modeloA}</code>
-      <span style="color:var(--text-muted)">≡</span>
-      <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px">${a.modeloB}</code>
-      <button onclick="_adminEliminarAlias(${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:0.9rem">✕</button>
-    </div>`).join('');
-}
-
-window._adminGuardarAlias = () => {
-  const a = document.getElementById('alias-modelo-a')?.value.trim();
-  const b = document.getElementById('alias-modelo-b')?.value.trim();
-  if (!a || !b) { Toast.warning('Completa ambos campos'); return; }
-  if (a === b)  { Toast.warning('Los modelos son idénticos'); return; }
-  const aliases = JSON.parse(localStorage.getItem('model-aliases-v1') || '[]');
-  const dup = aliases.find(x => (x.modeloA===a && x.modeloB===b) || (x.modeloA===b && x.modeloB===a));
-  if (dup) { Toast.warning('Alias ya existe'); return; }
-  aliases.push({ modeloA: a, modeloB: b });
-  localStorage.setItem('model-aliases-v1', JSON.stringify(aliases));
-  document.getElementById('alias-modelo-a').value = '';
-  document.getElementById('alias-modelo-b').value = '';
-  _adminRenderAliases();
-  Toast.success(`✅ Alias guardado: "${a}" ≡ "${b}"`);
-};
-
-window._adminEliminarAlias = (idx) => {
-  const aliases = JSON.parse(localStorage.getItem('model-aliases-v1') || '[]');
-  aliases.splice(idx, 1);
-  localStorage.setItem('model-aliases-v1', JSON.stringify(aliases));
-  _adminRenderAliases();
-  Toast.info('Alias eliminado');
-};
-
