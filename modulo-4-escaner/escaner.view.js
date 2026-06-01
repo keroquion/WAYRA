@@ -26,36 +26,33 @@ const EscanerView = (() => {
         </div>
       </div>
 
-      <div style="max-width:700px;margin:0 auto;padding:20px">
+      <div class="container-md">
 
         <!-- Búsqueda Manual -->
-        <div class="card" style="padding:15px;margin-bottom:20px">
+        <div class="card card-padded">
           <label class="form-label">Buscar por Serie o Código</label>
-          <div style="display:flex;gap:10px">
-            <input type="text" id="escaner-input" class="form-control"
+          <div class="flex-gap-10">
+            <input type="text" id="escaner-input" class="form-control input-lg"
               placeholder="Ej: ABC12345..."
-              onkeydown="if(event.key==='Enter') EscanerView.buscar(this.value)"
-              style="font-size:1.05rem">
-            <button class="btn btn-primary" onclick="EscanerView.buscar(document.getElementById('escaner-input').value)"
-              style="white-space:nowrap;padding:8px 20px">
+              onkeydown="if(event.key==='Enter') EscanerView.buscar(this.value)">
+            <button class="btn btn-primary btn-search" onclick="EscanerView.buscar(document.getElementById('escaner-input').value)">
               🔍 Buscar
             </button>
           </div>
         </div>
 
         <!-- Botón de Cámara -->
-        <div style="text-align:center;margin-bottom:20px">
-          <button class="btn btn-secondary" id="btn-toggle-camera"
-            onclick="EscanerView.toggleCamera()"
-            style="width:100%;padding:15px;font-size:1.1rem;border-radius:12px">
+        <div class="text-center">
+          <button class="btn btn-secondary btn-block-lg" id="btn-toggle-camera"
+            onclick="EscanerView.toggleCamera()">
             📸 Activar Cámara para Escanear
           </button>
         </div>
 
         <!-- Contenedor del Escáner -->
         <div id="reader-container" style="display:none;margin-bottom:20px">
-          <div id="reader" style="width:100%;border-radius:8px;overflow:hidden;border:2px solid var(--border)"></div>
-          <p style="text-align:center;font-size:0.85rem;color:var(--text-muted);margin-top:8px">
+          <div id="reader" class="reader-wrapper"></div>
+          <p class="text-hint">
             Apunta la cámara al código de barras o QR
           </p>
         </div>
@@ -208,34 +205,27 @@ const EscanerView = (() => {
       }
     }
 
-    // Determinar color del borde según cobertura
-    const borderColor = cobertura.status === 'CON_GARANTIA' ? 'var(--success)'
-      : cobertura.status === 'SOLO_SOPORTE' ? 'var(--warning)'
-      : cobertura.status === 'SIN_COBERTURA' ? 'var(--danger)' : 'var(--accent)';
-
     return `
-      <div class="card" style="padding:0;border-left:4px solid ${borderColor};overflow:hidden">
-
-        <!-- Header -->
-        <div style="padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;background:var(--bg-hover)">
+      <div class="result-card" style="padding:0;overflow:hidden">
+        <div class="result-header" style="background:var(--bg-secondary);padding:18px">
           <div>
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-              <strong style="font-size:1.3rem;font-family:monospace;letter-spacing:1px">${safe(r.CODIGO)}</strong>
+            <div class="result-title">
+              <strong style="font-family:monospace;letter-spacing:1px">${safe(r.CODIGO)}</strong>
               ${Formatters.estadoBadge(r.ESTADO)}
             </div>
-            <div style="font-size:0.9rem;color:var(--text-secondary)">
+            <div style="font-size:0.9rem;color:var(--text-secondary);margin-top:4px">
               ${safe(r.MARCA)} <strong>${safe(r.MODELO)}</strong> · ${safe(r.TIP_EQUIP)}
             </div>
-            ${r.SERIE ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px">Serie: <code style="background:var(--bg-card);padding:1px 6px;border-radius:3px;font-size:0.85rem">${esc(r.SERIE)}</code></div>` : ''}
+            ${r.SERIE ? `<div style="font-size:0.78rem;color:var(--text-muted);margin-top:6px">Serie: <code class="inline-code">${esc(r.SERIE)}</code></div>` : ''}
           </div>
         </div>
 
-        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:16px">
+        <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
 
           <!-- Specs -->
           <div>
             ${DOM.sectionTitle('⚙️ Especificaciones')}
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;background:var(--bg-hover);padding:10px;border-radius:8px;font-size:0.88rem">
+            <div class="spec-grid">
               ${_specRow('Procesador', r.PROCESADOR)}
               ${_specRow('RAM', r.RAM)}
               ${_specRow('HD/SSD', r.HD_SSD)}
@@ -303,21 +293,23 @@ const EscanerView = (() => {
             </div>
           </div>` : ''}
 
-          <!-- Historial en lotes -->
-          ${enLotes.length > 0 ? `
-          <div>
-            ${DOM.sectionTitle('📦 Historial en Lotes (' + enLotes.length + ')')}
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <!-- Historial Lotes -->
+          ${enLotes.length ? `
+          <div class="history-section">
+            ${DOM.sectionTitle('📋 Historial en Lotes')}
+            <div>
               ${enLotes.map(({ lote, equipo }) => {
                 const estadoSop = equipo._estadoSoporte;
                 const estadoGar = equipo._estadoGarantia;
                 const badges = [];
-                if (estadoSop) badges.push(`<span style="font-size:0.65rem">🔧 ${estadoSop}</span>`);
-                if (estadoGar) badges.push(`<span style="font-size:0.65rem">🛡️ ${estadoGar}</span>`);
-                return `<div style="background:var(--bg-hover);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:0.8rem">
-                  <strong>${esc(lote.titulo || lote.id)}</strong>
-                  ${lote.fechaCreacion ? `<span style="color:var(--text-muted);margin-left:6px;font-size:0.72rem">${Formatters.fechaCorta(lote.fechaCreacion)}</span>` : ''}
-                  ${badges.length ? `<div style="margin-top:2px">${badges.join(' ')}</div>` : ''}
+                if (estadoSop) badges.push(`<span class="history-badge">🔧 ${estadoSop}</span>`);
+                if (estadoGar) badges.push(`<span class="history-badge">🛡️ ${estadoGar}</span>`);
+                return `<div class="history-item">
+                  <div>
+                    <div class="history-title">${esc(lote.titulo || lote.id)}</div>
+                    ${lote.fechaCreacion ? `<div class="history-meta">${Formatters.fechaCorta(lote.fechaCreacion)}</div>` : ''}
+                  </div>
+                  ${badges.length ? `<div>${badges.join(' ')}</div>` : ''}
                 </div>`;
               }).join('')}
             </div>
@@ -343,9 +335,9 @@ const EscanerView = (() => {
 
   function _specRow(label, value) {
     if (!value || value === '.' || value === '*') return '';
-    return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--text-muted)">${DOM.esc(label)}</span>
-      <strong>${DOM.esc(value)}</strong>
+    return `<div class="spec-item">
+      <span class="spec-label">${DOM.esc(label)}</span>
+      <span class="spec-value">${DOM.esc(value)}</span>
     </div>`;
   }
 

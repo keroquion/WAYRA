@@ -568,3 +568,27 @@ code.inline-code{font-family:'JetBrains Mono',monospace;background:var(--bg-hove
     pointer-events: none;
   }
 }
+
+/* -- UTILITY CLASSES (Phase 5 Refactor) -- */
+.container-md { max-width: 700px; margin: 0 auto; padding: 20px; }
+.card-padded { padding: 15px; margin-bottom: 20px; }
+.flex-gap-10 { display: flex; gap: 10px; }
+.input-lg { font-size: 1.05rem; }
+.btn-search { white-space: nowrap; padding: 8px 20px; }
+.text-center { text-align: center; margin-bottom: 20px; }
+.btn-block-lg { width: 100%; padding: 15px; font-size: 1.1rem; border-radius: 12px; }
+.reader-wrapper { width: 100%; border-radius: 8px; overflow: hidden; border: 2px solid var(--border); }
+.text-hint { text-align: center; font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; }
+.result-card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-md); border: 1px solid var(--border); margin-bottom: 16px; }
+.result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.result-title { font-size: 1.35rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-bottom: 20px; }
+.spec-item { background: var(--bg-hover); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+.spec-label { color: var(--text-muted); font-size: 0.68rem; display: block; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+.spec-value { font-weight: 500; font-size: 0.85rem; }
+.history-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 16px; }
+.history-item { background: var(--bg-hover); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background var(--transition); }
+.history-item:hover { background: var(--accent-glow); border-color: var(--accent); }
+.history-title { font-weight: 700; font-size: 0.9rem; }
+.history-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 3px; }
+.history-badge { background: rgba(99,102,241,0.1); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
