@@ -62,6 +62,9 @@ const IngresoTabla = (() => {
   }
 
   function _getAccionesCell(eq, loteActivo) {
+    if (window.AuthService && !AuthService.canEditLote(loteActivo)) {
+      return `<td style="text-align:center"><span style="color:var(--text-muted);font-size:0.8rem;padding:0 8px" title="Propietario: ${DOM.esc(loteActivo._ownerId)}">🔒 Solo Lectura</span></td>`;
+    }
     const modo = localStorage.getItem('ingreso-modo-v1') || 'normal';
     if (modo === 'soporte')  return _accionesSoporte(eq, loteActivo);
     if (modo === 'garantia') return _accionesGarantia(eq, loteActivo);

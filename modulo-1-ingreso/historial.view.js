@@ -38,6 +38,7 @@ const HistorialView = (() => {
     const eq = lote.equipos||[];
     const fecha = new Date(lote.fechaCreacion).toLocaleString('es-PE');
     const correctos = eq.filter(e=>e.ESTADO==='C').length;
+    const canEdit = window.AuthService ? AuthService.canEditLote(lote) : true;
     return `
       <div class="card" style="margin-bottom:12px;border-left:3px solid ${lote.activo?'var(--accent)':'var(--border)'}">
         <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="_histToggle('${lote.id}')">
@@ -52,10 +53,16 @@ const HistorialView = (() => {
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();ImportExport.exportLote(window._histLotes?.find(l=>l.id==='${lote.id}'),'csv')">CSV</button>
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();ImportExport.exportLote(window._histLotes?.find(l=>l.id==='${lote.id}'),'xlsx')">Excel</button>
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();LotePortable.exportar('${lote.id}')" title="Descargar lote completo como JSON portable">📦 JSON</button>
-            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();_histEditar('${lote.id}')" title="Editar lote">✏️</button>
-            ${!lote.activo?`<button class="btn btn-sm btn-success" style="background:var(--success);border:none;color:#fff" onclick="event.stopPropagation();_histContinuar('${lote.id}')" title="Continuar trabajando en este lote">▶️ Continuar</button>`:''}
-            ${!lote.activo?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();_histEliminar('${lote.id}')">🗑️</button>`:''}
-            <span id="hist-arrow-${lote.id}" style="color:var(--text-muted);transition:transform 0.2s">▼</span>
+            
+            ${canEdit ? `
+              <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();_histEditar('${lote.id}')" title="Editar lote">✏️</button>
+              ${!lote.activo?`<button class="btn btn-sm btn-success" style="background:var(--success);border:none;color:#fff" onclick="event.stopPropagation();_histContinuar('${lote.id}')" title="Continuar trabajando en este lote">▶️ Continuar</button>`:''}
+              ${!lote.activo?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();_histEliminar('${lote.id}')">🗑️</button>`:''}
+            ` : `
+              <span style="padding:0 8px;font-size:1.1rem" title="Solo lectura (Propietario: ${lote._ownerId})">🔒</span>
+            `}
+            
+            <span id="hist-arrow-${lote.id}" style="color:var(--text-muted);transition:transform 0.2s;margin-left:4px">▼</span>
           </div>
         </div>
         <div id="hist-body-${lote.id}" style="display:${lote.activo?'block':'none'}">
@@ -94,16 +101,35 @@ const HistorialView = (() => {
   };
 
   window._histEliminar = async (id) => {
+    const lote = window._histLotes?.find(l => l.id === id);
+    if (window.AuthService && !AuthService.canEditLote(lote)) { Toast.error('🔒 No tienes permisos para eliminar este lote.'); return; }
     if (!confirm('¿Eliminar este lote permanentemente?')) return;
     await LocalCache.deleteLote(id);
     Toast.warning('Lote eliminado');
     HistorialView.render();
+    if(window.IngresoView && (!window._loteActivo || window._loteActivo.id===id)) {
+      window._loteActivo = await LocalCache.getLoteActivo();
+      IngresoView.render();
+    }
+  };
+
+  window._histContinuar = async (id) => {
+    const lote = window._histLotes?.find(l => l.id === id);
+    if (window.AuthService && !AuthService.canEditLote(lote)) { Toast.error('🔒 No tienes permisos para editar este lote.'); return; }
+    if (!confirm('Esto cerrará el lote activo actual (si hay uno). ¿Continuar?')) return;
+    await LocalCache.continuarLote(id);
+    window._loteActivo = await LocalCache.getLoteActivo();
+    Toast.success('Lote reactivado');
+    HistorialView.render();
+    if(window.IngresoView) IngresoView.render();
+    Views.go('ingreso');
   };
 
   window._histEditar = async (id) => {
     const lotes = await LocalCache.getLotes();
     const lote = lotes.find(l => l.id === id);
     if (!lote) { Toast.error('Lote no encontrado'); return; }
+    if (window.AuthService && !AuthService.canEditLote(lote)) { Toast.error('🔒 No tienes permisos para editar este lote.'); return; }
 
     ModalGenerico.open(`
       <div class="modal-title">✏️ Editar Lote</div>

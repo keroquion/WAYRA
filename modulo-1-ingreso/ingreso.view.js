@@ -178,7 +178,7 @@ const IngresoView = (() => {
             <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'csv')" ${window._loteActivo ? '' : 'disabled'}>⬇️ CSV</button>
             <button class="btn btn-secondary btn-sm" onclick="ImportExport.exportLote(window._loteActivo,'xlsx')" ${window._loteActivo ? '' : 'disabled'}>📊 Excel</button>
             ${window._loteActivo ? `<button class="btn btn-secondary btn-sm" id="btn-ingreso-cerrar" style="color:var(--danger);border-color:rgba(239,68,68,0.2)">🔒 Cerrar Lote</button>` : ''}
-            <button class="btn btn-danger btn-sm" id="btn-ingreso-vaciar" ${window._loteActivo ? '' : 'disabled'}>🗑️ Vaciar Lote</button>
+            ${window._loteActivo && window.AuthService && AuthService.canEditLote(window._loteActivo) ? `<button class="btn btn-danger btn-sm" id="btn-ingreso-vaciar">🗑️ Vaciar Lote</button>` : ''}
           </div>
         </div>
         <div style="padding:8px 14px;border-bottom:1px solid var(--border)">
@@ -201,6 +201,10 @@ const IngresoView = (() => {
     if (!window._loteActivo) {
       Toast.error('Crea un lote primero');
       IngresoLoteModal.abrir(render);
+      return;
+    }
+    if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) {
+      Toast.error('🔒 Este lote es de solo lectura (No eres el propietario).');
       return;
     }
 
@@ -273,6 +277,7 @@ const IngresoView = (() => {
   }
 
   window._ingresoQuitarEquipo = async (loteId, regId) => {
+    if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Este lote es de solo lectura.'); return; }
     if (!confirm('¿Deseas quitar este equipo del lote? Esta acción no se puede deshacer.')) return;
     await LocalCache.eliminarEquipoDeLote(loteId, regId);
     window._loteActivo = await LocalCache.getLoteActivo();
@@ -282,39 +287,43 @@ const IngresoView = (() => {
   };
 
   window._ingresoAbrirGarantia = (regId) => {
+    if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Este lote es de solo lectura.'); return; }
     const eq = window._ingresoEquiposMap?.[regId];
     if (!eq) { Toast.error('Registro no encontrado'); return; }
     FlujoGarantia.openModal(eq);
   };
 
   window._ingresoAbrirSoporte = (regId) => {
+    if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Este lote es de solo lectura.'); return; }
     const eq = window._ingresoEquiposMap?.[regId];
     if (!eq) { Toast.error('Registro no encontrado'); return; }
     FlujoSoporte.openModal(eq);
   };
 
   function _bindEvents() {
-    document.getElementById('btn-ingreso-registrar')?.addEventListener('click', () => {
-      const codigo = document.getElementById('ingreso-codigo').value.trim();
-      if (codigo) _onScan(codigo);
+    const safeBind = (id, evt, handler) => {
+      const el = document.getElementById(id);
+      if(el) { el.removeEventListener(evt, handler); el.addEventListener(evt, handler); }
+    };
+    safeBind('btn-ingreso-registrar', 'click', () => {
+      const v = document.getElementById('ingreso-codigo')?.value;
+      if (v) _onScan(v);
     });
-    document.getElementById('btn-ingreso-limpiar')?.addEventListener('click', () => {
-      document.getElementById('ingreso-codigo').value = '';
-      document.getElementById('ingreso-preview').style.display = 'none';
-      document.getElementById('ingreso-codigo').focus();
+    safeBind('btn-ingreso-limpiar', 'click', () => {
+      const el = document.getElementById('ingreso-codigo');
+      if(el){ el.value=''; el.focus(); }
     });
-    document.getElementById('btn-ingreso-vaciar')?.addEventListener('click', async () => {
-      if (!window._loteActivo) return;
-      if (!confirm(`¿Vaciar "${window._loteActivo.titulo}"? No se puede deshacer.`)) return;
-      window._loteActivo.equipos = [];
-      await LocalCache.updateLote(window._loteActivo);
-      IngresoTabla.render();
-      _renderStatsInline();
-      Toast.warning('Lote vaciado');
+    safeBind('btn-nuevo-lote-ingreso', 'click', () => IngresoLoteModal.abrir(render));
+    safeBind('btn-ingreso-cerrar', 'click', () => IngresoLoteModal.cerrarLoteActivo(render));
+    safeBind('btn-ingreso-vaciar', 'click', async () => {
+      if (!window.AuthService || AuthService.canEditLote(window._loteActivo)) {
+        if (!confirm('¿Seguro que deseas eliminar TODOS los equipos de este lote?')) return;
+        window._loteActivo.equipos = [];
+        await LocalCache.updateLote(window._loteActivo);
+        Toast.warning('Lote vaciado');
+        render();
+      }
     });
-    document.getElementById('btn-nuevo-lote-ingreso')?.addEventListener('click', () => IngresoLoteModal.abrir(render));
-    document.getElementById('btn-banner-cerrar-lote')?.addEventListener('click', _cerrarLoteActivo);
-    document.getElementById('btn-ingreso-cerrar')?.addEventListener('click', _cerrarLoteActivo);
   }
 
   async function _cerrarLoteActivo() {

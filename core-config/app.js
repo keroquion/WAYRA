@@ -124,6 +124,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 1. Tema
   ThemeManager.init();
 
+  // 1.5. Multiusuario: Verificar Login
+  if (!AuthService.isLoggedIn()) {
+    LoginView.render();
+    return; // Detener inicio. El login recargará la página.
+  }
+
+  // Renderizar info del usuario en el topbar si existe un contenedor
+  LoginView.renderUserInfo();
+
+  // Ocultar tabs de administración si no es admin
+  if (!AuthService.isAdmin()) {
+    const navAdmin = document.getElementById('nav-admin');
+    if (navAdmin) navAdmin.style.display = 'none';
+  }
+
   // 2. Inicializar IndexedDB
   await LocalCache.init();
 

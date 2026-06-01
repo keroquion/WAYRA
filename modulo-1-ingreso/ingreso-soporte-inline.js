@@ -58,6 +58,7 @@ const IngresoSoporteInline = (() => {
     const repuesto = sel?.value?.trim();
     const pn       = pnEl?.value?.trim();
     if (!repuesto) { Toast.warning('Selecciona un tipo de repuesto'); return; }
+    if (window.AuthService && window._loteActivo && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Lote de solo lectura'); return; }
     
     const lotes = await LocalCache.getLotes();
     for (const lote of lotes) {
@@ -214,6 +215,7 @@ const IngresoSoporteInline = (() => {
     const proveedor  = document.getElementById('gar-prov-'  + regId)?.value  || '';
     const falla      = document.getElementById('gar-falla-' + regId)?.value  || '';
     const fechaEnvio = document.getElementById('gar-fecha-' + regId)?.value  || '';
+    if (window.AuthService && window._loteActivo && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Lote de solo lectura'); return; }
     
     const lotes = await LocalCache.getLotes();
     for (const lote of lotes) {

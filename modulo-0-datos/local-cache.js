@@ -33,7 +33,30 @@ const LocalCache = (() => {
           }
         });
       };
-      req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
+      req.onsuccess = (e) => { 
+        _db = e.target.result; 
+        
+        // MIGRACIÓN MULTIUSUARIO: Asignar lotes antiguos a admin
+        try {
+          const t = _db.transaction('lotes', 'readwrite');
+          const s = t.objectStore('lotes');
+          const reqAll = s.getAll();
+          reqAll.onsuccess = () => {
+            const lotes = reqAll.result;
+            let mods = false;
+            for (const l of lotes) {
+              if (!l._ownerId) {
+                l._ownerId = 'admin';
+                s.put(l);
+                mods = true;
+              }
+            }
+            if (mods) console.log('[LocalCache] ✅ Migrados lotes antiguos a owner: admin');
+          };
+        } catch(err) { console.warn(err); }
+
+        resolve(_db); 
+      };
       req.onerror = (e) => reject(e.target.error);
     });
   }
@@ -118,6 +141,7 @@ const LocalCache = (() => {
       id: `lote_${Date.now()}`,
       titulo: titulo || `LOTE ${101 + lotes.length}`,
       tecnico: tecnico || '',
+      _ownerId: (window.AuthService && AuthService.getUsuarioActual()) ? AuthService.getUsuarioActual().username : 'admin',
       fechaCreacion: new Date().toISOString(),
       activo: true,
       equipos: [],
