@@ -6,17 +6,7 @@
 const IngresoSoporteInline = (() => {
 
   function init() {
-    window._sopOnRepuestoChange = _sopOnRepuestoChange;
-    window._sopOnPNInput = _sopOnPNInput;
-    window._sopAutoAgregar = _sopAutoAgregar;
-    window._sopAgregarSiTieneRepuesto = _sopAgregarSiTieneRepuesto;
-    window._sopAgregarRepuesto = _sopAgregarRepuesto;
-    window._sopQuitarRepuesto = _sopQuitarRepuesto;
-    window._sopAbrirBuscador = _sopAbrirBuscador;
-    window._sopFiltrarBuscador = _sopFiltrarBuscador;
-    window._sopSeleccionarDeBuscador = _sopSeleccionarDeBuscador;
-    window._sopAutocompletarPN = _sopAutocompletarPN;
-    window._garGuardar = _garGuardar;
+    // Inicialización si es necesaria
   }
 
   function _saveStickyRepuesto(r) { localStorage.setItem('sticky-repuesto-v1', r); }
@@ -234,7 +224,20 @@ const IngresoSoporteInline = (() => {
     }
   }
 
-  return { init };
+  return { 
+    init, 
+    _sopOnRepuestoChange, 
+    _sopOnPNInput, 
+    _sopAutoAgregar, 
+    _sopAgregarSiTieneRepuesto, 
+    _sopAgregarRepuesto, 
+    _sopQuitarRepuesto, 
+    _sopAbrirBuscador, 
+    _sopFiltrarBuscador, 
+    _sopSeleccionarDeBuscador, 
+    _sopAutocompletarPN, 
+    _garGuardar 
+  };
 })();
 
 window.IngresoSoporteInline = IngresoSoporteInline;

@@ -41,7 +41,7 @@ const HistorialView = (() => {
     const canEdit = window.AuthService ? AuthService.canEditLote(lote) : true;
     return `
       <div class="card" style="margin-bottom:12px;border-left:3px solid ${lote.activo?'var(--accent)':'var(--border)'}">
-        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="_histToggle('${lote.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="HistorialView._histToggle('${lote.id}')">
           <div style="display:flex;align-items:center;gap:10px">
             <span style="font-size:1.2rem">📦</span>
             <div>
@@ -55,9 +55,9 @@ const HistorialView = (() => {
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();LotePortable.exportar('${lote.id}')" title="Descargar lote completo como JSON portable">📦 JSON</button>
             
             ${canEdit ? `
-              <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();_histEditar('${lote.id}')" title="Editar lote">✏️</button>
-              ${!lote.activo?`<button class="btn btn-sm btn-success" style="background:var(--success);border:none;color:#fff" onclick="event.stopPropagation();_histContinuar('${lote.id}')" title="Continuar trabajando en este lote">▶️ Continuar</button>`:''}
-              ${!lote.activo?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();_histEliminar('${lote.id}')">🗑️</button>`:''}
+              <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();HistorialView._histEditar('${lote.id}')" title="Editar lote">✏️</button>
+              ${!lote.activo?`<button class="btn btn-sm btn-success" style="background:var(--success);border:none;color:#fff" onclick="event.stopPropagation();HistorialView._histContinuar('${lote.id}')" title="Continuar trabajando en este lote">▶️ Continuar</button>`:''}
+              ${!lote.activo?`<button class="btn btn-sm btn-danger" onclick="event.stopPropagation();HistorialView._histEliminar('${lote.id}')">🗑️</button>`:''}
             ` : `
               <span style="padding:0 8px;font-size:1.1rem" title="Solo lectura (Propietario: ${lote._ownerId})">🔒</span>
             `}
@@ -91,16 +91,19 @@ const HistorialView = (() => {
     `;
   }
 
-  window._histToggle = (id) => {
-    const body  = document.getElementById(`hist-body-${id}`);
-    const arrow = document.getElementById(`hist-arrow-${id}`);
-    if (!body) return;
-    const open = body.style.display==='block';
-    body.style.display = open?'none':'block';
-    if(arrow) arrow.style.transform = open?'':'rotate(180deg)';
+  const _histToggle = (id) => {
+    const body = document.getElementById('hist-body-'+id);
+    const arrow = document.getElementById('hist-arrow-'+id);
+    if(body.style.display==='none'){
+      body.style.display='block';
+      if(arrow) arrow.style.transform='rotate(180deg)';
+    }else{
+      body.style.display='none';
+      if(arrow) arrow.style.transform='rotate(0)';
+    }
   };
 
-  window._histEliminar = async (id) => {
+  const _histEliminar = async (id) => {
     const lote = window._histLotes?.find(l => l.id === id);
     if (window.AuthService && !AuthService.canEditLote(lote)) { Toast.error('🔒 No tienes permisos para eliminar este lote.'); return; }
     if (!confirm('¿Eliminar este lote permanentemente?')) return;
@@ -113,7 +116,7 @@ const HistorialView = (() => {
     }
   };
 
-  window._histContinuar = async (id) => {
+  const _histContinuar = async (id) => {
     const lote = window._histLotes?.find(l => l.id === id);
     if (window.AuthService && !AuthService.canEditLote(lote)) { Toast.error('🔒 No tienes permisos para editar este lote.'); return; }
     if (!confirm('Esto cerrará el lote activo actual (si hay uno). ¿Continuar?')) return;
@@ -125,7 +128,7 @@ const HistorialView = (() => {
     Views.go('ingreso');
   };
 
-  window._histEditar = async (id) => {
+  const _histEditar = async (id) => {
     const lotes = await LocalCache.getLotes();
     const lote = lotes.find(l => l.id === id);
     if (!lote) { Toast.error('Lote no encontrado'); return; }
@@ -144,12 +147,12 @@ const HistorialView = (() => {
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>
-        <button class="btn btn-primary" onclick="_histGuardarEdicion('${lote.id}')">Guardar Cambios</button>
+        <button class="btn btn-primary" onclick="HistorialView._histGuardarEdicion('${lote.id}')">💾 Guardar</button>
       </div>
     `);
   };
 
-  window._histGuardarEdicion = async (id) => {
+  const _histGuardarEdicion = async (id) => {
     const titulo = document.getElementById('edit-lote-titulo')?.value?.trim();
     const tecnico = document.getElementById('edit-lote-tecnico')?.value?.trim() || '';
     if (!titulo) { Toast.warning('Escribe un título'); return; }
@@ -170,17 +173,7 @@ const HistorialView = (() => {
     }
   };
 
-  window._histContinuar = async (id) => {
-    const lote = await LocalCache.continuarLote(id);
-    if (lote) {
-      Toast.success(`Trabajando ahora en: ${lote.titulo}`);
-      Views.go('ingreso');
-    } else {
-      Toast.error('No se pudo reactivar el lote');
-    }
-  };
-
-  window._histImportarLote = async (input) => {
+  const _histImportarLote = async (input) => {
     const file = input.files[0];
     if (!file) return;
     input.value = '';
@@ -192,7 +185,15 @@ const HistorialView = (() => {
     }
   };
 
-  return { render };
+  return { 
+    render, 
+    _histToggle, 
+    _histEliminar, 
+    _histContinuar, 
+    _histEditar, 
+    _histGuardarEdicion, 
+    _histImportarLote 
+  };
 })();
 
 window.HistorialView = HistorialView;

@@ -59,22 +59,28 @@ const LoginView = (() => {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:8px"></span> Verificando...';
 
-    const success = await AuthService.login(usr, pwd);
+    try {
+      const success = await AuthService.login(usr, pwd);
 
-    if (success) {
-      const overlay = document.getElementById('login-overlay');
-      if (overlay) overlay.remove();
-      Toast.success(`¡Bienvenido, ${AuthService.getUsuarioActual().username}!`);
-      // Emit events or direct init
-      if (window.App) {
-        window.App.init(); // Re-iniciar la app
+      if (success) {
+        const overlay = document.getElementById('login-overlay');
+        if (overlay) overlay.remove();
+        Toast.success(`¡Bienvenido, ${AuthService.getUsuarioActual().username}!`);
+        // Emit events or direct init
+        if (window.App) {
+          window.App.init(); // Re-iniciar la app
+        } else {
+          window.location.reload();
+        }
       } else {
-        window.location.reload();
+        btn.disabled = false;
+        btn.innerHTML = 'Iniciar Sesión';
+        Toast.error('Credenciales incorrectas');
       }
-    } else {
+    } catch (e) {
       btn.disabled = false;
       btn.innerHTML = 'Iniciar Sesión';
-      Toast.error('Credenciales incorrectas');
+      Toast.error(e.message || 'Error de autenticación');
     }
   }
 

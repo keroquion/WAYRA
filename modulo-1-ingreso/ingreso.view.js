@@ -276,7 +276,7 @@ const IngresoView = (() => {
     if (el) el.innerHTML = await _renderStats();
   }
 
-  window._ingresoQuitarEquipo = async (loteId, regId) => {
+  const quitarEquipo = async (loteId, regId) => {
     if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Este lote es de solo lectura.'); return; }
     if (!confirm('¿Deseas quitar este equipo del lote? Esta acción no se puede deshacer.')) return;
     await LocalCache.eliminarEquipoDeLote(loteId, regId);
@@ -286,14 +286,14 @@ const IngresoView = (() => {
     Toast.info('Equipo quitado del lote');
   };
 
-  window._ingresoAbrirGarantia = (regId) => {
+  const abrirGarantia = (regId) => {
     if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Este lote es de solo lectura.'); return; }
     const eq = window._ingresoEquiposMap?.[regId];
     if (!eq) { Toast.error('Registro no encontrado'); return; }
     FlujoGarantia.openModal(eq);
   };
 
-  window._ingresoAbrirSoporte = (regId) => {
+  const abrirSoporte = (regId) => {
     if (window.AuthService && !AuthService.canEditLote(window._loteActivo)) { Toast.error('🔒 Este lote es de solo lectura.'); return; }
     const eq = window._ingresoEquiposMap?.[regId];
     if (!eq) { Toast.error('Registro no encontrado'); return; }
@@ -387,7 +387,7 @@ const IngresoView = (() => {
     ScannerBarras.setGlobalActive(false);
   }
 
-  return { render, syncBase, onLeave, continuarLoteRapido };
+  return { render, syncBase, onLeave, continuarLoteRapido, refreshStats: _renderStatsInline, quitarEquipo, abrirGarantia, abrirSoporte };
 })();
 
 window.IngresoView = IngresoView;

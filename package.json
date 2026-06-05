@@ -1,0 +1,24 @@
+{
+  "name": "final-registros",
+  "version": "1.0.0",
+  "description": "Sistema de gestión modular de lotes e inventario con almacenamiento local en IndexedDB y sincronización bidireccional con Google Sheets y Google Drive mediante Apps Script.",
+  "main": "_patch_global_scanner_and_marca.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keroquion/TESTAAAAAAA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/keroquion/TESTAAAAAAA/issues"
+  },
+  "homepage": "https://github.com/keroquion/TESTAAAAAAA#readme",
+  "dependencies": {
+    "puppeteer": "^25.1.0"
+  }
+}

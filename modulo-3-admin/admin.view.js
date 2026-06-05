@@ -56,7 +56,7 @@ const AdminView = (() => {
 
       <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">
         ${['Empresa','Catálogos','Conexión','Seguridad','Auditoría','Portabilidad','🤖 Gemini IA','🗄️ Repuestos DB'].map((t,i)=>`
-          <button class="btn btn-ghost admin-tab" id="admin-tab-${i}" onclick="window._adminTab(${i})" style="border-radius:0;border-bottom:2px solid transparent;padding:10px 16px;font-size:0.82rem">${t}</button>
+          <button class="btn btn-ghost admin-tab" id="admin-tab-${i}" onclick="AdminView.switchTab(${i})" style="border-radius:0;border-bottom:2px solid transparent;padding:10px 16px;font-size:0.82rem">${t}</button>
         `).join('')}
       </div>
 
@@ -157,8 +157,8 @@ const AdminView = (() => {
               <input type="text" class="form-control" id="admin-gas-url" value="${APP_CONFIG.appsScript.webAppUrl}" placeholder="https://script.google.com/macros/s/.../exec">
             </div>
             <div style="display:flex;gap:8px">
-              <button class="btn btn-primary" onclick="window._adminGuardarGAS()" style="flex:1">💾 Guardar Configuración</button>
-              <button class="btn btn-secondary" onclick="window._adminTestGAS()">🔍 Probar Conexión</button>
+              <button class="btn btn-primary" onclick="AdminConexion.guardarGAS()" style="flex:1">💾 Guardar Configuración</button>
+              <button class="btn btn-secondary" onclick="AdminConexion.testGAS()">🔍 Probar Conexión</button>
             </div>
             <div id="admin-gas-result" style="margin-top:10px;font-size:0.78rem"></div>
           </div>
@@ -168,7 +168,7 @@ const AdminView = (() => {
             <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">
               Verifica si el sistema tiene permisos para crear la carpeta y guardar las imágenes en Google Drive correctamente.
             </div>
-            <button class="btn btn-secondary" onclick="window._adminTestDrive()">🔍 Probar Conexión a Drive</button>
+            <button class="btn btn-secondary" onclick="AdminConexion.testDrive()">🔍 Probar Conexión a Drive</button>
             <div id="admin-drive-result" style="margin-top:10px;font-size:0.78rem"></div>
           </div>
         </div>
@@ -191,7 +191,7 @@ const AdminView = (() => {
             <label class="form-label">Confirmar Nuevo PIN</label>
             <input type="password" class="form-control" id="admin-pin-confirm" maxlength="4" placeholder="••••">
           </div>
-          <button class="btn btn-primary" onclick="window._adminCambiarPin()">🔐 Cambiar PIN</button>
+          <button class="btn btn-primary" onclick="AdminView.cambiarPin()">🔐 Cambiar PIN</button>
         </div>
       </div>
 
@@ -227,7 +227,7 @@ const AdminView = (() => {
               <div class="drop-icon">📂</div>
               <div style="font-weight:600">Arrastra o haz clic para seleccionar</div>
               <div style="font-size:0.75rem;margin-top:4px">Archivo .json</div>
-              <input type="file" accept=".json" style="display:none" onchange="window._adminImportarConfig(this)">
+              <input type="file" accept=".json" style="display:none" onchange="AdminView.importarConfig(this)">
             </label>
           </div>
         </div>
@@ -270,11 +270,11 @@ const AdminView = (() => {
               </label>
               <label style="flex:1;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:var(--bg-hover);border:1px dashed var(--border);border-radius:var(--radius-md);font-size:0.8rem">
                 📷 Cámara
-                <input type="file" accept="image/*" capture="environment" style="display:none" onchange="window._adminPreviewGemini(this)">
+                <input type="file" accept="image/*" capture="environment" style="display:none" onchange="AdminConexion.previewGemini(this)">
               </label>
             </div>
-            <input type="file" id="gemini-test-file" accept="image/*" style="display:none" onchange="window._adminPreviewGemini(this)">
-            <button id="gemini-test-btn" class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="window._adminTestGemini()" disabled>
+            <input type="file" id="gemini-test-file" accept="image/*" style="display:none" onchange="AdminConexion.previewGemini(this)">
+            <button id="gemini-test-btn" class="btn btn-primary" style="width:100%;margin-bottom:10px" onclick="AdminConexion.testGemini()" disabled>
               🤖 Analizar con Gemini
             </button>
             <div id="admin-gemini-result" style="font-size:0.78rem"></div>
@@ -287,9 +287,9 @@ const AdminView = (() => {
         <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
           <input type="text" class="form-control" id="rep-db-search"
             placeholder="🔍 Buscar por modelo, repuesto o PN…"
-            oninput="window._adminFiltrarRepuestos(this.value)"
-            style="flex:1;min-width:200px">
-          <button class="btn btn-secondary btn-sm" onclick="window._adminSyncRepuestosDB()">☁️ Sincronizar con Sheets</button>
+            oninput="AdminRepuestosDB.filtrarRepuestos(this.value)"
+            style="width:100%;max-width:300px;margin-bottom:12px;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);color:var(--text-primary)">
+          <button class="btn btn-secondary btn-sm" onclick="AdminRepuestosDB.syncRepuestosDB()">☁️ Sincronizar con Sheets</button>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
           <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
@@ -308,7 +308,7 @@ const AdminView = (() => {
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <input type="text" class="form-control" id="alias-modelo-a" placeholder="Modelo A (nombre en la base)" style="flex:1;min-width:160px">
             <input type="text" class="form-control" id="alias-modelo-b" placeholder="Modelo B (alias equivalente)" style="flex:1;min-width:160px">
-            <button class="btn btn-primary" onclick="window._adminGuardarAlias()">➕ Agregar alias</button>
+            <button class="btn btn-primary" onclick="AdminRepuestosDB.guardarAlias()">➕ Agregar alias</button>
           </div>
         </div>
       </div>
@@ -317,17 +317,17 @@ const AdminView = (() => {
     AdminConexion.init();
     AdminRepuestosDB.init();
 
-    window._adminTab = (i) => {
+    switchTab = (i) => {
       document.querySelectorAll('.admin-panel').forEach((p,j)=> p.style.display = j===i?'':'none');
       document.querySelectorAll('.admin-tab').forEach((b,j)=>{
         b.style.borderBottomColor = j===i ? 'var(--accent)' : 'transparent';
         b.style.color = j===i ? 'var(--accent)' : '';
       });
       if (i===4) AuditTrail.renderTo('audit-container');
-      if (i===7) window._adminRenderRepuestosDB();
+      if (i===7) AdminRepuestosDB.render();
     };
 
-    window._adminCambiarPin = async () => {
+    cambiarPin = async () => {
       const actual  = (document.getElementById('admin-pin-actual')?.value || '').trim();
       const nuevo   = (document.getElementById('admin-pin-nuevo')?.value || '').trim();
       const confirmVal = (document.getElementById('admin-pin-confirm')?.value || '').trim();
@@ -341,7 +341,7 @@ const AdminView = (() => {
       try { await PinAuth.changePin(nuevo); Toast.success('PIN cambiado ✅'); } catch(e) { Toast.error(e.message); }
     };
 
-    window._adminImportarConfig = async (input) => {
+    importarConfig = async (input) => {
       const file = input.files[0];
       if (!file) return;
       await PerfilConfig.importarConfig(file);
@@ -349,10 +349,12 @@ const AdminView = (() => {
       render();
     };
 
-    _adminTab(0);
+    switchTab(0);
   }
 
-  return { render };
+  let switchTab, cambiarPin, importarConfig;
+
+  return { render, get switchTab() { return switchTab; }, get cambiarPin() { return cambiarPin; }, get importarConfig() { return importarConfig; } };
 })();
 
 window.AdminView = AdminView;

@@ -6,11 +6,7 @@
 const AdminConexion = (() => {
 
   function init() {
-    window._adminGuardarGAS = guardarGAS;
-    window._adminTestGAS = testGAS;
-    window._adminTestDrive = testDrive;
-    window._adminPreviewGemini = previewGemini;
-    window._adminTestGemini = testGemini;
+    // Inicialización si es necesaria
   }
 
   async function guardarGAS() {
@@ -192,7 +188,7 @@ const AdminConexion = (() => {
     }
   }
 
-  return { init };
+  return { init, guardarGAS, testGAS, testDrive, previewGemini, testGemini };
 })();
 
 window.AdminConexion = AdminConexion;

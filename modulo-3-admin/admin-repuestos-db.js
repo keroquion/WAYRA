@@ -47,13 +47,13 @@ const AdminRepuestosDB = (() => {
             <span id="rep-pn-display-${i}" style="background:var(--bg-hover);padding:2px 8px;border-radius:4px;font-family:monospace;font-size:0.75rem">${r.pn}</span>
             <input type="text" id="rep-pn-input-${i}" value="${r.pn === '—' ? '' : r.pn}"
               style="display:none;width:110px;font-size:0.75rem;padding:2px 6px;border:1px solid var(--accent);border-radius:4px"
-              onkeydown="if(event.key==='Enter') window._adminGuardarPN('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})">
+              onkeydown="if(event.key==='Enter') AdminRepuestosDB.guardarPN('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})">
           </td>
           <td style="text-align:center;color:var(--text-muted)">${r.usos}x</td>
           <td>
             <div style="display:flex;gap:6px;align-items:center">
-              <button onclick="window._adminEditarPN(${i})" style="background:none;border:none;cursor:pointer;font-size:1rem" title="Editar PN">✏️</button>
-              <button onclick="window._adminEliminarEntrada('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})"
+              <button onclick="AdminRepuestosDB.editarPN(${i})" style="background:none;border:none;cursor:pointer;font-size:1rem" title="Editar PN">✏️</button>
+              <button onclick="AdminRepuestosDB.eliminarEntrada('${r.key}','${r.modelo.replace(/'/g,"\\'")}',${i})"
                 style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--danger)" title="Eliminar">🗑️</button>
             </div>
           </td>
@@ -101,7 +101,7 @@ const AdminRepuestosDB = (() => {
   }
 
   async function syncRepuestosDB() {
-    const btn = document.querySelector('[onclick="window._adminSyncRepuestosDB()"]');
+    const btn = document.querySelector('[onclick="AdminRepuestosDB.syncRepuestosDB()"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sincronizando…'; }
     try {
       await AppsScriptBridge.saveRepuestosDB(ModoRapido.getAll());
@@ -124,7 +124,7 @@ const AdminRepuestosDB = (() => {
         <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px">${a.modeloA}</code>
         <span style="color:var(--text-muted)">≡</span>
         <code style="background:rgba(99,102,241,0.1);padding:2px 8px;border-radius:4px">${a.modeloB}</code>
-        <button onclick="window._adminEliminarAlias(${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:0.9rem">✕</button>
+        <button onclick="AdminRepuestosDB.eliminarAlias(${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:0.9rem">✕</button>
       </div>`).join('');
   }
 
@@ -153,17 +153,20 @@ const AdminRepuestosDB = (() => {
   }
 
   function init() {
-    window._adminRenderRepuestosDB = render;
-    window._adminEditarPN = editarPN;
-    window._adminGuardarPN = guardarPN;
-    window._adminEliminarEntrada = eliminarEntrada;
-    window._adminFiltrarRepuestos = filtrarRepuestos;
-    window._adminSyncRepuestosDB = syncRepuestosDB;
-    window._adminGuardarAlias = guardarAlias;
-    window._adminEliminarAlias = eliminarAlias;
+    // Inicialización si es necesaria
   }
 
-  return { init, render };
+  return { 
+    init, 
+    render, 
+    editarPN, 
+    guardarPN, 
+    eliminarEntrada, 
+    filtrarRepuestos, 
+    syncRepuestosDB, 
+    guardarAlias, 
+    eliminarAlias 
+  };
 })();
 
 window.AdminRepuestosDB = AdminRepuestosDB;

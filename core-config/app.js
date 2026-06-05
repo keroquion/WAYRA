@@ -48,8 +48,12 @@ const Views = (() => {
   }
 
   function init() {
-    const hash = location.hash.replace('#','') || 'ingreso';
-    go(VIEWS[hash] ? hash : 'ingreso');
+    const hash = location.hash.replace('#','') || 'historial';
+    go(VIEWS[hash] ? hash : 'historial');
+    window.addEventListener('hashchange', () => {
+      const h = location.hash.replace('#','') || 'historial';
+      if (h !== _current && VIEWS[h]) go(h);
+    });
   }
 
   // ── Sidebar móvil y escritorio ──

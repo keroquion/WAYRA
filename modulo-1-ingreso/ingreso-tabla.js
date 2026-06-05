@@ -76,14 +76,14 @@ const IngresoTabla = (() => {
       <div style="display:flex;gap:14px;align-items:center;justify-content:center">
         <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Garantía"
           onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
-          onclick="_ingresoAbrirGarantia('${eq._registroId}')">🛡️</button>
+          onclick="IngresoView.abrirGarantia('${eq._registroId}')">🛡️</button>
         <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s" title="Soporte"
           onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"
-          onclick="_ingresoAbrirSoporte('${eq._registroId}')">🔩</button>
+          onclick="IngresoView.abrirSoporte('${eq._registroId}')">🔩</button>
         <div style="width:1px;height:20px;background:var(--border)"></div>
         <button class="btn btn-sm btn-icon" style="font-size:1.2rem;transition:transform 0.2s;filter:grayscale(100%)" title="Quitar"
           onmouseover="this.style.transform='scale(1.2)';this.style.filter='grayscale(0)'" onmouseout="this.style.transform='scale(1)';this.style.filter='grayscale(100%)'"
-          onclick="_ingresoQuitarEquipo('${loteActivo.id}','${eq._registroId}')">🗑️</button>
+          onclick="IngresoView.quitarEquipo('${loteActivo.id}','${eq._registroId}')">🗑️</button>
       </div>
     </td>`;
   }
@@ -97,7 +97,7 @@ const IngresoTabla = (() => {
     const chipsHtml = repuestos.map((r, idx) =>
       `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.3);border-radius:3px;padding:1px 5px;font-size:0.65rem;white-space:nowrap">
         <strong>${r.repuesto||r.nombre}</strong>${r.pn?' · '+r.pn:''}
-        <button onclick="_sopQuitarRepuesto('${eq._registroId}',${idx})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.7rem;padding:0;line-height:1">✕</button>
+        <button onclick="IngresoSoporteInline._sopQuitarRepuesto('${eq._registroId}',${idx})" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.7rem;padding:0;line-height:1">✕</button>
       </span>`
     ).join('');
 
@@ -109,7 +109,7 @@ const IngresoTabla = (() => {
         <!-- Fila de nuevo repuesto: solo registra con Enter o clic + -->
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap" id="sop-row-${eq._registroId}">
           <select id="sop-rep-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onchange="_sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}')">
+            onchange="IngresoSoporteInline._sopOnRepuestoChange('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}')">
             <option value="">Repuesto…</option>
             ${tiposR.map(t => `<option value="${t}" ${!repuestos.length && t === stickyRepuesto ? 'selected' : ''}>${t}</option>`).join('')}
           </select>
@@ -117,24 +117,24 @@ const IngresoTabla = (() => {
             placeholder="PN (Enter = guardar)"
             value="${repuestos.length ? '' : (stickyPN || '')}"
             style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            oninput="_sopOnPNInput('${eq._registroId}',this.value)"
-            onkeydown="if(event.key==='Enter'){event.preventDefault();_sopAgregarRepuesto('${eq._registroId}');}">
+            oninput="IngresoSoporteInline._sopOnPNInput('${eq._registroId}',this.value)"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();IngresoSoporteInline._sopAgregarRepuesto('${eq._registroId}');}">
           <!-- 🔍 Buscador DB de repuestos -->
-          <button onclick="_sopAbrirBuscador('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}','${(eq.SERIE||'').replace(/'/g,'')}')" title="Buscar en base de repuestos"
+          <button onclick="IngresoSoporteInline._sopAbrirBuscador('${eq._registroId}','${(eq.MODELO||'').replace(/'/g,'')}','${(eq.SERIE||'').replace(/'/g,'')}')" title="Buscar en base de repuestos"
             style="background:var(--bg-hover);border:1px solid var(--border);border-radius:4px;cursor:pointer;height:26px;padding:0 7px;font-size:0.85rem;color:var(--text-secondary)">
             🔍
           </button>
-          <button onclick="_sopAgregarRepuesto('${eq._registroId}')"
+          <button onclick="IngresoSoporteInline._sopAgregarRepuesto('${eq._registroId}')"
             style="background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:0.7rem;cursor:pointer;height:26px;white-space:nowrap"
             title="Agregar repuesto">
             ➕
           </button>
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
           <button class="btn btn-sm btn-icon" title="Soporte Avanzado" style="font-size:1.1rem"
-            onclick="_ingresoAbrirSoporte('${eq._registroId}')">⚙️</button>
+            onclick="IngresoView.abrirSoporte('${eq._registroId}')">⚙️</button>
           <button class="btn btn-sm btn-icon" style="font-size:1.1rem;filter:grayscale(100%)" title="Quitar"
             onmouseover="this.style.filter='grayscale(0)'" onmouseout="this.style.filter='grayscale(100%)'"
-            onclick="_ingresoQuitarEquipo('${loteActivo.id}','${eq._registroId}')">🗑️</button>
+            onclick="IngresoView.quitarEquipo('${loteActivo.id}','${eq._registroId}')">🗑️</button>
         </div>
         <!-- Panel buscador inline (se despliega aqui) -->
         <div id="sop-search-${eq._registroId}" style="display:none"></div>
@@ -149,24 +149,24 @@ const IngresoTabla = (() => {
         ${eq._estadoGarantia ? `<span style="font-size:0.65rem;color:#0891b2;font-weight:600">${eq._estadoGarantia} · ${eq._proveedorGarantia||''}</span>` : ''}
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
           <select id="gar-prov-${eq._registroId}" class="form-control" style="width:auto;min-width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onchange="_garGuardar('${eq._registroId}')">
+            onchange="IngresoSoporteInline._garGuardar('${eq._registroId}')">
             <option value="">Proveedor…</option>
             ${proveedores.map(p => `<option value="${p}" ${eq._proveedorGarantia===p?'selected':''}>${p}</option>`).join('')}
           </select>
           <input type="text" id="gar-falla-${eq._registroId}" class="form-control" placeholder="Falla…"
             value="${eq._fallaGarantia||''}"
             style="width:100px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onblur="_garGuardar('${eq._registroId}')">
+            onblur="IngresoSoporteInline._garGuardar('${eq._registroId}')">
           <input type="date" id="gar-fecha-${eq._registroId}" class="form-control"
             value="${eq._fechaEnvioGarantia||new Date().toISOString().slice(0,10)}"
             style="width:110px;font-size:0.72rem;padding:3px 6px;height:26px"
-            onchange="_garGuardar('${eq._registroId}')">
+            onchange="IngresoSoporteInline._garGuardar('${eq._registroId}')">
           <div style="width:1px;height:20px;background:var(--border);flex-shrink:0"></div>
           <button class="btn btn-sm btn-icon" title="Garantía Avanzada" style="font-size:1.1rem"
-            onclick="_ingresoAbrirGarantia('${eq._registroId}')">🛡️</button>
+            onclick="IngresoView.abrirGarantia('${eq._registroId}')">🛡️</button>
           <button class="btn btn-sm btn-icon" style="font-size:1.1rem;filter:grayscale(100%)" title="Quitar"
             onmouseover="this.style.filter='grayscale(0)'" onmouseout="this.style.filter='grayscale(100%)'"
-            onclick="_ingresoQuitarEquipo('${loteActivo.id}','${eq._registroId}')">🗑️</button>
+            onclick="IngresoView.quitarEquipo('${loteActivo.id}','${eq._registroId}')">🗑️</button>
         </div>
       </div>
     </td>`;
