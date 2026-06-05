@@ -26,7 +26,7 @@ const IngresoLoteModal = (() => {
     setTimeout(async () => {
       const lotes = await LocalCache.getLotes();
       const inp = document.getElementById('nuevo-lote-titulo');
-      if (inp) { inp.value = \`LOTE \${101 + lotes.length}\`; inp.select(); }
+      if (inp) { inp.value = `LOTE ${101 + lotes.length}`; inp.select(); }
     }, 100);
   }
 
@@ -38,7 +38,7 @@ const IngresoLoteModal = (() => {
     window._loteActivo = await LocalCache.crearLote(titulo, tecnico);
     
     ModalGenerico.close();
-    Toast.success(\`Lote "\${titulo}" creado\`);
+    Toast.success(`Lote "${titulo}" creado`);
     if (onRenderCallback) onRenderCallback();
   }
 

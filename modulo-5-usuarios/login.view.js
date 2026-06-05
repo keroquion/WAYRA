@@ -64,7 +64,7 @@ const LoginView = (() => {
     if (success) {
       const overlay = document.getElementById('login-overlay');
       if (overlay) overlay.remove();
-      Toast.success(\`¡Bienvenido, \${AuthService.getUsuarioActual().username}!\`);
+      Toast.success(`¡Bienvenido, ${AuthService.getUsuarioActual().username}!`);
       // Emit events or direct init
       if (window.App) {
         window.App.init(); // Re-iniciar la app
@@ -90,17 +90,17 @@ const LoginView = (() => {
     const usr = AuthService.getUsuarioActual();
     const roleLabel = usr.role === 'admin' ? '🛡️ Admin' : '👨‍🔧 Técnico';
 
-    container.innerHTML = \`
+    container.innerHTML = `
       <div style="display:flex;align-items:center;gap:10px;background:var(--bg-hover);padding:4px 12px;border-radius:20px;border:1px solid var(--border)">
         <div style="font-size:0.85rem">
-          <strong>\${usr.username}</strong>
-          <span style="color:var(--text-muted);font-size:0.75rem;margin-left:4px">(\${roleLabel})</span>
+          <strong>${usr.username}</strong>
+          <span style="color:var(--text-muted);font-size:0.75rem;margin-left:4px">(${roleLabel})</span>
         </div>
         <button onclick="AuthService.logout()" class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:0.75rem;background:none;border-color:transparent" title="Cerrar sesión">
           🚪 Salir
         </button>
       </div>
-    \`;
+    `;
   }
 
   return {
