@@ -7,7 +7,7 @@ const AdminRepuestosDB = (() => {
   let _repDBEntries = [];
 
   function render() {
-    _repDBEntries = ModoRapido.getAll();
+    _repDBEntries = RepuestosDB.getAll();
     _renderTablaRepuestos(_repDBEntries);
     _renderAliases();
   }
@@ -75,14 +75,14 @@ const AdminRepuestosDB = (() => {
     const input = document.getElementById(`rep-pn-input-${idx}`);
     if (!input) return;
     const nuevoPn = input.value.trim();
-    await ModoRapido.editarPN(key, modelo, nuevoPn);
+    await RepuestosDB.editarPN(key, modelo, nuevoPn);
     Toast.success(`PN actualizado → ${nuevoPn || '(vacío)'}`);
     render();
   }
 
   async function eliminarEntrada(key, modelo, idx) {
     if (!confirm(`¿Eliminar "${modelo}" de la base de repuestos?`)) return;
-    await ModoRapido.eliminarEntrada(key, modelo);
+    await RepuestosDB.eliminarEntrada(key, modelo);
     Toast.success('Entrada eliminada');
     render();
   }
@@ -104,7 +104,7 @@ const AdminRepuestosDB = (() => {
     const btn = document.querySelector('[onclick="AdminRepuestosDB.syncRepuestosDB()"]');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sincronizando…'; }
     try {
-      await AppsScriptBridge.saveRepuestosDB(ModoRapido.getAll());
+      await AppsScriptBridge.saveRepuestosDB(RepuestosDB.getAll());
       Toast.success('✅ Base de repuestos sincronizada con Sheets');
       render();
     } catch (e) {

@@ -17,8 +17,8 @@ const IngresoSoporteInline = (() => {
     if (!sel) return;
     _saveStickyRepuesto(sel.value);
     // Auto-fill PN from DB for this repuesto+modelo
-    if (sel.value && modelo && window.ModoRapido?.buscarPN) {
-      const pn = await ModoRapido.buscarPN(sel.value, modelo);
+    if (sel.value && modelo && window.RepuestosDB?.buscarPN) {
+      const pn = await RepuestosDB.buscarPN(sel.value, modelo);
       if (pn) {
         const pnEl = document.getElementById('sop-pn-' + regId);
         if (pnEl && !pnEl.value) { pnEl.value = pn; _saveStickyPN(pn); }
@@ -65,7 +65,7 @@ const IngresoSoporteInline = (() => {
       eq._lastModified = new Date().toISOString();
       
       await LocalCache.updateLote(lote);
-      if (pn && window.ModoRapido?.guardarPN) await ModoRapido.guardarPN(repuesto, eq.MODELO, pn);
+      if (pn && window.RepuestosDB?.guardarPN) await RepuestosDB.guardarPN(repuesto, eq.MODELO, pn);
       
       window._loteActivo = await LocalCache.getLoteActivo();
       IngresoTabla.render();
@@ -104,8 +104,8 @@ const IngresoSoporteInline = (() => {
   }
 
   function _sopRenderBuscador(panelEl, regId, modelo, repuestoFiltro, textoBusqueda) {
-    if (!window.ModoRapido) return;
-    const todos = ModoRapido.getAll();
+    if (!window.RepuestosDB) return;
+    const todos = RepuestosDB.getAll();
     const q = textoBusqueda.toLowerCase();
 
     let rows = [];
@@ -191,13 +191,13 @@ const IngresoSoporteInline = (() => {
   }
 
   async function _sopAutocompletarPN(regId, modelo) {
-    if (!window.ModoRapido?.buscarPN) return;
+    if (!window.RepuestosDB?.buscarPN) return;
     const sel   = document.getElementById('sop-rep-' + regId);
     const pnEl  = document.getElementById('sop-pn-'  + regId);
     if (!sel || !pnEl || pnEl.value) return;
     const repuesto = sel?.value;
     if (!repuesto) return;
-    const pn = await ModoRapido.buscarPN(repuesto, modelo);
+    const pn = await RepuestosDB.buscarPN(repuesto, modelo);
     if (pn) { pnEl.value = pn; }
   }
 
