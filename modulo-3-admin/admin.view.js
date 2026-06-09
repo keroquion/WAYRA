@@ -291,6 +291,29 @@ const AdminView = (() => {
             style="width:100%;max-width:300px;margin-bottom:12px;padding:6px 12px;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);color:var(--text-primary)">
           <button class="btn btn-secondary btn-sm" onclick="AdminRepuestosDB.syncRepuestosDB()">☁️ Sincronizar con Sheets</button>
         </div>
+        
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title" style="margin-bottom:10px">➕ Añadir Repuesto Manualmente</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:140px">
+              <label class="form-label" style="font-size:0.75rem;margin-bottom:4px">Repuesto *</label>
+              <select id="rep-db-nuevo-repuesto" class="form-control" style="padding:6px 10px">
+                <option value="">-- Seleccionar --</option>
+                ${(APP_CONFIG.catalogos?.tiposRepuesto||[]).map(t => `<option value="${t}">${t}</option>`).join('')}
+              </select>
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label class="form-label" style="font-size:0.75rem;margin-bottom:4px">Modelo de Equipo *</label>
+              <input type="text" id="rep-db-nuevo-modelo" class="form-control" placeholder="Ej: ThinkPad T490" style="padding:6px 10px">
+            </div>
+            <div style="flex:1;min-width:140px">
+              <label class="form-label" style="font-size:0.75rem;margin-bottom:4px">Part Number (PN)</label>
+              <input type="text" id="rep-db-nuevo-pn" class="form-control" placeholder="Ej: 02DL007" style="padding:6px 10px">
+            </div>
+            <button class="btn btn-primary" onclick="AdminRepuestosDB.agregarManual()" style="height:35px;margin-bottom:2px">💾 Guardar</button>
+          </div>
+        </div>
+
         <div class="card" style="padding:0;overflow:hidden">
           <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
             <span class="card-title" style="margin:0">🗄️ Base de Datos Repuestos × Modelo</span>

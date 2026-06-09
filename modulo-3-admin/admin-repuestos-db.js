@@ -87,6 +87,24 @@ const AdminRepuestosDB = (() => {
     render();
   }
 
+  async function agregarManual() {
+    const repuesto = document.getElementById('rep-db-nuevo-repuesto')?.value;
+    const modelo = document.getElementById('rep-db-nuevo-modelo')?.value.trim();
+    const pn = document.getElementById('rep-db-nuevo-pn')?.value.trim() || '';
+
+    if (!repuesto || !modelo) {
+      Toast.warning('El Repuesto y el Modelo son obligatorios');
+      return;
+    }
+
+    await RepuestosDB.guardarPN(repuesto, modelo, pn);
+    Toast.success(`✅ Agregado: ${repuesto} para ${modelo}`);
+    
+    document.getElementById('rep-db-nuevo-modelo').value = '';
+    document.getElementById('rep-db-nuevo-pn').value = '';
+    render();
+  }
+
   function filtrarRepuestos(query) {
     const q = query.toLowerCase();
     const filtered = q
@@ -161,6 +179,7 @@ const AdminRepuestosDB = (() => {
     render, 
     editarPN, 
     guardarPN, 
+    agregarManual,
     eliminarEntrada, 
     filtrarRepuestos, 
     syncRepuestosDB, 
