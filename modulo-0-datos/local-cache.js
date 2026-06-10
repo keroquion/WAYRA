@@ -287,11 +287,36 @@ const LocalCache = (() => {
         await put('lotes', lote);
       }
 
+      await syncCatalogTiposFromLotes(lotesValidos);
+
       console.log(`✅ Lotes sincronizados desde Sheets: ${lotesValidos.length} activos (${deletedIds.length} ignorados por borrado local)`);
       return { added: lotesValidos.length, total: remoteLotes.length };
     } catch (err) {
       console.warn('[LocalCache] Error cargando lotes remotos:', err.message);
       throw err;
+    }
+  }
+
+  // ── EXTRACT REPUESTOS FROM LOTES ─────────────────────────────────
+  async function syncCatalogTiposFromLotes(lotes) {
+    if (!lotes) lotes = await getLotes();
+    const currentTipos = new Set(APP_CONFIG.catalogos?.tiposRepuesto || []);
+    let changed = false;
+    for (const lote of lotes) {
+      for (const eq of (lote.equipos || [])) {
+        for (const r of (eq._repuestosUsados || [])) {
+          if (r.repuesto && !currentTipos.has(r.repuesto)) {
+            currentTipos.add(r.repuesto);
+            changed = true;
+          }
+        }
+      }
+    }
+    if (changed) {
+      const arr = [...currentTipos].sort((a,b) => a.localeCompare(b));
+      APP_CONFIG.catalogos.tiposRepuesto = arr;
+      try { await setCatalogo('tiposRepuesto', arr); } catch {}
+      console.log('[LocalCache] 🔄 Catálogo de tipos de repuesto reconstruido desde Lotes');
     }
   }
 
@@ -349,6 +374,7 @@ const LocalCache = (() => {
     exportBackup,
     loadLotesFromRemote,
     syncLotesRemotoInmediato,
+    syncCatalogTiposFromLotes,
   };
 })();
 

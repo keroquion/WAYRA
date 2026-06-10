@@ -153,6 +153,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const cats = await LocalCache.getCatalogos();
   Object.assign(APP_CONFIG.catalogos, cats);
 
+  // 4.5 Extraer posibles repuestos que estén en Lotes pero no en el catálogo
+  await LocalCache.syncCatalogTiposFromLotes();
+
   // 5. Restaurar config de Sheets
   try {
     const savedSheets = JSON.parse(localStorage.getItem('inv-pro-sheets-cfg') || 'null');
