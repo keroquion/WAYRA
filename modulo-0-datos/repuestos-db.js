@@ -26,6 +26,27 @@ const RepuestosDB = (() => {
     return (repuesto || '') + '|' + _norm(modelo);
   }
 
+  async function _syncCatalogTipos() {
+    const tiposDB = new Set();
+    for (const entry of _memMap.values()) {
+      if (entry.repuesto) tiposDB.add(entry.repuesto);
+    }
+    const currentTipos = new Set(APP_CONFIG.catalogos?.tiposRepuesto || []);
+    let changed = false;
+    for (const t of tiposDB) {
+      if (!currentTipos.has(t)) {
+        currentTipos.add(t);
+        changed = true;
+      }
+    }
+    if (changed) {
+      const arr = [...currentTipos].sort((a,b) => a.localeCompare(b));
+      APP_CONFIG.catalogos.tiposRepuesto = arr;
+      try { await LocalCache.setCatalogo('tiposRepuesto', arr); } catch {}
+      console.log(`[RepuestosDB] 🔄 Catálogo de tipos de repuesto actualizado automáticamente`);
+    }
+  }
+
   async function loadFromRemote() {
     if (!APP_CONFIG.appsScript.webAppUrl) return;
     try {
@@ -36,6 +57,7 @@ const RepuestosDB = (() => {
         _memMap.set(entry.key, entry);
       }
       _loaded = true;
+      await _syncCatalogTipos();
       console.log(`[RepuestosDB] ✅ Cargados ${entries.length} entradas desde Sheets`);
     } catch (e) {
       console.warn('[RepuestosDB] Error cargando desde Sheets:', e.message);
@@ -50,6 +72,7 @@ const RepuestosDB = (() => {
         _memMap.set(entry.key, entry);
       }
       _loaded = true;
+      await _syncCatalogTipos();
       console.log(`[RepuestosDB] 📦 ${_memMap.size} entradas cargadas desde IDB local`);
     } catch (e) {
       console.warn('[RepuestosDB] Error cargando IDB:', e.message);
@@ -73,6 +96,10 @@ const RepuestosDB = (() => {
     _memMap.set(key, entry);
 
     try { await LocalCache.put('repuestos_db', entry); } catch {}
+
+    if (repuesto && !(APP_CONFIG.catalogos?.tiposRepuesto || []).includes(repuesto)) {
+      await _syncCatalogTipos();
+    }
 
     _scheduleSyncToSheets();
     console.log(`[RepuestosDB] 💾 ${repuesto} + ${modelo}${pn?' → PN: '+pn:' (sin PN)'}`);
