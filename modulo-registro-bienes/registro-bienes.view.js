@@ -42,9 +42,18 @@ const RegistroBienesView = (() => {
         </div>
       </div>
 
-      <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start;">
+      <style>
+        .rb-layout-container { display: flex; gap: 20px; align-items: flex-start; }
+        .rb-form-card { flex: 1; min-width: 300px; padding: 20px; width: 100%; box-sizing: border-box; }
+        .rb-preview-card { width: 320px; flex-shrink: 0; position: sticky; top: 80px; background: var(--bg-hover); border: 1px solid var(--border); box-sizing: border-box; }
+        @media (max-width: 768px) {
+          .rb-layout-container { flex-direction: column-reverse; }
+          .rb-preview-card { width: 100%; position: static; }
+        }
+      </style>
+      <div class="rb-layout-container">
         <!-- FORMULARIO -->
-        <div class="card" style="flex: 1; min-width: 300px; padding: 20px;">
+        <div class="card rb-form-card">
           <div class="form-group">
             <label class="form-label">Categoría del Bien</label>
             <select class="form-control" id="rb-categoria" tabindex="1">
@@ -123,12 +132,12 @@ const RegistroBienesView = (() => {
             <!-- Foto -->
             <div class="form-group" id="group-foto" style="display:none; margin-top: 20px;">
               <label class="form-label">Foto de Etiqueta / Equipo (Opcional)</label>
-              <div style="display:flex; gap:10px; align-items:flex-start;">
-                <label class="btn btn-secondary btn-sm" style="cursor:pointer; display:flex; align-items:center; gap:6px;">
+              <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer; display:flex; align-items:center; gap:6px; flex: 1; justify-content: center; min-width: 140px;">
                   📁 Subir Archivo
                   <input type="file" id="rb-foto-input" accept="image/*" style="display:none;">
                 </label>
-                <button class="btn btn-secondary btn-sm" id="rb-btn-camara" style="display:flex; align-items:center; gap:6px;">
+                <button class="btn btn-secondary btn-sm" id="rb-btn-camara" style="display:flex; align-items:center; gap:6px; flex: 1; justify-content: center; min-width: 140px;">
                   📸 Usar Cámara
                 </button>
               </div>
@@ -149,7 +158,7 @@ const RegistroBienesView = (() => {
         </div>
 
         <!-- PREVIEW CARD -->
-        <div class="card" style="width: 320px; position: sticky; top: 80px; background: var(--bg-hover); border: 1px solid var(--border);">
+        <div class="card rb-preview-card">
           <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Vista Previa del Bien</div>
           <div id="rb-live-preview" style="display: flex; flex-direction: column; gap: 8px;">
             <div style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">Selecciona una categoría para comenzar...</div>
