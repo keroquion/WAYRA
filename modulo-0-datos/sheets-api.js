@@ -82,7 +82,7 @@ const SheetsAPI = (() => {
       const data = rows.slice(1).map((row, index) => {
         const obj = { _rowIndex: index + 2 };
         headers.forEach((h, i) => {
-          const key = h.replace(/[.\s/]/g, '_').toUpperCase();
+          const key = (h || '').toString().replace(/[.\s/]/g, '_').toUpperCase();
           obj[key] = (row[i] || '').toString().trim();
         });
         // _id requerido por el keyPath del store 'equipos'
