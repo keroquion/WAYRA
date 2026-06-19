@@ -69,13 +69,13 @@ const ImportExport = (() => {
 
           // Detectar separador
           const sep = lines[0].includes(';') ? ';' : ',';
-          const headers = lines[0].split(sep).map(h => h.replace(/^"|"$/g,'').trim());
+          const headers = lines[0].split(sep).map(h => (h || '').toString().replace(/^"|"$/g,'').trim());
 
           const rows = lines.slice(1).map(line => {
             const vals = _parseLine(line, sep);
             const obj = {};
             headers.forEach((h, i) => {
-              const key = h.replace(/[.\s/]/g,'_').toUpperCase();
+              const key = (h || '').toString().replace(/[.\s/]/g,'_').toUpperCase();
               obj[key] = (vals[i]||'').replace(/^"|"$/g,'').trim();
             });
             return obj;
