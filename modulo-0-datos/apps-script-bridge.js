@@ -125,6 +125,7 @@ const AppsScriptBridge = (() => {
     init, getRowCount, readSheet, writeRow, updateRow, deleteRow,
     uploadToDrive, appendAudit, testConnection, testDrive, saveLotes, loadLotes,
     geminiOCR, saveSoporte, saveRepuestosDB, loadRepuestosDB,
+    _call,
     getStatus: () => _status,
     setUrl: (u) => { _url = u; APP_CONFIG.appsScript.webAppUrl = u; },
   };
