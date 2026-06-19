@@ -66,7 +66,7 @@ const AdminView = (() => {
           <div class="card-title">🏢 Datos de la Empresa</div>
           <div class="form-group">
             <label class="form-label">Nombre Empresa *</label>
-            <input type="text" class="form-control" id="admin-emp-nombre" value="${emp.nombre}" placeholder="Petulap S.A.C.">
+            <input type="text" class="form-control" id="admin-emp-nombre" value="${emp.nombre}" placeholder="Wayra">
           </div>
           <div class="form-group">
             <label class="form-label">RUC</label>
@@ -140,7 +140,7 @@ const AdminView = (() => {
               <summary style="font-size:0.78rem;font-weight:600;cursor:pointer;color:var(--text-secondary);padding:6px 0">📋 Instrucciones de despliegue (clic para ver)</summary>
               <div style="background:var(--bg-hover);border-radius:var(--radius-sm);padding:12px;margin-top:8px;font-size:0.78rem;line-height:1.8">
                 1. Abre tu Google Sheet → <strong>Extensiones → Apps Script</strong><br>
-                2. Borra todo y pega el contenido de <code class="inline-code">apps-script/Code.gs</code><br>
+                2. Borra todo y pega el contenido de <code class="inline-code">apps-script/CodeWayra.gs</code><br>
                 3. <strong>Implementar → Nueva implementación</strong><br>
                 4. Tipo: <strong>Aplicación web</strong><br>
                 5. Ejecutar como: <strong>Yo</strong> · Acceso: <strong>Cualquier persona</strong><br>
@@ -150,7 +150,7 @@ const AdminView = (() => {
             </details>
             <div class="form-group">
               <label class="form-label">Nombre de la Hoja</label>
-              <input type="text" class="form-control" id="admin-sheets-sheet" value="${APP_CONFIG.sheets.sheetName || 'Buscador Historial'}" placeholder="Buscador Historial">
+              <input type="text" class="form-control" id="admin-sheets-sheet" value="${APP_CONFIG.sheets.sheetName || 'InventarioTI'}" placeholder="InventarioTI">
             </div>
             <div class="form-group">
               <label class="form-label">URL del Web App</label>

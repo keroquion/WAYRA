@@ -188,7 +188,7 @@ const InventarioView = (() => {
 
     try {
       await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
-      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'Buscador Historial', rowIndex: r._rowIndex, rowData });
+      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex, rowData });
       
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
       _apply();
@@ -203,7 +203,7 @@ const InventarioView = (() => {
 
     try {
       await LocalCache.addAudit({ accion: 'DELETE', entidad: 'Inventario', datos: {codigo}, usuario: 'Admin' });
-      await SyncEngine.enqueue('deleteRow', { sheetName: APP_CONFIG.sheets.sheetName || 'Buscador Historial', rowIndex: r._rowIndex });
+      await SyncEngine.enqueue('deleteRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex });
       
       _all = _all.filter(x => x.CODIGO !== codigo);
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
@@ -263,7 +263,7 @@ const InventarioView = (() => {
       if(!confirm(`Se van a insertar ${items.length} equipos. ¿Continuar?`)) return;
 
       for(const item of items) {
-        await SyncEngine.syncWrite(APP_CONFIG.sheets.sheetName || 'Buscador Historial', item, {accion:'BATCH_INSERT', entidad:'Inventario'});
+        await SyncEngine.syncWrite(APP_CONFIG.sheets.sheetName || 'InventarioTI', item, {accion:'BATCH_INSERT', entidad:'Inventario'});
       }
       Toast.success(`Agregados ${items.length} equipos a la cola de sincronización`);
       SyncEngine.forceSync();

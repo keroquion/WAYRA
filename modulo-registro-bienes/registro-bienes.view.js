@@ -524,7 +524,7 @@ const RegistroBienesView = (() => {
         await LocalCache.put('equipos', { ...objToSave, _id: codigo });
 
         // 4. Encolar la escritura para Google Sheets en segundo plano
-        const sheetName = APP_CONFIG.sheets.sheetName || 'VentasDetallado';
+        const sheetName = APP_CONFIG.sheets.sheetName || 'InventarioTI';
         await SyncEngine.syncWrite(sheetName, rowData, {
           accion: 'CREATE',
           entidad: 'REGISTRO_BIENES',

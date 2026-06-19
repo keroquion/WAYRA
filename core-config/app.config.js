@@ -29,7 +29,7 @@ const APP_CONFIG = {
   sheets: {
     apiKey: '',
     spreadsheetId: '',
-    sheetName: 'VentasDetallado',
+    sheetName: 'InventarioTI',
     dataRange: '',
   },
 
@@ -43,17 +43,10 @@ const APP_CONFIG = {
     { key: 'PROCESADOR',  label: 'Procesador',   visible: true,  width: 160, editable: true  },
     { key: 'RAM',         label: 'RAM',          visible: true,  width: 70,  editable: true  },
     { key: 'HD_SSD',      label: 'HD/SSD',       visible: true,  width: 100, editable: true  },
-    { key: 'PANTALLA',    label: 'Pantalla',     visible: false, width: 90,  editable: true  },
-    { key: 'CASE',        label: 'Case',         visible: false, width: 80,  editable: true  },
-    { key: 'RESOLUCION',  label: 'Resolución',   visible: false, width: 90,  editable: false },
     { key: 'PULGADAS',    label: 'Pulgadas',     visible: true,  width: 80,  editable: true  },
     { key: 'SUCURSAL',    label: 'Sucursal',     visible: true,  width: 90,  editable: true  },
     { key: 'ESTADO',      label: 'Estado',       visible: true,  width: 80,  editable: true  },
     { key: 'OBSERVACION', label: 'Observación',  visible: true,  width: 200, editable: true  },
-    { key: 'FEC_COMPRA',  label: 'Fec. Compra',  visible: false, width: 100, editable: false },
-    { key: 'DOC_COMPRA',  label: 'Doc. Compra',  visible: false, width: 120, editable: false },
-    { key: 'FEC_VENTA',   label: 'Fec. Venta',   visible: false, width: 100, editable: false },
-    { key: 'DOC_VENTA',   label: 'Doc. Venta',   visible: false, width: 140, editable: false },
   ],
 
   // ── Estados equipo ────────────────────────────────────────────────

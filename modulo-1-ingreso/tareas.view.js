@@ -153,7 +153,10 @@ const TareasView = (() => {
           <div style="font-weight:700; font-size:0.85rem; color:var(--text-primary); margin-bottom:4px;">${act.TIP_EQUIP || 'Actividad'}</div>
           <div style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">${act.OBSERVACION || act._obsPersonal || ''}</div>
           <div style="font-size:0.7rem; color:var(--text-muted); margin-top:6px;">
-            🕒 ${new Date(act._timestamp || Date.now()).toLocaleTimeString('es-PE')}
+            🕒 ${(() => {
+              const d = new Date(act._timestamp || Date.now());
+              return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('es-PE');
+            })()}
           </div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="TareasView.eliminarActividad('${act._registroId}')" style="color:var(--danger); padding:4px; height:fit-content;" title="Eliminar">🗑️</button>

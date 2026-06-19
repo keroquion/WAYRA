@@ -317,7 +317,7 @@ const PlantillaTicketSoporte = (() => {
         font-size:9px;
         color:#94a3b8;
       ">
-        <span>${_esc(lote?.titulo || '')} · INVENTARIO PRO v2.0 · PETULAP S.A.C.</span>
+        <span>${_esc(lote?.titulo || '')} · INVENTARIO PRO v2.0 · WAYRA</span>
         <span>REGISTRY ID: <strong style="color:#64748b;font-family:monospace;font-size:9.5px">${_esc(eq._registroId)}</strong></span>
       </div>
     `;

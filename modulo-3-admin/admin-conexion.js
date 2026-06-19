@@ -11,7 +11,7 @@ const AdminConexion = (() => {
 
   async function guardarGAS() {
     const url = document.getElementById('admin-gas-url')?.value?.trim() || '';
-    const sheetName = document.getElementById('admin-sheets-sheet')?.value?.trim() || 'Buscador Historial';
+    const sheetName = document.getElementById('admin-sheets-sheet')?.value?.trim() || 'InventarioTI';
     
     APP_CONFIG.sheets.sheetName = sheetName;
     localStorage.setItem('inv-pro-sheets-cfg', JSON.stringify({ sid: '', key: '', name: sheetName }));

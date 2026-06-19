@@ -31,6 +31,12 @@ function doPost(e) {
       case 'writeRow':
         result = _writeAsset(body.rowData);
         break;
+      case 'updateRow':
+        result = _updateRow(body.sheetName, body.rowIndex, body.rowData);
+        break;
+      case 'deleteRow':
+        result = _deleteRow(body.sheetName, body.rowIndex);
+        break;
       case 'getNextCode':
         result = { codigo: _getNextCode() };
         break;
@@ -112,7 +118,7 @@ function _writeAsset(rowData) {
     sheet.appendRow(['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA']);
   }
   
-  const values = Array.isArray(rowData) ? rowData : Object.values(rowData);
+  const values = _prepareRowValues(sheet, rowData);
   const codigoToInsert = values[1]; // Columna B es index 1
   
   if (codigoToInsert) {
@@ -131,13 +137,56 @@ function _writeAsset(rowData) {
   return { ok: true, rowIndex: sheet.getLastRow(), codigo: codigoToInsert };
 }
 
-// ── Funciones de compatibilidad ────────────────────────────────────
+// ── Funciones de compatibilidad y operaciones ───────────────────────
+
+function _prepareRowValues(sheet, rowData, existingRowIndex) {
+  if (Array.isArray(rowData)) {
+    return rowData;
+  }
+  // Es un objeto
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const existingValues = existingRowIndex 
+    ? sheet.getRange(existingRowIndex, 1, 1, headers.length).getValues()[0]
+    : [];
+    
+  return headers.map((h, idx) => {
+    const key = String(h || '').trim().replace(/[.\s/]/g, '_').toUpperCase();
+    if (rowData && rowData[key] !== undefined) {
+      return rowData[key];
+    }
+    return existingRowIndex ? existingValues[idx] : "";
+  });
+}
+
+function _updateRow(sheetName, rowIndex, rowData) {
+  const ss = _getSpreadsheet();
+  if (sheetName === '_Registros' || sheetName === 'VentasDetallado' || sheetName === 'Buscador Historial') {
+    sheetName = INVENTARIO_SHEET;
+  }
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
+  
+  const values = _prepareRowValues(sheet, rowData, rowIndex);
+  sheet.getRange(rowIndex, 1, 1, values.length).setValues([values]);
+  return { ok: true };
+}
+
+function _deleteRow(sheetName, rowIndex) {
+  const ss = _getSpreadsheet();
+  if (sheetName === '_Registros' || sheetName === 'VentasDetallado' || sheetName === 'Buscador Historial') {
+    sheetName = INVENTARIO_SHEET;
+  }
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
+  sheet.deleteRow(rowIndex);
+  return { ok: true };
+}
 
 function _readSheet(sheetName, range) {
   const ss = _getSpreadsheet();
   // El frontend a veces usa _Registros (antes VentasDetallado). 
-  // Redirigimos "_Registros" y "VentasDetallado" al nuevo INVENTARIO_SHEET
-  if (sheetName === '_Registros' || sheetName === 'VentasDetallado') {
+  // Redirigimos "_Registros", "VentasDetallado" y "Buscador Historial" al nuevo INVENTARIO_SHEET
+  if (sheetName === '_Registros' || sheetName === 'VentasDetallado' || sheetName === 'Buscador Historial') {
     sheetName = INVENTARIO_SHEET;
   }
   const sheet = ss.getSheetByName(sheetName);

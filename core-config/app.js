@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (savedSheets) {
       APP_CONFIG.sheets.spreadsheetId = savedSheets.sid || '';
       APP_CONFIG.sheets.apiKey        = savedSheets.key || '';
-      APP_CONFIG.sheets.sheetName     = savedSheets.name || 'VentasDetallado';
+      APP_CONFIG.sheets.sheetName     = savedSheets.name || 'InventarioTI';
     }
   } catch {}
 

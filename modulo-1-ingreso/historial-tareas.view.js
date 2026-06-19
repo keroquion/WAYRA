@@ -8,6 +8,7 @@ const HistorialTareasView = (() => {
     const el = document.getElementById('view-historial-tareas');
     if (!el) return;
     const lotes = await LocalCache.getLotes();
+    window._histLotes = lotes;
     el.innerHTML = `
       <div class="page-header">
         <div><div class="page-title">📋 Historial de Tareas</div><div class="page-subtitle">${lotes.length} tarea(s) registradas</div></div>
@@ -33,7 +34,15 @@ const HistorialTareasView = (() => {
 
   function _renderCard(lote) {
     const eq = lote.equipos||[];
-    const fecha = new Date(lote.fechaCreacion).toLocaleString('es-PE');
+    
+    let fecha = '—';
+    if (lote.fechaCreacion) {
+      const d = new Date(lote.fechaCreacion);
+      if (!isNaN(d.getTime())) {
+        fecha = d.toLocaleString('es-PE');
+      }
+    }
+
     const canEdit = window.AuthService ? AuthService.canEditLote(lote) : true;
     return `
       <div class="card" style="margin-bottom:12px;border-left:3px solid ${lote.activo?'var(--success)':'var(--border)'}">
@@ -68,7 +77,13 @@ const HistorialTareasView = (() => {
                 <thead><tr><th>Hora</th><th>Tipo</th><th>Descripción</th><th>Foto Evidencia</th></tr></thead>
                 <tbody>
                   ${eq.map(e=>`<tr>
-                    <td style="font-size:0.75rem;color:var(--text-muted)">${new Date(e._timestamp).toLocaleTimeString('es-PE')}</td>
+                    <td style="font-size:0.75rem;color:var(--text-muted)">
+                      ${(() => {
+                        if (!e._timestamp) return '—';
+                        const d = new Date(e._timestamp);
+                        return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString('es-PE');
+                      })()}
+                    </td>
                     <td><span style="font-weight:600; font-size:0.8rem;">${Formatters.safe(e.TIP_EQUIP || 'Actividad')}</span></td>
                     <td style="font-size:0.8rem;">${Formatters.safe(e.OBSERVACION || e._obsPersonal)}</td>
                     <td>

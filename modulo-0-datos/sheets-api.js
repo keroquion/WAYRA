@@ -71,7 +71,7 @@ const SheetsAPI = (() => {
     _syncing = true;
     _updateChip('connecting');
 
-    const sheetName = APP_CONFIG.sheets.sheetName || 'Buscador Historial';
+    const sheetName = APP_CONFIG.sheets.sheetName || 'InventarioTI';
 
     try {
       const json = await AppsScriptBridge.readSheet(sheetName, '');
