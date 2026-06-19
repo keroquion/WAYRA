@@ -59,6 +59,9 @@
   <!-- SIDEBAR -->
   <nav id="sidebar">
     <div class="sidebar-section-label">Módulo Principal</div>
+    <a class="nav-item" id="nav-registro-bienes" onclick="Views.go('registro-bienes')">
+      <span class="nav-icon">📥</span> Registro de Bienes
+    </a>
     <a class="nav-item" id="nav-ingreso" onclick="Views.go('ingreso')">
       <span class="nav-icon">📝</span> Ingreso & Diagnóstico
     </a>
@@ -94,6 +97,7 @@
 
   <!-- MAIN -->
   <main id="main-content">
+    <div class="view" id="view-registro-bienes"></div>
     <div class="view" id="view-ingreso"></div>
     <div class="view" id="view-historial"></div>
     <div class="view" id="view-inventario"></div>
@@ -104,6 +108,9 @@
 
   <!-- BOTTOM NAV (móvil) -->
   <nav id="bottom-nav" style="display:none">
+    <button class="bottom-nav-item" data-view="registro-bienes" onclick="Views.go('registro-bienes')">
+      <span class="bnav-icon">📥</span>Registro
+    </button>
     <button class="bottom-nav-item active" data-view="ingreso" onclick="Views.go('ingreso')">
       <span class="bnav-icon">📝</span>Ingreso
     </button>
@@ -201,6 +208,9 @@
 <!-- 11. Módulo 5 — Usuarios -->
 <script src="modulo-5-usuarios/auth-service.js"></script>
 <script src="modulo-5-usuarios/login.view.js"></script>
+
+<!-- Módulo Registro de Bienes -->
+<script src="modulo-registro-bienes/registro-bienes.view.js"></script>
 
 <!-- 12. Bootstrap -->
 <script src="core-config/app.js"></script>

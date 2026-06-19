@@ -10,6 +10,7 @@ const Views = (() => {
     escaner:     { el: 'view-escaner',     render: () => EscanerView.render(),    nav: 'nav-escaner'     },
     reportes:    { el: 'view-reportes',    render: () => ReportesView.render(),   nav: 'nav-reportes'    },
     admin:       { el: 'view-admin',       render: () => AdminView.render(),      nav: 'nav-admin'       },
+    'registro-bienes': { el: 'view-registro-bienes', render: () => RegistroBienesView.render(), nav: 'nav-registro-bienes' },
   };
 
   let _current = null;
@@ -25,6 +26,9 @@ const Views = (() => {
       }
       if (_current === 'escaner' && window.EscanerView?.onLeave) {
         EscanerView.onLeave();
+      }
+      if (_current === 'registro-bienes' && window.RegistroBienesView?.onLeave) {
+        RegistroBienesView.onLeave();
       }
     }
 

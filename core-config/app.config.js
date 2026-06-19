@@ -10,7 +10,7 @@ const APP_CONFIG = {
 
   // ── Empresa (editable en Admin → se persiste en IndexedDB) ──────
   empresa: {
-    nombre: 'Petulap S.A.C.',
+    nombre: 'Wayra',
     ruc:    '20000000000',
     direccion: '',
     telefono: '',
@@ -89,7 +89,7 @@ const APP_CONFIG = {
   // ── Catálogos (editables en Admin) ───────────────────────────────
   catalogos: {
     marcas:        ['DELL','HP','LENOVO','APPLE','TOSHIBA','ASUS','MICROSOFT','HALION','BYTESPEED','AZUS'],
-    tiposEquipo:   ['LAPTOP','PC','AIO','MONITOR','CPU','MALOGRADO','TABLET'],
+    tiposEquipo:   ['LAPTOP','PC','AIO','MONITOR','CPU','TABLET','IMPRESORA','CAMARA','TECLADO','MOUSE','CABLE','SWITCH','ROUTER','ACCESS POINT','REPUESTO','ACCESORIO','OTRO'],
     sucursales:    ['LEON','EJERCITO'],
     proveedores:   ['PROVEEDOR A','PROVEEDOR B'],
     tiposRepuesto: ['PANTALLA','TECLADO','BATERÍA','CARGADOR','RAM','DISCO','CARCASA','TOUCHPAD','BISAGRA','FLEX'],
