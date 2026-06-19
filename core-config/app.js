@@ -4,8 +4,8 @@
 
 const Views = (() => {
   const VIEWS = {
-    ingreso:     { el: 'view-ingreso',     render: () => IngresoView.render(),    nav: 'nav-ingreso'     },
-    historial:   { el: 'view-historial',   render: () => HistorialView.render(),  nav: 'nav-historial'   },
+    tareas:      { el: 'view-tareas',      render: () => TareasView.render(),         nav: 'nav-tareas'     },
+    'historial-tareas': { el: 'view-historial-tareas', render: () => HistorialTareasView.render(), nav: 'nav-historial-tareas' },
     inventario:  { el: 'view-inventario',  render: () => InventarioView.render(), nav: 'nav-inventario'  },
     escaner:     { el: 'view-escaner',     render: () => EscanerView.render(),    nav: 'nav-escaner'     },
     reportes:    { el: 'view-reportes',    render: () => ReportesView.render(),   nav: 'nav-reportes'    },
@@ -21,8 +21,8 @@ const Views = (() => {
 
     // Notificar a la vista saliente (desactiva scanner global si salimos de ingreso)
     if (_current && _current !== viewName) {
-      if (_current === 'ingreso' && window.IngresoView?.onLeave) {
-        IngresoView.onLeave();
+      if (_current === 'tareas' && window.TareasView?.onLeave) {
+        TareasView.onLeave();
       }
       if (_current === 'escaner' && window.EscanerView?.onLeave) {
         EscanerView.onLeave();
@@ -37,25 +37,28 @@ const Views = (() => {
       document.getElementById(v.nav)?.classList.remove('active');
     });
     document.getElementById(view.el)?.classList.add('active');
-    document.getElementById(view.nav)?.classList.add('active');
+    document.querySelectorAll('.bottom-nav-item').forEach(b => {
+      if (b.dataset.view === viewName) b.classList.add('active');
+      else b.classList.remove('active');
+    });
+
     _current = viewName;
     view.render();
     history.replaceState(null, '', '#' + viewName);
-
-    // ── Bottom nav sync ──
-    document.querySelectorAll('.bottom-nav-item').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.view === viewName);
-    });
 
     // ── Cerrar sidebar en móvil ──
     _closeSidebar();
   }
 
   function init() {
-    const hash = location.hash.replace('#','') || 'historial';
-    go(VIEWS[hash] ? hash : 'historial');
+    const hash = window.location.hash.substring(1);
+    if (VIEWS[hash]) {
+      go(hash);
+    } else {
+      go('tareas');
+    }
     window.addEventListener('hashchange', () => {
-      const h = location.hash.replace('#','') || 'historial';
+      const h = location.hash.replace('#','') || 'tareas';
       if (h !== _current && VIEWS[h]) go(h);
     });
   }
@@ -192,10 +195,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       window._histLotes = lotes;
       // Refrescar la vista activa si muestra lotes (sin esperar intervención del usuario)
       const current = Views.getCurrent();
-      if (current === 'historial' && window.HistorialView) {
-        HistorialView.render();
-      } else if (current === 'ingreso' && window.IngresoView) {
-        IngresoView.render();
+      if (current === 'historial-tareas' && window.HistorialTareasView) {
+        HistorialTareasView.render();
+      } else if (current === 'tareas' && window.TareasView) {
+        TareasView.render();
       }
     }).catch(() => {});
 

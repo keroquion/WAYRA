@@ -62,11 +62,11 @@
     <a class="nav-item" id="nav-registro-bienes" onclick="Views.go('registro-bienes')">
       <span class="nav-icon">📥</span> Registro de Bienes
     </a>
-    <a class="nav-item" id="nav-ingreso" onclick="Views.go('ingreso')">
-      <span class="nav-icon">📝</span> Ingreso & Diagnóstico
+    <a class="nav-item" id="nav-tareas" onclick="Views.go('tareas')">
+      <span class="nav-icon">📝</span> Actividades Diarias
     </a>
-    <a class="nav-item" id="nav-historial" onclick="Views.go('historial')">
-      <span class="nav-icon">📋</span> Historial de Lotes
+    <a class="nav-item" id="nav-historial-tareas" onclick="Views.go('historial-tareas')">
+      <span class="nav-icon">📋</span> Historial de Tareas
     </a>
     <a class="nav-item" id="nav-inventario" onclick="Views.go('inventario')">
       <span class="nav-icon">📦</span> Inventario Completo
@@ -98,8 +98,8 @@
   <!-- MAIN -->
   <main id="main-content">
     <div class="view" id="view-registro-bienes"></div>
-    <div class="view" id="view-ingreso"></div>
-    <div class="view" id="view-historial"></div>
+    <div class="view" id="view-tareas"></div>
+    <div class="view" id="view-historial-tareas"></div>
     <div class="view" id="view-inventario"></div>
     <div class="view" id="view-escaner"></div>
     <div class="view" id="view-reportes"></div>
@@ -111,10 +111,10 @@
     <button class="bottom-nav-item" data-view="registro-bienes" onclick="Views.go('registro-bienes')">
       <span class="bnav-icon">📥</span>Registro
     </button>
-    <button class="bottom-nav-item active" data-view="ingreso" onclick="Views.go('ingreso')">
-      <span class="bnav-icon">📝</span>Ingreso
+    <button class="bottom-nav-item active" data-view="tareas" onclick="Views.go('tareas')">
+      <span class="bnav-icon">📝</span>Actividades
     </button>
-    <button class="bottom-nav-item" data-view="historial" onclick="Views.go('historial')">
+    <button class="bottom-nav-item" data-view="historial-tareas" onclick="Views.go('historial-tareas')">
       <span class="bnav-icon">📋</span>Historial
     </button>
     <button class="bottom-nav-item" data-view="inventario" onclick="Views.go('inventario')">
@@ -162,24 +162,17 @@
 <script src="modulo-0-datos/audit-trail.js"></script>
 <script src="modulo-0-datos/drive-upload.js"></script>
 <script src="modulo-0-datos/import-export.js"></script>
-  <script src="modulo-0-datos/lotes-service.js"></script>
+  <script src="modulo-0-datos/tareas-service.js"></script>
   <script src="modulo-0-datos/lote-portable.js"></script>
   <script src="modulo-0-datos/repuestos-db.js"></script>
 
 <!-- 5. Componentes UI -->
 <script src="componentes-ui/modal-generico.js"></script>
 
-<!-- 6. Módulo 1 — Ingreso -->
-<script src="modulo-1-ingreso/scanner-barras.js"></script>
-<script src="modulo-1-ingreso/evidencia-fotos.js"></script>
-<script src="modulo-1-ingreso/flujo-garantia.js"></script>
-<script src="modulo-1-ingreso/flujo-soporte.js"></script>
-<script src="modulo-1-ingreso/modo-rapido.js"></script>
-<script src="modulo-1-ingreso/ingreso-tabla.js"></script>
-<script src="modulo-1-ingreso/ingreso-soporte-inline.js"></script>
-<script src="modulo-1-ingreso/ingreso-lote-modal.js"></script>
-<script src="modulo-1-ingreso/ingreso.view.js"></script>
-<script src="modulo-1-ingreso/historial.view.js"></script>
+<!-- 6. Módulo 1 — Tareas -->
+<script src="modulo-1-ingreso/tarea-modal.js"></script>
+<script src="modulo-1-ingreso/tareas.view.js"></script>
+<script src="modulo-1-ingreso/historial-tareas.view.js"></script>
 
 <!-- 7. Módulo 0 — Inventario View -->
 <script src="modulo-0-datos/inventario.view.js"></script>
@@ -187,7 +180,7 @@
 <!-- 8. Módulo 2 — Reportes -->
 <script src="modulo-2-reportes/agrupador-lotes.js"></script>
 <script src="modulo-2-reportes/plantillas/garantia-proveedor.js"></script>
-<script src="modulo-2-reportes/plantillas/reporte-lote.js"></script>
+<script src="modulo-2-reportes/plantillas/reporte-tarea.js"></script>
 <script src="modulo-2-reportes/plantillas/ticket-soporte.js"></script>
 <script src="modulo-2-reportes/print-window.js"></script>
 <script src="modulo-2-reportes/tab-tickets-soporte.js"></script>

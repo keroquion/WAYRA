@@ -29,7 +29,7 @@ const ReportesView = (() => {
       <div class="rep-tabs" style="display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border)">
         <button class="rep-tab active" id="tab-btn-reportes" onclick="ReportesView.switchTab('reportes')"
           style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--accent);border-bottom:2px solid var(--accent);margin-bottom:-2px;border-radius:var(--radius-sm) var(--radius-sm) 0 0">
-          📋 Reportes de Lote
+          📋 Reportes de Tareas
         </button>
         <button class="rep-tab" id="tab-btn-soporte" onclick="ReportesView.switchTab('soporte')"
           style="padding:8px 18px;border:none;background:none;cursor:pointer;font-size:0.85rem;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:var(--radius-sm) var(--radius-sm) 0 0">
@@ -48,7 +48,7 @@ const ReportesView = (() => {
             <div class="card">
               <div class="card-title">Configuración</div>
               <div class="form-group">
-                <label class="form-label">Lote</label>
+                <label class="form-label">Tarea Activa / Historial</label>
                 <select class="form-control" id="rep-lote-sel">
                   ${lotes.map(l=>`<option value="${l.id}" ${l.activo?'selected':''}>${l.titulo} (${l.equipos?.length||0})</option>`).join('')}
                 </select>
@@ -56,7 +56,7 @@ const ReportesView = (() => {
               <div class="form-group">
                 <label class="form-label">Tipo de Documento</label>
                 <select class="form-control" id="rep-tipo-sel">
-                  <option value="reporte">📋 Reporte de Lote</option>
+                  <option value="reporte">📋 Reporte de Actividades / Tarea</option>
                   <option value="garantia">🛡️ Remisión Garantía Proveedor</option>
                 </select>
               </div>
@@ -83,7 +83,7 @@ const ReportesView = (() => {
                 style="font-size:0.7rem;padding:4px 10px">◀ Ocultar panel</button>
             </div>
             <div id="rep-preview-area" style="color:var(--text-muted);text-align:center;padding:60px;overflow-x:auto;max-width:100%">
-              ${DOM.emptyState('📄', 'Vista previa', 'Selecciona un lote y tipo de documento, luego haz clic en Vista Previa')}
+              ${DOM.emptyState('📄', 'Vista previa', 'Selecciona una tarea y tipo de documento, luego haz clic en Vista Previa')}
             </div>
           </div>
         </div>
@@ -231,7 +231,7 @@ const ReportesView = (() => {
     const proveedor = document.getElementById('rep-proveedor')?.value || '';
     const html = tipo === 'garantia'
       ? PlantillaGarantiaProveedor.generar(lote, proveedor)
-      : PlantillaReporteLote.generar(lote);
+      : PlantillaReporteTarea.generar(lote);
     const preview = document.getElementById('rep-preview-area');
     if (preview) preview.innerHTML = html;
     const resumenCard    = document.getElementById('rep-resumen-card');
