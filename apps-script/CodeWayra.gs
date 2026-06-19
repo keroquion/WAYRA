@@ -37,6 +37,9 @@ function doPost(e) {
       case 'uploadToDrive':
         result = _uploadToDrive(body.base64, body.filename, body.mimeType);
         break;
+      case 'testDrive':
+        result = _testDrive();
+        break;
       case 'appendAudit':
         result = _appendAudit(body.auditRow);
         break;
@@ -168,6 +171,19 @@ function _uploadToDrive(base64, filename, mimeType, loteNombre) {
   const url      = `https://lh3.googleusercontent.com/d/${fileId}=w1200`;
   const thumbUrl = `https://lh3.googleusercontent.com/d/${fileId}=w200`;
   return { url, thumbUrl, fileId };
+}
+
+function _testDrive() {
+  let folder;
+  const folders = DriveApp.getFoldersByName(DRIVE_FOLDER);
+  if (folders.hasNext()) {
+    folder = folders.next();
+    folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } else {
+    folder = DriveApp.createFolder(DRIVE_FOLDER);
+    folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  }
+  return { ok: true, folderId: folder.getId(), folderUrl: folder.getUrl(), name: DRIVE_FOLDER };
 }
 
 function _appendAudit(auditRow) {
