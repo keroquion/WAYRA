@@ -99,6 +99,26 @@ const SheetsAPI = (() => {
           const batch = data.slice(i, i + BATCH);
           await Promise.all(batch.map(eq => LocalCache.put(IDB_STORE, eq)));
         }
+
+        // Re-integrar registros de la cola local de sincronización que aún no se han subido a Sheets
+        try {
+          const queue = await LocalCache.getQueue();
+          for (const op of queue) {
+            if ((op.action === 'writeRow' || op.action === 'writeAsset') && op.rowData) {
+              const rowData = op.rowData;
+              const objToSave = {};
+              const headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
+              headers.forEach((h, idx) => objToSave[h] = rowData[idx]);
+              const codigo = objToSave.CODIGO || objToSave.SERIE;
+              if (codigo) {
+                await LocalCache.put(IDB_STORE, { ...objToSave, _id: codigo });
+              }
+            }
+          }
+        } catch (queueErr) {
+          console.warn('[SheetsAPI] Error al reintegrar cola local:', queueErr.message);
+        }
+
         await LocalCache.setConfig(CFG_KEY, Date.now());
         console.log(`✅ [SheetsAPI] ${data.length} equipos guardados en IndexedDB`);
       } catch (e) {
