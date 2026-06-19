@@ -8,6 +8,45 @@ const RegistroBienesView = (() => {
   let currentPhotoBase64 = null;
   let isSaving = false;
 
+  async function _generarSiguienteCodigo() {
+    let localData = [];
+    try {
+      localData = await SheetsAPI.fetchAll();
+    } catch (e) {
+      console.warn('Error al obtener datos locales para autogenerar código:', e);
+    }
+    
+    let max = 10000;
+    for (let i = 0; i < localData.length; i++) {
+      const cod = String(localData[i].CODIGO || '').trim();
+      if (cod.startsWith('WYR-')) {
+        const num = parseInt(cod.replace('WYR-', ''), 10);
+        if (!isNaN(num) && num > max) {
+          max = num;
+        }
+      }
+    }
+    
+    try {
+      const queue = await LocalCache.getQueue();
+      for (const op of queue) {
+        if ((op.action === 'writeRow' || op.action === 'writeAsset') && op.rowData && op.rowData[1]) {
+          const cod = String(op.rowData[1]).trim();
+          if (cod.startsWith('WYR-')) {
+            const num = parseInt(cod.replace('WYR-', ''), 10);
+            if (!isNaN(num) && num > max) {
+              max = num;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error al leer cola de sincronización:', e);
+    }
+
+    return 'WYR-' + (max + 1);
+  }
+
   const categorias = [
     { id: 'LAPTOP/PC', label: 'Laptops / PCs', icon: '💻', campos: ['marca','modelo','serie','procesador','ram','hd_ssd','foto'], presets: ['8GB','16GB','256 SSD','512 SSD','i5','i7'] },
     { id: 'MONITOR', label: 'Monitores', icon: '🖥️', campos: ['marca','modelo','serie','pulgadas','foto'], presets: ['19"','21.5"','22"','24"','27"'] },
@@ -313,7 +352,7 @@ const RegistroBienesView = (() => {
     const previewContainer = document.getElementById('rb-foto-preview-container');
     const previewImg = document.getElementById('rb-foto-preview');
     if (previewContainer && previewImg && currentPhotoBase64) {
-      previewImg.src = currentPhotoBase64;
+      previewImg.src = currentPhotoBase64.startsWith('data:') ? currentPhotoBase64 : 'data:image/jpeg;base64,' + currentPhotoBase64;
       previewContainer.style.display = 'block';
       _actualizarPreviewCard();
     }
@@ -367,7 +406,8 @@ const RegistroBienesView = (() => {
 
     let fotoHtml = '';
     if (currentPhotoBase64) {
-      fotoHtml = `<div style="margin-top:10px; border-radius:6px; overflow:hidden; border:1px solid var(--border);"><img src="${currentPhotoBase64}" style="width:100%; display:block;"></div>`;
+      const src = currentPhotoBase64.startsWith('data:') ? currentPhotoBase64 : 'data:image/jpeg;base64,' + currentPhotoBase64;
+      fotoHtml = `<div style="margin-top:10px; border-radius:6px; overflow:hidden; border:1px solid var(--border);"><img src="${src}" style="width:100%; display:block;"></div>`;
     }
 
     livePreview.innerHTML = `
@@ -377,10 +417,17 @@ const RegistroBienesView = (() => {
         ${detalles.map(d => `<div>${d}</div>`).join('')}
       </div>
       ${fotoHtml}
-      <div style="margin-top: 12px; padding: 6px; background: rgba(34,197,94,0.1); border-radius: 4px; border: 1px dashed var(--success); color: var(--success); text-align: center; font-size: 0.75rem; font-weight: 700;">
-        ✨ CÓDIGO AUTO-GENERADO AL GUARDAR
+      <div id="rb-preview-codigo" style="margin-top: 12px; padding: 6px; background: rgba(34,197,94,0.1); border-radius: 4px; border: 1px dashed var(--success); color: var(--success); text-align: center; font-size: 0.75rem; font-weight: 700;">
+        ✨ Calculando siguiente código...
       </div>
     `;
+
+    _generarSiguienteCodigo().then(code => {
+      const elCode = document.getElementById('rb-preview-codigo');
+      if (elCode) {
+        elCode.innerHTML = `✨ CÓDIGO SUGERIDO: ${code}`;
+      }
+    });
   }
 
   async function guardar() {
@@ -412,15 +459,19 @@ const RegistroBienesView = (() => {
       btnGuardar.disabled = true;
       btnGuardar.innerHTML = '<span class="spinner"></span> Guardando...';
 
-      const resCode = await AppsScriptBridge._call('getNextCode', {});
-      if (!resCode.ok || !resCode.codigo) throw new Error('Error al generar código correlativo');
-      let baseCodeNum = parseInt(resCode.codigo.replace('WYR-', ''), 10);
+      // 1. Generar código correlativo localmente (instantáneo)
+      const startCode = await _generarSiguienteCodigo();
+      let baseCodeNum = parseInt(startCode.replace('WYR-', ''), 10);
 
+      // 2. Subir foto si existe (único proceso de red si hay foto adjunta)
       let fotoUrl = '';
       if (currentPhotoBase64) {
+        btnGuardar.innerHTML = '<span class="spinner"></span> Subiendo foto...';
         const uploadRes = await DriveUpload.uploadFileWithMeta(currentPhotoBase64, 'image/jpeg', 'Evidencia_Registro', null);
         if (uploadRes && uploadRes.url) fotoUrl = uploadRes.url;
       }
+
+      btnGuardar.innerHTML = '<span class="spinner"></span> Registrando bien...';
 
       const registros = [];
       const fechaHoy = new Date().toLocaleDateString('es-PE');
@@ -466,12 +517,19 @@ const RegistroBienesView = (() => {
           ""  // DOC_VENTA
         ];
 
-        await AppsScriptBridge._call('writeAsset', { rowData });
-
+        // 3. Guardar localmente en IndexedDB para disponibilidad inmediata
         const objToSave = {};
         const headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
         headers.forEach((h, idx) => objToSave[h] = rowData[idx]);
         await LocalCache.put('equipos', { ...objToSave, _id: codigo });
+
+        // 4. Encolar la escritura para Google Sheets en segundo plano
+        const sheetName = APP_CONFIG.sheets.sheetName || 'VentasDetallado';
+        await SyncEngine.syncWrite(sheetName, rowData, {
+          accion: 'CREATE',
+          entidad: 'REGISTRO_BIENES',
+          usuario: (window.AuthService && AuthService.getUsuarioActual()) ? AuthService.getUsuarioActual().username : 'Sistema'
+        });
 
         registros.push(codigo);
       }

@@ -61,7 +61,17 @@ const SyncEngine = (() => {
     try {
       switch (op.action) {
         case 'writeRow':
-          await AppsScriptBridge.writeRow(op.sheetName, op.rowData);
+          try {
+            await AppsScriptBridge.writeRow(op.sheetName, op.rowData);
+          } catch (err) {
+            // Fallback: si el Apps Script es el de Wayra y no tiene implementado 'writeRow'
+            if (err.message && (err.message.includes('unknown') || err.message.includes('desconocida') || err.message.includes('writeRow'))) {
+              console.log('[SyncEngine] Fallback: writeRow no soportado, intentando writeAsset...');
+              await AppsScriptBridge._call('writeAsset', { rowData: op.rowData });
+            } else {
+              throw err;
+            }
+          }
           break;
         case 'updateRow':
           await AppsScriptBridge.updateRow(op.sheetName, op.rowIndex, op.rowData);

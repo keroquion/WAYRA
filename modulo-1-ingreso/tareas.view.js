@@ -226,7 +226,7 @@ const TareasView = (() => {
     const previewContainer = document.getElementById('tar-foto-preview-container');
     const previewImg = document.getElementById('tar-foto-preview');
     if (previewContainer && previewImg && currentPhotoBase64) {
-      previewImg.src = currentPhotoBase64;
+      previewImg.src = currentPhotoBase64.startsWith('data:') ? currentPhotoBase64 : 'data:image/jpeg;base64,' + currentPhotoBase64;
       previewContainer.style.display = 'block';
     }
   }

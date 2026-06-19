@@ -74,17 +74,54 @@ const DriveUpload = (() => {
   // equipoCodigo: código del equipo (prefijo del nombre de archivo)
   async function uploadFileWithMeta(file, onProgress = null, loteNombre = '', equipoCodigo = '') {
     if (!file) throw new Error('No se proporcionó archivo');
-    const sizeMB = file.size / 1048576;
+
+    let base64 = '';
+    let mimeType = 'image/jpeg';
+    let filename = '';
+    let sizeMB = 0;
+    const actualOnProgress = typeof onProgress === 'function' ? onProgress : null;
+
+    if (typeof file === 'string') {
+      // Es una cadena Base64 o Data URL
+      let base64Data = file;
+      if (file.includes(',')) {
+        const parts = file.split(',');
+        const header = parts[0];
+        base64Data = parts[1];
+        const mimeMatch = header.match(/data:([^;]+)/);
+        if (mimeMatch) mimeType = mimeMatch[1];
+      } else {
+        if (typeof onProgress === 'string') {
+          mimeType = onProgress;
+        }
+      }
+      base64 = base64Data;
+      const sizeBytes = base64.length * 0.75;
+      sizeMB = sizeBytes / 1048576;
+      
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const codigoPrefix = equipoCodigo ? `${equipoCodigo}_` : '';
+      filename = `${codigoPrefix}${Date.now()}_evidencia.${ext}`;
+    } else {
+      // Es un objeto File o Blob
+      sizeMB = file.size / 1048576;
+      if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
+      if (actualOnProgress) actualOnProgress(10, 'Leyendo archivo…');
+      base64 = await _toBase64(file);
+      mimeType = file.type || 'image/jpeg';
+      const codigoPrefix = equipoCodigo ? `${equipoCodigo}_` : '';
+      filename = `${codigoPrefix}${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    }
+
     if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
-    if (onProgress) onProgress(10, 'Leyendo archivo…');
-    const base64 = await _toBase64(file);
-    // Nombre del archivo: CODIGO_timestamp_nombre.ext (identificable en Drive)
-    const codigoPrefix = equipoCodigo ? `${equipoCodigo}_` : '';
-    const filename = `${codigoPrefix}${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-    if (onProgress) onProgress(40, 'Subiendo a Drive…');
-    const result = await AppsScriptBridge.uploadToDrive(base64, filename, file.type, loteNombre);
-    if (onProgress) onProgress(100, 'Listo');
-    // result puede tener: url, thumbUrl, fileId
+
+    if (actualOnProgress) actualOnProgress(40, 'Subiendo a Drive…');
+    
+    const finalLote = typeof loteNombre === 'string' ? loteNombre : '';
+    const result = await AppsScriptBridge.uploadToDrive(base64, filename, mimeType, finalLote);
+    
+    if (actualOnProgress) actualOnProgress(100, 'Listo');
+
     return {
       url:      result.url || result.fileUrl || '',
       thumbUrl: result.thumbUrl || result.url || '',
