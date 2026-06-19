@@ -83,7 +83,7 @@ const APP_CONFIG = {
   catalogos: {
     marcas:        ['DELL','HP','LENOVO','APPLE','TOSHIBA','ASUS','MICROSOFT','HALION','BYTESPEED','AZUS'],
     tiposEquipo:   ['LAPTOP','PC','AIO','MONITOR','CPU','TABLET','IMPRESORA','CAMARA','TECLADO','MOUSE','CABLE','SWITCH','ROUTER','ACCESS POINT','REPUESTO','ACCESORIO','OTRO'],
-    sucursales:    ['LEON','EJERCITO'],
+    sucursales:    ['PRINCIPAL', 'ALMACÉN'],
     proveedores:   ['PROVEEDOR A','PROVEEDOR B'],
     tiposRepuesto: ['PANTALLA','TECLADO','BATERÍA','CARGADOR','RAM','DISCO','CARCASA','TOUCHPAD','BISAGRA','FLEX'],
   },

@@ -12,8 +12,8 @@
  */
 
 const SheetsAPI = (() => {
-  const MEMORY_TTL  = 5 * 60 * 1000;       // 5 min — caché en memoria
-  const REMOTE_TTL  = 4 * 60 * 60 * 1000;  // 4 horas — re-sync remoto
+  const MEMORY_TTL  = 2 * 60 * 1000;       // 2 min — caché en memoria
+  const REMOTE_TTL  = 5 * 60 * 1000;       // 5 min — re-sync remoto
   const IDB_STORE   = 'equipos';
   const CFG_KEY     = 'equipos_last_sync';
 
@@ -78,15 +78,29 @@ const SheetsAPI = (() => {
       const rows = json.values || [];
       if (rows.length === 0) { _syncing = false; return []; }
 
-      const headers = rows[0] || [];
-      const data = rows.slice(1).map((row, index) => {
-        const obj = { _rowIndex: index + 2 };
+      // Default headers fallback
+      const defaultHeaders = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
+      
+      let headers = rows[0] || [];
+      let dataRows = rows.slice(1);
+      let startIndex = 2; // Google Sheets uses 1-based index, row 1 is header, data starts at row 2
+
+      // Heuristic to detect missing headers
+      const hasHeader = headers.some(h => ['CODIGO', 'SERIE', 'ESTADO', 'MARCA'].includes((h||'').toString().toUpperCase()));
+      if (!hasHeader) {
+        dataRows = rows; // first row is data
+        headers = defaultHeaders;
+        startIndex = 1; // data starts at row 1
+      }
+
+      const data = dataRows.map((row, index) => {
+        const obj = { _rowIndex: index + startIndex };
         headers.forEach((h, i) => {
           const key = (h || '').toString().replace(/[.\s/]/g, '_').toUpperCase();
           obj[key] = (row[i] || '').toString().trim();
         });
         // _id requerido por el keyPath del store 'equipos'
-        obj._id = obj.CODIGO || obj.SERIE || `row_${index + 2}`;
+        obj._id = obj.CODIGO || obj.SERIE || `row_${index + startIndex}`;
         return obj;
       });
 
@@ -107,8 +121,7 @@ const SheetsAPI = (() => {
             if ((op.action === 'writeRow' || op.action === 'writeAsset') && op.rowData) {
               const rowData = op.rowData;
               const objToSave = {};
-              const headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
-              headers.forEach((h, idx) => objToSave[h] = rowData[idx]);
+              defaultHeaders.forEach((h, idx) => objToSave[h] = rowData[idx]);
               const codigo = objToSave.CODIGO || objToSave.SERIE;
               if (codigo) {
                 await LocalCache.put(IDB_STORE, { ...objToSave, _id: codigo });

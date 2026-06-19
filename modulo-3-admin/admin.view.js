@@ -176,22 +176,34 @@ const AdminView = (() => {
 
       <!-- TAB SEGURIDAD -->
       <div class="admin-panel" id="admin-panel-3" style="display:none">
-        <div class="card" style="max-width:340px">
-          <div class="card-title">🔐 Cambiar PIN de Administrador</div>
-          <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px">PIN por defecto: <code class="inline-code">1234</code></div>
-          <div class="form-group">
-            <label class="form-label">PIN Actual</label>
-            <input type="password" class="form-control" id="admin-pin-actual" maxlength="4" placeholder="••••">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:start">
+          <div class="card" style="max-width:340px;flex:1">
+            <div class="card-title">🔐 Cambiar PIN de Administrador</div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:14px">PIN por defecto: <code class="inline-code">1234</code></div>
+            <div class="form-group">
+              <label class="form-label">PIN Actual</label>
+              <input type="password" class="form-control" id="admin-pin-actual" maxlength="4" placeholder="••••">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Nuevo PIN (4 dígitos)</label>
+              <input type="password" class="form-control" id="admin-pin-nuevo" maxlength="4" placeholder="••••">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Confirmar Nuevo PIN</label>
+              <input type="password" class="form-control" id="admin-pin-confirm" maxlength="4" placeholder="••••">
+            </div>
+            <button class="btn btn-primary" onclick="AdminView.cambiarPin()">🔐 Cambiar PIN</button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Nuevo PIN (4 dígitos)</label>
-            <input type="password" class="form-control" id="admin-pin-nuevo" maxlength="4" placeholder="••••">
+
+          <div class="card" style="max-width:380px;flex:1">
+            <div class="card-title">🧹 Limpieza de Datos y Caché</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:14px">
+              Borra toda la base de datos local (IndexedDB) y caché del navegador en este dispositivo. 
+              <strong>Se cerrará la sesión y se restablecerá la configuración</strong>. 
+              Si tienes otras pestañas o ventanas de la aplicación abiertas en este dispositivo, se reiniciarán automáticamente.
+            </div>
+            <button class="btn btn-danger" onclick="AdminView.limpiarBaseDatosLocal()" style="width:100%">🧹 Limpiar Base de Datos y Caché</button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Confirmar Nuevo PIN</label>
-            <input type="password" class="form-control" id="admin-pin-confirm" maxlength="4" placeholder="••••">
-          </div>
-          <button class="btn btn-primary" onclick="AdminView.cambiarPin()">🔐 Cambiar PIN</button>
         </div>
       </div>
 
@@ -372,12 +384,43 @@ const AdminView = (() => {
       render();
     };
 
+    limpiarBaseDatosLocal = async () => {
+      if (!confirm('⚠️ ¿Estás seguro de que deseas borrar toda la información local y caché de este dispositivo y de todas las pestañas abiertas?\n\nSe cerrará la sesión y se borrarán la configuración de Sheets, el historial local y la caché. Esto no afectará los datos reales de tu Google Sheet.')) return;
+      
+      try {
+        const channel = new BroadcastChannel('app-cache-reset');
+        channel.postMessage('clear_and_reload');
+      } catch(e) {}
+
+      try {
+        await LocalCache.clear('equipos');
+        await LocalCache.clear('lotes');
+        await LocalCache.clear('audit');
+        await LocalCache.clear('sync_queue');
+        await LocalCache.clear('catalogos');
+        await LocalCache.clear('config');
+        await LocalCache.clear('repuestos_db');
+      } catch(e) {}
+
+      localStorage.clear();
+
+      if ('caches' in window) {
+        try {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        } catch(e) {}
+      }
+
+      alert('✅ Base de datos local y caché eliminadas. La página se reiniciará.');
+      location.reload(true);
+    };
+
     switchTab(0);
   }
 
-  let switchTab, cambiarPin, importarConfig;
+  let switchTab, cambiarPin, importarConfig, limpiarBaseDatosLocal;
 
-  return { render, get switchTab() { return switchTab; }, get cambiarPin() { return cambiarPin; }, get importarConfig() { return importarConfig; } };
+  return { render, get switchTab() { return switchTab; }, get cambiarPin() { return cambiarPin; }, get importarConfig() { return importarConfig; }, get limpiarBaseDatosLocal() { return limpiarBaseDatosLocal; } };
 })();
 
 window.AdminView = AdminView;

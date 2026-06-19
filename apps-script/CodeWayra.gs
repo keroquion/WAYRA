@@ -81,6 +81,14 @@ function doGet(e) {
 
 // ── Nuevas funciones Wayra ─────────────────────────────────────────
 
+function _hasHeaderRow(sheet) {
+  const firstRow = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+  return firstRow.some(h => {
+    const header = String(h || '').trim().toUpperCase();
+    return header === 'CODIGO' || header === 'SERIE' || header === 'ESTADO' || header === 'MARCA';
+  });
+}
+
 function _getNextCode() {
   const ss = _getSpreadsheet();
   let sheet = ss.getSheetByName(INVENTARIO_SHEET);
@@ -93,10 +101,17 @@ function _getNextCode() {
   }
 
   const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return 'WYR-10001';
+  if (lastRow === 0) return 'WYR-10001';
+  
+  const hasHeaders = _hasHeaderRow(sheet);
+  if (hasHeaders && lastRow === 1) return 'WYR-10001';
+
+  const startRow = hasHeaders ? 2 : 1;
+  const numRows = lastRow - startRow + 1;
+  if (numRows <= 0) return 'WYR-10001';
 
   // Leemos la columna B (CODIGO)
-  const codigos = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+  const codigos = sheet.getRange(startRow, 2, numRows, 1).getValues();
   let max = 10000;
   for (let i = 0; i < codigos.length; i++) {
     const cod = String(codigos[i][0]).trim();
@@ -123,8 +138,12 @@ function _writeAsset(rowData) {
   
   if (codigoToInsert) {
     const lastRow = sheet.getLastRow();
-    if (lastRow > 1) {
-      const codigos = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+    const hasHeaders = _hasHeaderRow(sheet);
+    const startRow = hasHeaders ? 2 : 1;
+    const numRows = lastRow - startRow + 1;
+    
+    if (numRows > 0) {
+      const codigos = sheet.getRange(startRow, 2, numRows, 1).getValues();
       for (let i = 0; i < codigos.length; i++) {
         if (codigos[i][0] === codigoToInsert) {
           throw new Error('El código ' + codigoToInsert + ' ya existe.');
@@ -144,7 +163,10 @@ function _prepareRowValues(sheet, rowData, existingRowIndex) {
     return rowData;
   }
   // Es un objeto
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  let headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+  if (!_hasHeaderRow(sheet)) {
+    headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
+  }
   const existingValues = existingRowIndex 
     ? sheet.getRange(existingRowIndex, 1, 1, headers.length).getValues()[0]
     : [];

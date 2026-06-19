@@ -209,7 +209,53 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 9. Iniciar motor de sync
   SyncEngine.start();
 
-  // 9.5. Restaurar estado de la barra lateral en PC
+  // 9.6. Listener de restablecimiento de caché en pestañas duplicadas
+  try {
+    const resetChannel = new BroadcastChannel('app-cache-reset');
+    resetChannel.onmessage = (event) => {
+      if (event.data === 'clear_and_reload') {
+        console.log('[App] Pestaña duplicada notificó limpieza de caché. Reiniciando...');
+        location.reload(true);
+      }
+    };
+  } catch(e) {}
+
+  // 9.7. Sincronizar automáticamente al enfocar la pestaña si ha pasado mucho tiempo
+  window.addEventListener('focus', () => {
+    if (APP_CONFIG.appsScript.webAppUrl && navigator.onLine && window.location.protocol !== 'file:') {
+      const now = Date.now();
+      LocalCache.getConfig('equipos_last_sync', 0).then(lastSync => {
+        // Si ha pasado más de 10 minutos (600,000 ms), forzar sync
+        if ((now - lastSync) > 10 * 60 * 1000) {
+          console.log('[App] Pestaña enfocada después de inactividad. Sincronizando inventario desde Sheets...');
+          SheetsAPI.syncFromRemote(true).then(() => {
+            const current = Views.getCurrent();
+            if (current === 'inventario' && window.InventarioView) {
+              InventarioView.render();
+            }
+          }).catch(() => {});
+        }
+      });
+
+      // Sincronizar lotes históricos también si ha pasado más de 10 minutos
+      LocalCache.getConfig('lotes_last_sync', 0).then(lastSync => {
+        if ((now - lastSync) > 10 * 60 * 1000) {
+          console.log('[App] Sincronizando lotes históricos desde Sheets...');
+          LocalCache.loadLotesFromRemote().then(() => {
+            LocalCache.setConfig('lotes_last_sync', Date.now());
+            const current = Views.getCurrent();
+            if (current === 'historial-tareas' && window.HistorialTareasView) {
+              HistorialTareasView.render();
+            } else if (current === 'tareas' && window.TareasView) {
+              TareasView.render();
+            }
+          }).catch(() => {});
+        }
+      });
+    }
+  });
+
+  // 9.8. Restaurar estado de la barra lateral en PC
   if (window.innerWidth > 768) {
     const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
     if (isCollapsed) {
