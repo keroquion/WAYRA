@@ -28,20 +28,46 @@ const PrintActas = (() => {
     `;
   }
 
-  function imprimirActa(equipo) {
+  function imprimirActa(equiposArray) {
+    const equipos = Array.isArray(equiposArray) ? equiposArray : [equiposArray];
+    const e = equipos[0] || {};
+    const perifericos = equipos.slice(1);
+
     const win = window.open('', '_blank', 'width=900,height=800');
     if (!win) return alert('Permite las ventanas emergentes');
 
     const fechaGen = new Date().toLocaleDateString('es-PE');
     const docId = `ACT-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const e = equipo || {};
     const usuario = e.USUARIO_ASIGNADO || '________________________';
     const dni = e.DNI || '______________';
     const cargo = e.CARGO || '________________________';
     const area = e.AREA_DEPARTAMENTO || '________________________';
 
     const specs = [e.PROCESADOR, e.RAM, e.HD_SSD].filter(Boolean).join(' | ');
+
+    let perifericosHtml = '';
+    if (perifericos.length > 0) {
+      perifericosHtml = `
+        <div style="font-weight:800; margin-bottom:10px; color:#1e293b; font-size:11pt">🔌 Periféricos y Accesorios Adicionales Vinculados:</div>
+        <table class="info-table" style="font-size:9.5pt; margin-bottom: 25px;">
+          <thead>
+            <tr>
+              <th style="width:25%">Tipo</th>
+              <th style="width:40%">Marca / Modelo</th>
+              <th style="width:35%">N° Serie / Código</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${perifericos.map(p => `<tr>
+              <td>${p.TIP_EQUIP || '-'}</td>
+              <td>${p.MARCA || '-'} / ${p.MODELO || '-'}</td>
+              <td>SN: ${p.SERIE || '-'} &nbsp;|&nbsp; COD: ${p.CODIGO || '-'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      `;
+    }
 
     const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Acta de Entrega - ${e.CODIGO || e.SERIE || 'Equipo'}</title>
       <style>
@@ -102,6 +128,7 @@ const PrintActas = (() => {
           declaro bajo firma las siguientes características del bien:
         </div>
 
+        <div style="font-weight:800; margin-bottom:10px; color:#1e293b; font-size:11pt">🖥️ Equipo Principal:</div>
         <table class="info-table">
           <tbody>
             <tr><th>Tipo / Descripción</th><td>${e.TIP_EQUIP || 'Equipo Informático'}</td></tr>
@@ -111,6 +138,8 @@ const PrintActas = (() => {
             <tr><th>IP / Perfil Red</th><td>IP: ${e.IP || 'DHCP'} &nbsp;|&nbsp; Perfil: ${e.PERFIL_RED || 'Estándar'}</td></tr>
           </tbody>
         </table>
+
+        ${perifericosHtml}
 
         <div style="font-weight:700; margin-bottom:8px; color:#1e293b; font-size:11pt">Observaciones Adicionales:</div>
         <div class="obs-box">${e.OBSERVACION || 'Ninguna observación registrada al momento de la asignación.'}</div>

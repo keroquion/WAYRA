@@ -289,10 +289,22 @@ const InventarioView = (() => {
       return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="asig-inv-${c.key}" value="${Formatters.safe(r[c.key])}" placeholder="Opcional"></div>`;
     }).join('');
 
+    const accesoriosOptions = _all
+      .filter(x => x.CODIGO !== codigo && ['MONITOR','TECLADO','MOUSE','ACCESORIO','MICROFONO','ACCESORIO_SIMPLE'].includes(x.TIP_EQUIP))
+      .map(x => `<option value="${x.CODIGO}">${x.TIP_EQUIP}: ${x.MARCA||''} ${x.MODELO||''} (SN: ${x.SERIE||'-'}) - ${x.USUARIO_ASIGNADO?'👤 '+x.USUARIO_ASIGNADO:'🟢 Libre'}</option>`)
+      .join('');
+
     ModalGenerico.open(`
       <div class="modal-title">📄 Asignación de Equipo y Acta</div>
       <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px">Completa los datos de asignación antes de generar el acta de entrega. Estos datos se guardarán en el inventario.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${fields}</div>
+      <div class="form-group" style="margin-top:15px">
+        <label class="form-label">🔌 Emparejar Accesorios / Periféricos (Opcional)</label>
+        <select id="asig-inv-accesorios" class="form-control" multiple style="height: 110px; font-size:12px">
+          ${accesoriosOptions}
+        </select>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Mantén presionada la tecla Ctrl (o Cmd) para seleccionar múltiples accesorios. Se asignarán al mismo usuario.</div>
+      </div>
       <div class="modal-footer" style="margin-top:20px">
         <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>
         <button class="btn btn-primary" onclick="InventarioView.guardarYGenerarActa('${codigo}')">💾 Guardar y Generar Acta</button>
@@ -304,29 +316,44 @@ const InventarioView = (() => {
     const r = _all.find(x => x.CODIGO === codigo);
     if(!r) return;
 
+    const accSelect = document.getElementById('asig-inv-accesorios');
+    const selectedCodigos = accSelect ? Array.from(accSelect.selectedOptions).map(opt => opt.value) : [];
+    const perif = selectedCodigos.map(c => _all.find(x => x.CODIGO === c)).filter(Boolean);
+
     APP_CONFIG.columns.forEach(c => {
       if (c.isAsignacion) {
         const el = document.getElementById(`asig-inv-${c.key}`);
-        if(el) r[c.key] = el.value.trim();
+        if(el) {
+          const val = el.value.trim();
+          r[c.key] = val;
+          perif.forEach(p => p[c.key] = val); // Copiar a periféricos
+        }
       }
     });
 
     ModalGenerico.close();
-    Toast.info('Guardando asignación...');
+    Toast.info('Guardando asignación y periféricos...');
     
-    const rowData = {};
-    APP_CONFIG.columns.forEach(c => { rowData[c.key] = r[c.key]; });
-
     try {
+      const rowData = {};
+      APP_CONFIG.columns.forEach(c => { rowData[c.key] = r[c.key]; });
       await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
       await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', codigo: r.CODIGO, rowData });
-      
       await LocalCache.put('equipos', { ...r, _id: r.CODIGO || r.SERIE });
+
+      for(let p of perif) {
+        const pData = {};
+        APP_CONFIG.columns.forEach(c => { pData[c.key] = p[c.key]; });
+        await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: pData, usuario: 'Admin' });
+        await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', codigo: p.CODIGO, rowData: pData });
+        await LocalCache.put('equipos', { ...p, _id: p.CODIGO || p.SERIE });
+      }
+
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
       _apply();
       
       if(typeof PrintActas !== 'undefined') {
-        PrintActas.imprimirActa(r);
+        PrintActas.imprimirActa([r, ...perif]);
       } else {
         Toast.error('Módulo de Actas no encontrado');
       }
