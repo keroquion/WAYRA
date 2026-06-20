@@ -177,7 +177,6 @@ const InventarioView = (() => {
   async function guardarEdicion(codigo) {
     const r = _all.find(x => x.CODIGO === codigo);
     if(!r) return;
-    if(!r._rowIndex) { Toast.error('Fila no identificada en Sheets. Actualiza primero.'); return; }
 
     APP_CONFIG.columns.forEach(c => {
       if (c.isAsignacion) return;
@@ -193,7 +192,7 @@ const InventarioView = (() => {
 
     try {
       await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
-      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex, rowData });
+      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', codigo: r.CODIGO, rowData });
       
       // FIX: Update local IDB directly so fetchAll() does not retrieve old data upon refresh
       await LocalCache.put('equipos', { ...r, _id: r.CODIGO || r.SERIE });
@@ -304,7 +303,6 @@ const InventarioView = (() => {
   async function guardarYGenerarActa(codigo) {
     const r = _all.find(x => x.CODIGO === codigo);
     if(!r) return;
-    if(!r._rowIndex) { Toast.error('Fila no identificada. Actualiza primero.'); return; }
 
     APP_CONFIG.columns.forEach(c => {
       if (c.isAsignacion) {
@@ -321,7 +319,7 @@ const InventarioView = (() => {
 
     try {
       await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
-      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex, rowData });
+      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', codigo: r.CODIGO, rowData });
       
       await LocalCache.put('equipos', { ...r, _id: r.CODIGO || r.SERIE });
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));

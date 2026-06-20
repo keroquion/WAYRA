@@ -32,7 +32,7 @@ function doPost(e) {
         result = _writeAsset(body.rowData);
         break;
       case 'updateRow':
-        result = _updateRow(body.sheetName, body.rowIndex, body.rowData);
+        result = _updateRow(body.sheetName, body.codigo, body.rowData);
         break;
       case 'deleteRow':
         result = _deleteRow(body.sheetName, body.codigo);
@@ -183,13 +183,35 @@ function _prepareRowValues(sheet, rowData, existingRowIndex) {
   });
 }
 
-function _updateRow(sheetName, rowIndex, rowData) {
+function _updateRow(sheetName, codigo, rowData) {
   const ss = _getSpreadsheet();
   if (sheetName === '_Registros' || sheetName === 'VentasDetallado' || sheetName === 'Buscador Historial') {
     sheetName = INVENTARIO_SHEET;
   }
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
+  
+  if (!codigo) {
+    if (rowData && rowData.CODIGO) codigo = rowData.CODIGO;
+    else throw new Error('Se requiere el código para actualizar');
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  const codIndex = headers.findIndex(h => String(h).toUpperCase() === 'CODIGO');
+  if (codIndex === -1) throw new Error('Columna CODIGO no encontrada');
+
+  let rowIndex = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][codIndex]).trim() === String(codigo).trim()) {
+      rowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (rowIndex === -1) {
+    throw new Error('Fila no encontrada con el código ' + codigo);
+  }
   
   const values = _prepareRowValues(sheet, rowData, rowIndex);
   sheet.getRange(rowIndex, 1, 1, values.length).setValues([values]);
