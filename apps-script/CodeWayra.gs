@@ -94,7 +94,7 @@ function _getNextCode() {
   let sheet = ss.getSheetByName(INVENTARIO_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(INVENTARIO_SHEET);
-    sheet.appendRow(['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA']);
+    sheet.appendRow(['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA','USUARIO_ASIGNADO','DNI','CARGO','AREA_DEPARTAMENTO','IP','PERFIL_RED']);
     sheet.getRange(1, 1, 1, 19).setBackground('#4a86e8').setFontColor('#ffffff').setFontWeight('bold');
     sheet.setFrozenRows(1);
     return 'WYR-10001';
@@ -130,7 +130,7 @@ function _writeAsset(rowData) {
   let sheet = ss.getSheetByName(INVENTARIO_SHEET);
   if (!sheet) {
     sheet = ss.insertSheet(INVENTARIO_SHEET);
-    sheet.appendRow(['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA']);
+    sheet.appendRow(['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA','USUARIO_ASIGNADO','DNI','CARGO','AREA_DEPARTAMENTO','IP','PERFIL_RED']);
   }
   
   const values = _prepareRowValues(sheet, rowData);
@@ -165,7 +165,7 @@ function _prepareRowValues(sheet, rowData, existingRowIndex) {
   // Es un objeto
   let headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
   if (!_hasHeaderRow(sheet)) {
-    headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
+    headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA','USUARIO_ASIGNADO','DNI','CARGO','AREA_DEPARTAMENTO','IP','PERFIL_RED'];
   }
   const existingValues = existingRowIndex 
     ? sheet.getRange(existingRowIndex, 1, 1, headers.length).getValues()[0]

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plantillas de Inventario TI</title>
+    <style>
+        /* =======================================================
+           ESTILOS GENERALES Y MENÚ DE NAVEGACIÓN (NO SE IMPRIME)
+           ======================================================= */
+        :root {
+            --brand-color: #0056b3;
+            --border-dark: #222;
+            --bg-light: #f4f6f9;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: #cbd5e1;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .btn-tab {
+            background-color: white;
+            border: 2px solid var(--brand-color);
+            color: var(--brand-color);
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-tab:hover, .btn-tab.active {
+            background-color: var(--brand-color);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            justify-content: center;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Indicador de variable dinámica para que sepas dónde inyectar datos */
+        .var {
+            color: #0056b3;
+            font-weight: 500;
+        }
+
+        /* =======================================================
+           FORMATO 1: ACTA DE ENTREGA / DEVOLUCIÓN (VERTICAL - A4)
+           ======================================================= */
+        .acta-page {
+            background-color: #ffffff;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            font-size: 10pt;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-dark);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .logo-box {
+            width: 140px;
+            height: 50px;
+            border: 1px dashed #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 9pt;
+            background: #fafafa;
+        }
+
+        .title-box { text-align: right; }
+        .title-box h1 { margin: 0; font-size: 16pt; text-transform: uppercase; }
+
+        .legal-paragraph { text-align: justify; line-height: 1.5; margin-bottom: 15px; }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        .info-table th, .info-table td {
+            border: 1px solid var(--border-dark);
+            padding: 8px;
+            text-align: left;
+        }
+        .info-table th { background-color: #eee; width: 30%; font-size: 9pt; }
+
+        .obs-box {
+            border: 1px solid var(--border-dark);
+            padding: 10px;
+            min-height: 50px;
+            margin-bottom: 15px;
+            font-family: monospace;
+            background: #fafafa;
+            white-space: pre-wrap;
+        }
+
+        /* --- DISEÑO DE COLUMNAS DIVIDIDAS --- */
+        .split-wrapper {
+            display: flex;
+            border: 2px solid var(--border-dark);
+            flex: 1; /* Ocupa el resto del espacio */
+        }
+
+        .split-col {
+            flex: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .split-col.left-col { border-right: 2px solid var(--border-dark); }
+
+        .col-header {
+            font-weight: bold;
+            text-align: center;
+            text-decoration: underline;
+            margin-bottom: 15px;
+            font-size: 11pt;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 9pt;
+            font-weight: bold;
+        }
+
+        .checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1px solid #000;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: monospace;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .signature-area {
+            margin-top: auto; /* Empuja las firmas al fondo de la columna */
+            padding-top: 30px;
+        }
+
+        .sig-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 25px;
+        }
+
+        .sig-line-group {
+            text-align: center;
+            width: 65%;
+        }
+
+        .sig-line {
+            border-top: 1px solid #000;
+            padding-top: 5px;
+            font-weight: bold;
+            font-size: 8pt;
+        }
+
+        .fingerprint {
+            width: 50px;
+            height: 70px;
+            border: 1px dotted #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 7pt;
+            color: #666;
+        }
+
+
+        /* =======================================================
+           FORMATO 2: REPORTE DE INVENTARIO (HORIZONTAL - LANDSCAPE)
+           ======================================================= */
+        .report-page {
+            background-color: #ffffff;
+            width: 297mm; /* Formato apaisado */
+            min-height: 210mm;
+            padding: 15mm;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+            font-size: 8.5pt;
+        }
+
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 3px solid var(--brand-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .report-header h1 { color: var(--brand-color); margin: 0; font-size: 16pt; }
+
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .report-table th {
+            background-color: var(--brand-color);
+            color: white;
+            padding: 8px;
+            border: 1px solid #003366;
+            text-align: left;
+        }
+
+        .report-table td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        .report-table tr:nth-child(even) { background-color: #f9f9f9; }
+
+        .item-photo {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border: 1px solid #aaa;
+            border-radius: 4px;
+        }
+
+        .badge-area {
+            background-color: #e74c3c;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 8pt;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        ul.data-list { padding-left: 15px; margin: 0; }
+        ul.data-list li { margin-bottom: 3px; }
+        .pw-box { background: #fff; border: 1px solid #999; padding: 1px 4px; font-family: monospace; }
+
+
+        /* =======================================================
+           REGLAS DE IMPRESIÓN
+           ======================================================= */
+        @media print {
+            .controls { display: none !important; } /* Ocultar botones al imprimir */
+            body { background: white; margin: 0; padding: 0; }
+            
+            /* Oculta la pestaña que no está activa */
+            .tab-content:not(.active) { display: none !important; }
+            
+            /* Quitar sombras y márgenes extra para la impresora */
+            .acta-page, .report-page { 
+                box-shadow: none; 
+                margin: 0; 
+                padding: 0; 
+                width: 100%; 
+            }
+
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MENÚ DE NAVEGACIÓN -->
+    <div class="controls">
+        <button class="btn-tab active" onclick="switchTab('acta', this)">1. Acta de Entrega / Devolución</button>
+        <button class="btn-tab" onclick="switchTab('reporte', this)">2. Reporte de Inventario (Fotos)</button>
+        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+            <em>Nota: El diseño azul <code>{{...}}</code> indica dónde tu sistema insertará los datos de la base de datos.</em>
+        </p>
+    </div>
+
+    <!-- =============================================================
+         PESTAÑA 1: ACTA DE ENTREGA / DEVOLUCIÓN (2 Columnas Abajo)
+         ============================================================= -->
+    <div id="acta" class="tab-content active">
+        <div class="acta-page">
+            
+            <div class="header">
+                <div class="logo-box">[ LOGO EMPRESA ]</div>
+                <div class="title-box">
+                    <h1>ACTA DE ENTREGA / DEVOLUCIÓN DE EQUIPO</h1>
+                    <div style="margin-top: 5px; color: #555;">
+                        CÓDIGO DOC: <span class="var">{{DOC-001}}</span> | FECHA: <span class="var">{{19/06/2026}}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legal-paragraph">
+                Consta por el presente documento la entrega/devolución del equipo detallado a continuación. 
+                Yo, <span class="var">{{CARLOS GÓMEZ RAMÍREZ}}</span>, identificado(a) con DNI/CE N° <span class="var">{{70169490}}</span>, 
+                en mi calidad de <span class="var">{{ASISTENTE CONTABLE}}</span> del área de <span class="var">{{CONTABILIDAD}}</span>, declaro bajo firma las siguientes características del bien:
+            </div>
+
+            <table class="info-table">
+                <tbody>
+                    <tr>
+                        <th>TIPO / DESCRIPCIÓN DEL BIEN</th>
+                        <td><span class="var">{{Computador Portátil asignado por la empresa}}</span></td>
+                    </tr>
+                    <tr>
+                        <th>MARCA / MODELO</th>
+                        <td><span class="var">{{Lenovo}}</span> / <span class="var">{{ThinkPad T14}}</span></td>
+                    </tr>
+                    <tr>
+                        <th>N° SERIE (SN) / IMEI</th>
+                        <td><span class="var">{{PF3X89L1}}</span></td>
+                    </tr>
+                    <tr>
+                        <th>ESPECIFICACIONES TÉCNICAS</th>
+                        <td><span class="var">{{Intel Core i5, 16GB RAM, 512GB SSD, Windows 11 Pro}}</span></td>
+                    </tr>
+                    <tr>
+                        <th>ACCESORIOS INCLUIDOS</th>
+                        <td><span class="var">{{Cargador original, Mouse inalámbrico, Funda protectora}}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="font-weight: bold; margin-bottom: 5px;">OBSERVACIONES ADICIONALES:</div>
+            <div class="obs-box"><span class="var">{{Equipo entregado nuevo de caja. Sin rayones en pantalla.}}</span></div>
+
+            <div style="font-size: 8.5pt; color: #333; margin-bottom: 15px; font-style: italic; background-color: #fff3cd; padding: 8px; border-left: 3px solid #ffc107;">
+                <strong>Importante:</strong> En caso de robo, extravío, destrucción o averías ocasionadas por negligencia por parte del usuario que posee dicho equipo, este deberá pagar el monto de la penalidad establecida por la compañía.
+            </div>
+
+            <!-- CONTENEDOR DIVIDIDO (IZQUIERDA: ASIGNACIÓN / DERECHA: DEVOLUCIÓN) -->
+            <div class="split-wrapper">
+                
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="split-col left-col">
+                    <div class="col-header">1. PARA ASIGNACIÓN DE EQUIPO</div>
+                    
+                    <div class="check-item">
+                        <!-- El backend inserta la 'X' aquí si es asignación -->
+                        <div class="checkbox"><span class="var">{{X}}</span></div> 
+                        ASIGNACIÓN / ENTREGA INICIAL
+                    </div>
+
+                    <div class="signature-area">
+                        <!-- Firma Empresa -->
+                        <div class="sig-row">
+                            <div class="sig-line-group" style="width: 100%;">
+                                <div class="sig-line">ENTREGUÉ CONFORME (POR LA EMPRESA)</div>
+                                <div><span class="var">{{Jefe de Soporte TI}}</span></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Firma Trabajador -->
+                        <div class="sig-row">
+                            <div class="sig-line-group">
+                                <div class="sig-line">RECIBÍ CONFORME (TRABAJADOR)</div>
+                                <div><span class="var">{{CARLOS GÓMEZ RAMÍREZ}}</span></div>
+                            </div>
+                            <div class="fingerprint">Huella</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA -->
+                <div class="split-col">
+                    <div class="col-header">2. PARA DEVOLUCIÓN / REPOSICIÓN</div>
+                    
+                    <div class="check-item">
+                        <div class="checkbox"><span class="var">{{ }}</span></div> 
+                        DEVOLUCIÓN POR CESE O RETIRO
+                    </div>
+                    <div class="check-item">
+                        <div class="checkbox"><span class="var">{{ }}</span></div> 
+                        REPOSICIÓN / RENOVACIÓN
+                    </div>
+
+                    <div class="signature-area">
+                        <!-- Firma Trabajador -->
+                        <div class="sig-row">
+                            <div class="sig-line-group">
+                                <div class="sig-line">ENTREGUÉ CONFORME (TRABAJADOR)</div>
+                                <div><span class="var">{{CARLOS GÓMEZ RAMÍREZ}}</span></div>
+                            </div>
+                            <div class="fingerprint">Huella</div>
+                        </div>
+
+                        <!-- Firma Empresa -->
+                        <div class="sig-row">
+                            <div class="sig-line-group" style="width: 100%;">
+                                <div class="sig-line">RECIBÍ CONFORME (POR LA EMPRESA)</div>
+                                <div><span class="var">{{Receptor Soporte TI}}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- Fin split-wrapper -->
+        </div>
+    </div>
+
+
+    <!-- =============================================================
+         PESTAÑA 2: REPORTE DE INVENTARIO (Horizontal con Fotos)
+         ============================================================= -->
+    <div id="reporte" class="tab-content">
+        <div class="report-page">
+            
+            <div class="report-header">
+                <div>
+                    <h1>INVENTARIO GENERAL DE ACTIVOS TECNOLÓGICOS</h1>
+                    <p style="margin: 5px 0 0 0; color: #555;">Sede: <span class="var">{{Oficina Principal Arequipa}}</span></p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin: 0; font-weight: bold;">Generado: <span class="var">{{19/06/2026 12:30 PM}}</span></p>
+                    <p style="margin: 5px 0 0 0;">Total Registros: <span class="var">{{145}}</span></p>
+                </div>
+            </div>
+
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th style="width: 5%; text-align: center;">N°</th>
+                        <th style="width: 8%; text-align: center;">FOTO</th>
+                        <th style="width: 17%;">IDENTIFICACIÓN</th>
+                        <th style="width: 20%;">ÁREA Y USUARIO</th>
+                        <th style="width: 25%;">HARDWARE / SOFTWARE</th>
+                        <th style="width: 25%;">RED Y ACCESOS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                    <!-- Fila Ejemplo 1 -->
+                    <tr>
+                        <td style="text-align: center; font-weight: bold;"><span class="var">{{1}}</span></td>
+                        <td style="text-align: center;">
+                            <img src="https://placehold.co/70x70/e0e0e0/555?text=PC+Foto" class="item-photo" alt="Foto">
+                        </td>
+                        <td>
+                            <strong>Equipo:</strong> <span class="var">{{All In One}}</span><br>
+                            <strong>Marca:</strong> <span class="var">{{HP}}</span><br>
+                            <strong>Modelo:</strong> <span class="var">{{ProOne 400}}</span><br>
+                            <strong>Serie:</strong> <span class="var">{{8CG1234}}</span>
+                        </td>
+                        <td>
+                            <div class="badge-area"><span class="var">{{Admin. Laboratorio}}</span></div><br>
+                            <strong>Usuario:</strong> <span class="var">{{María Pérez}}</span><br>
+                            <strong>Estado:</strong> <span class="var" style="color:green; font-weight:bold;">{{Activo}}</span>
+                        </td>
+                        <td>
+                            <ul class="data-list">
+                                <li><strong>SO:</strong> <span class="var">{{Win 10 Pro 64 bits}}</span></li>
+                                <li><strong>CPU:</strong> <span class="var">{{AMD RYZEN 3}}</span></li>
+                                <li><strong>RAM:</strong> <span class="var">{{8 GB}}</span></li>
+                                <li><strong>Disco:</strong> <span class="var">{{512GB SSD}}</span></li>
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="data-list">
+                                <li><strong>Perfil:</strong> <span class="var">{{Arequipa2028*}}</span></li>
+                                <li><strong>IP:</strong> <span class="var">{{192.168.1.45}}</span></li>
+                                <li><strong>Obs:</strong> <span class="var">{{Uso exclusivo jefa op.}}</span></li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                    <!-- Fila Ejemplo 2 -->
+                    <tr>
+                        <td style="text-align: center; font-weight: bold;"><span class="var">{{2}}</span></td>
+                        <td style="text-align: center;">
+                            <img src="https://placehold.co/70x70/e0e0e0/555?text=Celular" class="item-photo" alt="Foto">
+                        </td>
+                        <td>
+                            <strong>Equipo:</strong> <span class="var">{{Smartphone}}</span><br>
+                            <strong>Marca:</strong> <span class="var">{{OPPO}}</span><br>
+                            <strong>Modelo:</strong> <span class="var">{{CPH2579}}</span><br>
+                            <strong>IMEI:</strong> <span class="var">{{86772306...}}</span>
+                        </td>
+                        <td>
+                            <div class="badge-area"><span class="var">{{Ventas}}</span></div><br>
+                            <strong>Usuario:</strong> <span class="var">{{Delia Choquelucas}}</span><br>
+                            <strong>Estado:</strong> <span class="var" style="color:green; font-weight:bold;">{{Asignado}}</span>
+                        </td>
+                        <td>
+                            <ul class="data-list">
+                                <li><strong>Número:</strong> <span class="var">{{942 094 033}}</span></li>
+                                <li><strong>Plan:</strong> <span class="var">{{Plan 50GB Entel}}</span></li>
+                                <li><strong>Accesorios:</strong> <span class="var">{{Cargador original}}</span></li>
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="data-list">
+                                <li><strong>PIN:</strong> <span class="pw-box var">{{2025}}</span></li>
+                                <li><strong>Correo:</strong> <span class="var">{{ventas1@emp.com}}</span></li>
+                                <li><strong>Obs:</strong> <span class="var">{{Muy Lento, pantalla ok}}</span></li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SCRIPT PARA CAMBIAR DE PESTAÑA -->
+    <script>
+        function switchTab(tabId, buttonElement) {
+            // Ocultar todos los contenidos
+            document.querySelectorAll('.tab-content').forEach(function(el) {
+                el.classList.remove('active');
+            });
+            // Quitar clase active a todos los botones
+            document.querySelectorAll('.btn-tab').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            
+            // Mostrar contenido seleccionado y activar botón
+            document.getElementById(tabId).classList.add('active');
+            buttonElement.classList.add('active');
+        }
+    </script>
+</body>
+</html>

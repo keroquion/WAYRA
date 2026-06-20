@@ -13,6 +13,8 @@ const InventarioView = (() => {
         <div><div class="page-title">📦 Inventario Completo</div><div class="page-subtitle">Todos los equipos en Google Sheets</div></div>
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" id="btn-inv-refresh">🔄 Actualizar</button>
+          <button class="btn btn-secondary btn-sm" onclick="InventarioView.exportarPDF('lista')">🖨️ PDF Lista</button>
+          <button class="btn btn-secondary btn-sm" onclick="InventarioView.exportarPDF('catalogo')">🗂️ Reporte Asignaciones</button>
           <button class="btn btn-secondary btn-sm" onclick="InventarioView.abrirModalImportar()">📤 Importar CSV</button>
           <button class="btn btn-secondary btn-sm" id="btn-inv-csv">⬇️ Exportar CSV</button>
           <button class="btn btn-secondary btn-sm" id="btn-inv-xlsx">📊 Excel</button>
@@ -86,6 +88,7 @@ const InventarioView = (() => {
       }).join('');
       return `<tr>${cells}<td style="white-space:nowrap">
         <button class="btn btn-sm btn-icon" title="Editar" onclick="InventarioView.editarFila('${r.CODIGO}')">✏️</button>
+        <button class="btn btn-sm btn-icon" title="Asignar / Acta" onclick="InventarioView.abrirModalAsignacion('${r.CODIGO}')">📄</button>
         <button class="btn btn-sm btn-icon btn-danger" title="Eliminar" onclick="InventarioView.borrarFila('${r.CODIGO}')">🗑️</button>
       </td></tr>`;
     }).join('');
@@ -155,6 +158,7 @@ const InventarioView = (() => {
     if(!r) return;
     
     const fields = APP_CONFIG.columns.map(c => {
+      if(c.isAsignacion) return '';
       if(c.key === 'CODIGO') return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="edit-inv-${c.key}" value="${Formatters.safe(r[c.key])}" readonly style="background:var(--bg-hover)"></div>`;
       if(c.key === 'ESTADO') return `<div class="form-group"><label class="form-label">${c.label}</label><select class="form-control" id="edit-inv-${c.key}"><option value="C" ${r.ESTADO==='C'?'selected':''}>Correcto</option><option value="P" ${r.ESTADO==='P'?'selected':''}>En Revisión</option><option value="M" ${r.ESTADO==='M'?'selected':''}>Malogrado</option><option value="V" ${r.ESTADO==='V'?'selected':''}>Vendido</option></select></div>`;
       return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="edit-inv-${c.key}" value="${Formatters.safe(r[c.key])}"></div>`;
@@ -176,6 +180,7 @@ const InventarioView = (() => {
     if(!r._rowIndex) { Toast.error('Fila no identificada en Sheets. Actualiza primero.'); return; }
 
     APP_CONFIG.columns.forEach(c => {
+      if (c.isAsignacion) return;
       const el = document.getElementById(`edit-inv-${c.key}`);
       if(el && c.key !== 'CODIGO') r[c.key] = el.value.trim();
     });
@@ -190,6 +195,9 @@ const InventarioView = (() => {
       await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
       await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex, rowData });
       
+      // FIX: Update local IDB directly so fetchAll() does not retrieve old data upon refresh
+      await LocalCache.put('equipos', { ...r, _id: r.CODIGO || r.SERIE });
+
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
       _apply();
       Toast.success('Equipo actualizado en cola');
@@ -205,6 +213,9 @@ const InventarioView = (() => {
       await LocalCache.addAudit({ accion: 'DELETE', entidad: 'Inventario', datos: {codigo}, usuario: 'Admin' });
       await SyncEngine.enqueue('deleteRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex });
       
+      // FIX: Remove from local IDB directly so fetchAll() does not retrieve old data upon refresh
+      await LocalCache.delete('equipos', codigo);
+
       _all = _all.filter(x => x.CODIGO !== codigo);
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
       _apply();
@@ -271,7 +282,71 @@ const InventarioView = (() => {
     reader.readAsText(file);
   }
 
-  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar };
+  function abrirModalAsignacion(codigo) {
+    const r = _all.find(x => x.CODIGO === codigo);
+    if(!r) return;
+    
+    const fields = APP_CONFIG.columns.filter(c => c.isAsignacion).map(c => {
+      return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="asig-inv-${c.key}" value="${Formatters.safe(r[c.key])}" placeholder="Opcional"></div>`;
+    }).join('');
+
+    ModalGenerico.open(`
+      <div class="modal-title">📄 Asignación de Equipo y Acta</div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px">Completa los datos de asignación antes de generar el acta de entrega. Estos datos se guardarán en el inventario.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${fields}</div>
+      <div class="modal-footer" style="margin-top:20px">
+        <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>
+        <button class="btn btn-primary" onclick="InventarioView.guardarYGenerarActa('${codigo}')">💾 Guardar y Generar Acta</button>
+      </div>
+    `);
+  }
+
+  async function guardarYGenerarActa(codigo) {
+    const r = _all.find(x => x.CODIGO === codigo);
+    if(!r) return;
+    if(!r._rowIndex) { Toast.error('Fila no identificada. Actualiza primero.'); return; }
+
+    APP_CONFIG.columns.forEach(c => {
+      if (c.isAsignacion) {
+        const el = document.getElementById(`asig-inv-${c.key}`);
+        if(el) r[c.key] = el.value.trim();
+      }
+    });
+
+    ModalGenerico.close();
+    Toast.info('Guardando asignación...');
+    
+    const rowData = {};
+    APP_CONFIG.columns.forEach(c => { rowData[c.key] = r[c.key]; });
+
+    try {
+      await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
+      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex, rowData });
+      
+      await LocalCache.put('equipos', { ...r, _id: r.CODIGO || r.SERIE });
+      localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
+      _apply();
+      
+      if(typeof PrintActas !== 'undefined') {
+        PrintActas.imprimirActa(r);
+      } else {
+        Toast.error('Módulo de Actas no encontrado');
+      }
+    } catch(err) { Toast.error('Error al guardar asignación'); }
+  }
+
+  function exportarPDF(tipo) {
+    if(!_filtered.length) { Toast.warning('No hay datos para exportar'); return; }
+    if(tipo === 'catalogo' && typeof PrintActas !== 'undefined') {
+      PrintActas.imprimirReporteGeneral(_filtered);
+    } else if (typeof PrintInventario !== 'undefined') {
+      PrintInventario.abrir(_filtered, APP_CONFIG.columns, tipo);
+    } else {
+      Toast.error('Módulo de impresión no cargado');
+    }
+  }
+
+  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa };
 })();
 
 window.InventarioView = InventarioView;

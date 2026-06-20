@@ -47,6 +47,13 @@ const APP_CONFIG = {
     { key: 'SUCURSAL',    label: 'Sucursal',     visible: true,  width: 90,  editable: true  },
     { key: 'ESTADO',      label: 'Estado',       visible: true,  width: 80,  editable: true  },
     { key: 'OBSERVACION', label: 'Observación',  visible: true,  width: 200, editable: true  },
+    // Nuevas columnas para asignación y actas
+    { key: 'USUARIO_ASIGNADO', label: 'Usuario Asignado', visible: false, width: 120, editable: true, isAsignacion: true },
+    { key: 'DNI',             label: 'DNI',             visible: false, width: 80,  editable: true, isAsignacion: true },
+    { key: 'CARGO',           label: 'Cargo',           visible: false, width: 120, editable: true, isAsignacion: true },
+    { key: 'AREA_DEPARTAMENTO',label: 'Área / Dpto.',    visible: false, width: 120, editable: true, isAsignacion: true },
+    { key: 'IP',              label: 'IP',              visible: false, width: 100, editable: true, isAsignacion: true },
+    { key: 'PERFIL_RED',      label: 'Perfil Red',      visible: false, width: 100, editable: true, isAsignacion: true },
   ],
 
   // ── Estados equipo ────────────────────────────────────────────────
