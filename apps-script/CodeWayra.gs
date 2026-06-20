@@ -35,7 +35,10 @@ function doPost(e) {
         result = _updateRow(body.sheetName, body.rowIndex, body.rowData);
         break;
       case 'deleteRow':
-        result = _deleteRow(body.sheetName, body.rowIndex);
+        result = _deleteRow(body.sheetName, body.codigo);
+        break;
+      case 'clearDatabase':
+        result = _clearDatabase();
         break;
       case 'getNextCode':
         result = { codigo: _getNextCode() };
@@ -193,14 +196,49 @@ function _updateRow(sheetName, rowIndex, rowData) {
   return { ok: true };
 }
 
-function _deleteRow(sheetName, rowIndex) {
+function _deleteRow(sheetName, codigo) {
   const ss = _getSpreadsheet();
   if (sheetName === '_Registros' || sheetName === 'VentasDetallado' || sheetName === 'Buscador Historial') {
     sheetName = INVENTARIO_SHEET;
   }
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('Hoja no encontrada: ' + sheetName);
-  sheet.deleteRow(rowIndex);
+  
+  if (!codigo) throw new Error('Se requiere el código para eliminar');
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0] || [];
+  const codIndex = headers.findIndex(h => String(h).toUpperCase() === 'CODIGO');
+  
+  if (codIndex === -1) throw new Error('Columna CODIGO no encontrada en la hoja');
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][codIndex]).trim() === String(codigo).trim()) {
+      sheet.deleteRow(i + 1);
+      return { ok: true, deleted: true };
+    }
+  }
+  
+  return { ok: true, deleted: false, message: 'Fila no encontrada con el código ' + codigo };
+}
+
+function _clearDatabase() {
+  const ss = _getSpreadsheet();
+  const sheetsToClear = [INVENTARIO_SHEET, AUDIT_SHEET, '_Lotes'];
+  
+  sheetsToClear.forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (sheet) {
+      const lastRow = sheet.getLastRow();
+      const lastCol = sheet.getLastColumn();
+      if (lastRow > 1) {
+        // Borramos todo excepto la fila 1 (los encabezados)
+        // Eliminamos las filas físicamente para asegurar reset completo
+        sheet.deleteRows(2, lastRow - 1);
+      }
+    }
+  });
+  
   return { ok: true };
 }
 

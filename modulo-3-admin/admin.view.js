@@ -204,6 +204,16 @@ const AdminView = (() => {
             </div>
             <button class="btn btn-danger" onclick="AdminView.limpiarBaseDatosLocal()" style="width:100%">🧹 Limpiar Base de Datos y Caché</button>
           </div>
+
+          <!-- HARD RESET NUBE -->
+          <div class="card" style="border: 2px solid #ef4444; background: #fff1f2;">
+            <div class="card-title" style="color:#b91c1c">⚠️ Peligro: Vaciar Nube (Google Sheets)</div>
+            <div style="font-size:0.8rem;color:#991b1b;margin-bottom:14px">
+              Borra TODO el contenido de Google Sheets (Inventario, Auditoría y Lotes) dejando solo las cabeceras. <strong>Esta acción es IRREVERSIBLE</strong> y borrará los datos de todos los usuarios de la empresa.
+            </div>
+            <button class="btn btn-danger" onclick="AdminView.hardResetCloud()" style="width:100%;background:#dc2626;border-color:#b91c1c">💥 Vaciar Todo (Hard Reset)</button>
+          </div>
+
         </div>
       </div>
 
@@ -415,12 +425,38 @@ const AdminView = (() => {
       location.reload(true);
     };
 
+    async function hardResetCloud() {
+      const p1 = prompt('⚠️ ATENCIÓN: Estás a punto de vaciar TODA la base de datos de la empresa en la nube (Google Sheets).\n\nSi estás seguro, escribe "CONFIRMAR" (en mayúsculas):');
+      if (p1 !== 'CONFIRMAR') {
+        Toast.info('Operación cancelada');
+        return;
+      }
+      
+      const p2 = prompt('¿Deseas limpiar también la memoria caché local después de vaciar la nube? (SI / NO)\nRecomendado: SI');
+      
+      Toast.info('⏳ Vaciando base de datos en la nube...', 0);
+      
+      try {
+        const res = await AppsScriptBridge.request('clearDatabase', {});
+        if(res.ok) {
+          Toast.success('¡La base de datos en la nube ha sido vaciada con éxito!');
+          if(p2 === 'SI' || p2 === 'si') {
+            setTimeout(() => limpiarBaseDatosLocal(), 1500);
+          }
+        } else {
+          throw new Error(res.error || 'Error desconocido');
+        }
+      } catch(err) {
+        Toast.error('Error al vaciar BD: ' + err.message);
+      }
+    }
+
     switchTab(0);
   }
 
-  let switchTab, cambiarPin, importarConfig, limpiarBaseDatosLocal;
+  let switchTab, cambiarPin, importarConfig, limpiarBaseDatosLocal, hardResetCloud;
 
-  return { render, get switchTab() { return switchTab; }, get cambiarPin() { return cambiarPin; }, get importarConfig() { return importarConfig; }, get limpiarBaseDatosLocal() { return limpiarBaseDatosLocal; } };
+  return { render, switchTab, cambiarPin, limpiarBaseDatosLocal, importarConfig, hardResetCloud };
 })();
 
 window.AdminView = AdminView;

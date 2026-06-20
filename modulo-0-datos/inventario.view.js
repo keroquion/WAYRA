@@ -207,11 +207,11 @@ const InventarioView = (() => {
   async function borrarFila(codigo) {
     if(!confirm('¿Eliminar este equipo permanentemente de Sheets?')) return;
     const r = _all.find(x => x.CODIGO === codigo);
-    if(!r || !r._rowIndex) { Toast.error('Fila no identificada'); return; }
+    if(!r) { Toast.error('Equipo no encontrado en la memoria local'); return; }
 
     try {
       await LocalCache.addAudit({ accion: 'DELETE', entidad: 'Inventario', datos: {codigo}, usuario: 'Admin' });
-      await SyncEngine.enqueue('deleteRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', rowIndex: r._rowIndex });
+      await SyncEngine.enqueue('deleteRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', codigo: r.CODIGO });
       
       // FIX: Remove from local IDB directly so fetchAll() does not retrieve old data upon refresh
       await LocalCache.delete('equipos', codigo);
