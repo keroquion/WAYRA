@@ -456,7 +456,14 @@ const AdminView = (() => {
 
   let switchTab, cambiarPin, importarConfig, limpiarBaseDatosLocal, hardResetCloud;
 
-  return { render, switchTab, cambiarPin, limpiarBaseDatosLocal, importarConfig, hardResetCloud };
+  return {
+    render,
+    get switchTab() { return switchTab; },
+    get cambiarPin() { return cambiarPin; },
+    get limpiarBaseDatosLocal() { return limpiarBaseDatosLocal; },
+    get importarConfig() { return importarConfig; },
+    get hardResetCloud() { return hardResetCloud; }
+  };
 })();
 
 window.AdminView = AdminView;
