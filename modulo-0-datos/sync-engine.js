@@ -26,7 +26,6 @@ const SyncEngine = (() => {
   // ── Ciclo de sync ────────────────────────────────────────────────
   async function _tick() {
     if (_running || !navigator.onLine) return;
-    if (!APP_CONFIG.appsScript.webAppUrl) return; // sin Apps Script, sin sync
 
     _running = true;
     _setStatus('connecting');
@@ -63,6 +62,11 @@ const SyncEngine = (() => {
         case 'writeRow':
         case 'writeAsset':
         case 'updateRow':
+          // Si hay una foto adjunta en la cola, la subimos a Supabase Storage primero
+          if (op.base64Photo && op.rowData.DOC_COMPRA && !op.rowData.DOC_COMPRA.startsWith('http')) {
+            const publicUrl = await DriveUpload.uploadDataURL(op.base64Photo, `${op.rowData.CODIGO}_evidencia_${Date.now()}.jpg`);
+            op.rowData.DOC_COMPRA = publicUrl;
+          }
           await SupabaseAPI.upsert(op.rowData);
           break;
         case 'deleteRow':
@@ -109,8 +113,8 @@ const SyncEngine = (() => {
       datos: rowData,
       usuario: auditInfo.usuario || 'Sistema',
     });
-    // Encolar para Sheets
-    await enqueue('writeRow', { sheetName, rowData });
+    // Encolar para Sheets / Supabase
+    await enqueue('writeRow', { sheetName, rowData, base64Photo: auditInfo.base64Photo });
     // Encolar audit en Sheets también
     await enqueue('appendAudit', { auditRow: [new Date().toISOString(), auditInfo.accion, auditInfo.entidad, JSON.stringify(rowData)] });
   }

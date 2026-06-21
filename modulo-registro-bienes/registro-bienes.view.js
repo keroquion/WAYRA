@@ -463,12 +463,11 @@ const RegistroBienesView = (() => {
       const startCode = await _generarSiguienteCodigo();
       let baseCodeNum = parseInt(startCode.replace('WYR-', ''), 10);
 
-      // 2. Subir foto si existe (único proceso de red si hay foto adjunta)
-      let fotoUrl = '';
+      // 2. La foto se subirá en segundo plano (background) para no bloquear la pantalla.
+      // Guardamos el base64 en memoria para pasarlo a la cola.
+      let fotoData = '';
       if (currentPhotoBase64) {
-        btnGuardar.innerHTML = '<span class="spinner"></span> Subiendo foto...';
-        const uploadRes = await DriveUpload.uploadFileWithMeta(currentPhotoBase64, 'image/jpeg', 'Evidencia_Registro', null);
-        if (uploadRes && uploadRes.url) fotoUrl = uploadRes.url;
+        fotoData = currentPhotoBase64;
       }
 
       btnGuardar.innerHTML = '<span class="spinner"></span> Registrando bien...';
@@ -512,7 +511,7 @@ const RegistroBienesView = (() => {
           ESTADO: "C", // ESTADO: Correcto
           OBSERVACION: descObs,
           FEC_COMPRA: fechaHoy,
-          DOC_COMPRA: fotoUrl,
+          DOC_COMPRA: fotoData, // Guardamos temporalmente el base64 localmente
           FEC_VENTA: "",
           DOC_VENTA: "",
           USUARIO_ASIGNADO: "",
@@ -526,11 +525,12 @@ const RegistroBienesView = (() => {
         await LocalCache.put('equipos', { ...rowData, _id: codigo });
 
         // 4. Encolar la escritura para Google Sheets en segundo plano
-        const sheetName = APP_CONFIG.sheets.sheetName || 'InventarioTI';
+        const sheetName = APP_CONFIG.sheets?.sheetName || 'InventarioTI';
         await SyncEngine.syncWrite(sheetName, rowData, {
           accion: 'CREATE',
           entidad: 'REGISTRO_BIENES',
-          usuario: (window.AuthService && AuthService.getUsuarioActual()) ? AuthService.getUsuarioActual().username : 'Sistema'
+          usuario: (window.AuthService && AuthService.getUsuarioActual()) ? AuthService.getUsuarioActual().username : 'Sistema',
+          base64Photo: fotoData // Lo pasamos a SyncEngine para que lo suba asíncronamente
         });
 
         registros.push(codigo);
