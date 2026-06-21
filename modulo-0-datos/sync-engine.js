@@ -49,6 +49,10 @@ const SyncEngine = (() => {
     } catch (err) {
       _setStatus('error');
       console.warn('[SyncEngine]', err.message);
+      // Notificar al usuario visiblemente sobre el error de conexión
+      if (window.Toast) {
+        Toast.error('Problema de conexión o subida con Supabase: ' + err.message);
+      }
     } finally {
       _running = false;
       _updateChip();

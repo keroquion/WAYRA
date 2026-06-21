@@ -110,10 +110,26 @@ const RegistroBienesView = (() => {
               <input type="text" class="form-control" id="rb-tipo_sub" tabindex="2" autocomplete="off" placeholder="Ej. Switch, Mouse, Teclado...">
             </div>
 
+            <style>
+              .quick-chips { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+              .q-chip { 
+                background: var(--bg-hover); border: 1px solid var(--border); 
+                padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; 
+                color: var(--text-color); cursor: pointer; transition: all 0.2s;
+              }
+              .q-chip:hover, .q-chip:active { background: var(--accent); color: white; border-color: var(--accent); }
+            </style>
+
             <!-- Marca -->
             <div class="form-group" id="group-marca" style="display:none;">
               <label class="form-label">Marca</label>
               <input type="text" class="form-control" id="rb-marca" tabindex="3" autocomplete="off" list="dl-marcas" placeholder="Ej. DELL, HP, LENOVO...">
+              <div class="quick-chips">
+                <span class="q-chip" onclick="document.getElementById('rb-marca').value='DELL'; document.getElementById('rb-marca').dispatchEvent(new Event('input'))">DELL</span>
+                <span class="q-chip" onclick="document.getElementById('rb-marca').value='HP'; document.getElementById('rb-marca').dispatchEvent(new Event('input'))">HP</span>
+                <span class="q-chip" onclick="document.getElementById('rb-marca').value='LENOVO'; document.getElementById('rb-marca').dispatchEvent(new Event('input'))">LENOVO</span>
+                <span class="q-chip" onclick="document.getElementById('rb-marca').value='APPLE'; document.getElementById('rb-marca').dispatchEvent(new Event('input'))">APPLE</span>
+              </div>
               <datalist id="dl-marcas">
                 ${APP_CONFIG.catalogos.marcas.map(m => `<option value="${m}">`).join('')}
               </datalist>
@@ -135,24 +151,49 @@ const RegistroBienesView = (() => {
             <div class="form-group" id="group-procesador" style="display:none;">
               <label class="form-label">Procesador</label>
               <input type="text" class="form-control" id="rb-procesador" tabindex="6" autocomplete="off" placeholder="Ej. Intel Core i5 11va Gen">
+              <div class="quick-chips">
+                <span class="q-chip" onclick="document.getElementById('rb-procesador').value='Intel Core i3'; document.getElementById('rb-procesador').dispatchEvent(new Event('input'))">i3</span>
+                <span class="q-chip" onclick="document.getElementById('rb-procesador').value='Intel Core i5'; document.getElementById('rb-procesador').dispatchEvent(new Event('input'))">i5</span>
+                <span class="q-chip" onclick="document.getElementById('rb-procesador').value='Intel Core i7'; document.getElementById('rb-procesador').dispatchEvent(new Event('input'))">i7</span>
+                <span class="q-chip" onclick="document.getElementById('rb-procesador').value='AMD Ryzen 5'; document.getElementById('rb-procesador').dispatchEvent(new Event('input'))">Ryzen 5</span>
+                <span class="q-chip" onclick="document.getElementById('rb-procesador').value='Apple M1'; document.getElementById('rb-procesador').dispatchEvent(new Event('input'))">M1</span>
+              </div>
             </div>
 
             <!-- RAM -->
             <div class="form-group" id="group-ram" style="display:none;">
               <label class="form-label">RAM</label>
               <input type="text" class="form-control" id="rb-ram" tabindex="7" autocomplete="off" placeholder="Ej. 16GB">
+              <div class="quick-chips">
+                <span class="q-chip" onclick="document.getElementById('rb-ram').value='8GB'; document.getElementById('rb-ram').dispatchEvent(new Event('input'))">8GB</span>
+                <span class="q-chip" onclick="document.getElementById('rb-ram').value='16GB'; document.getElementById('rb-ram').dispatchEvent(new Event('input'))">16GB</span>
+                <span class="q-chip" onclick="document.getElementById('rb-ram').value='32GB'; document.getElementById('rb-ram').dispatchEvent(new Event('input'))">32GB</span>
+              </div>
             </div>
 
             <!-- HD/SSD -->
             <div class="form-group" id="group-hd_ssd" style="display:none;">
               <label class="form-label">Almacenamiento</label>
               <input type="text" class="form-control" id="rb-hd_ssd" tabindex="8" autocomplete="off" placeholder="Ej. 512GB SSD">
+              <div class="quick-chips">
+                <span class="q-chip" onclick="document.getElementById('rb-hd_ssd').value='256GB SSD'; document.getElementById('rb-hd_ssd').dispatchEvent(new Event('input'))">256 SSD</span>
+                <span class="q-chip" onclick="document.getElementById('rb-hd_ssd').value='512GB SSD'; document.getElementById('rb-hd_ssd').dispatchEvent(new Event('input'))">512 SSD</span>
+                <span class="q-chip" onclick="document.getElementById('rb-hd_ssd').value='1TB SSD'; document.getElementById('rb-hd_ssd').dispatchEvent(new Event('input'))">1TB SSD</span>
+                <span class="q-chip" onclick="document.getElementById('rb-hd_ssd').value='1TB HDD'; document.getElementById('rb-hd_ssd').dispatchEvent(new Event('input'))">1TB HDD</span>
+              </div>
             </div>
 
             <!-- Pulgadas -->
             <div class="form-group" id="group-pulgadas" style="display:none;">
               <label class="form-label">Pulgadas</label>
               <input type="text" class="form-control" id="rb-pulgadas" tabindex="9" autocomplete="off" placeholder="Ej. 24&quot;">
+              <div class="quick-chips">
+                <span class="q-chip" onclick="document.getElementById('rb-pulgadas').value='14&quot;'; document.getElementById('rb-pulgadas').dispatchEvent(new Event('input'))">14"</span>
+                <span class="q-chip" onclick="document.getElementById('rb-pulgadas').value='15.6&quot;'; document.getElementById('rb-pulgadas').dispatchEvent(new Event('input'))">15.6"</span>
+                <span class="q-chip" onclick="document.getElementById('rb-pulgadas').value='21.5&quot;'; document.getElementById('rb-pulgadas').dispatchEvent(new Event('input'))">21.5"</span>
+                <span class="q-chip" onclick="document.getElementById('rb-pulgadas').value='24&quot;'; document.getElementById('rb-pulgadas').dispatchEvent(new Event('input'))">24"</span>
+                <span class="q-chip" onclick="document.getElementById('rb-pulgadas').value='27&quot;'; document.getElementById('rb-pulgadas').dispatchEvent(new Event('input'))">27"</span>
+              </div>
             </div>
 
             <!-- Observacion / Descripción -->
