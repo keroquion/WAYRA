@@ -109,16 +109,16 @@ const SupabaseAPI = (() => {
 
   // ── Métodos de escritura directa para SyncEngine ──────────
   async function upsert(rowData) {
-    // Limpiamos strings vacíos para no enviar campos con valores en blanco a Supabase
-    // (esto evita errores de columnas que no existen en el schema todavía)
+    // PostgreSQL guarda todos los nombres de columna en MINÚSCULAS cuando se crean sin comillas.
+    // Convertimos las keys del objeto a minúsculas para que coincidan con el schema real.
     const cleanData = {};
     for (const [key, val] of Object.entries(rowData)) {
+      // Solo enviamos campos con valor (no vacíos) para evitar errores de columnas inexistentes
       if (val !== '' && val !== null && val !== undefined) {
-        cleanData[key] = val;
+        cleanData[key.toLowerCase()] = val;
       }
     }
-    // Upsert usando on_conflict en la URL - Supabase REST requiere esto para upsert real
-    return _request('equipos?on_conflict=CODIGO', {
+    return _request('equipos?on_conflict=codigo', {
       method: 'POST',
       headers: { 
         'Prefer': 'resolution=merge-duplicates,return=minimal'

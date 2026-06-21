@@ -80,9 +80,19 @@ const DriveUpload = (() => {
   async function uploadDataURL(dataUrl, filename = 'captura.jpg', onProgress = null) {
     if (onProgress) onProgress(20, 'Preparando imagen…');
 
-    const [header, base64] = dataUrl.split(',');
-    const mimeMatch = header.match(/data:([^;]+)/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    let base64;
+    let mimeType = 'image/jpeg';
+
+    if (dataUrl.includes(',')) {
+      // Es un Data URL: "data:image/jpeg;base64,XXXXX"
+      const [header, b64] = dataUrl.split(',');
+      base64 = b64;
+      const mimeMatch = header.match(/data:([^;]+)/);
+      if (mimeMatch) mimeType = mimeMatch[1];
+    } else {
+      // Ya es base64 puro
+      base64 = dataUrl;
+    }
 
     const blob = base64ToBlob(base64, mimeType);
 

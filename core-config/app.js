@@ -163,8 +163,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 4.5 Extraer posibles repuestos que estén en Lotes pero no en el catálogo
   await LocalCache.syncCatalogTiposFromLotes();
 
-  // 5. Restaurar config de Sheets
+  // 5. Restaurar config de Sheets (compatibilidad - ya no es la fuente de datos)
   try {
+    // APP_CONFIG.sheets puede no existir si fue eliminado, creamos un fallback
+    if (!APP_CONFIG.sheets) APP_CONFIG.sheets = { spreadsheetId: '', apiKey: '', sheetName: 'InventarioTI' };
     const savedSheets = JSON.parse(localStorage.getItem('inv-pro-sheets-cfg') || 'null');
     if (savedSheets) {
       APP_CONFIG.sheets.spreadsheetId = savedSheets.sid || '';
@@ -181,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   LocalCache.getLotes().then(lotes => { window._histLotes = lotes; });
 
   // 8. Inicializar APIs
-  SheetsAPI.init(APP_CONFIG.sheets);
+  SupabaseAPI.init();
   AppsScriptBridge.init(gasUrl);
   PinAuth.init();
 
@@ -275,10 +277,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('btn-hamburger')?.addEventListener('click', () => Views.toggleSidebar());
   document.getElementById('sidebar-overlay')?.addEventListener('click', () => Views.toggleSidebar());
 
-  // 13. Prefetch silencioso si hay Sheets configurado
-  if (APP_CONFIG.sheets.spreadsheetId && APP_CONFIG.sheets.apiKey) {
-    SheetsAPI.fetchAll().catch(() => {});
-  }
+  // 13. Prefetch silencioso de Supabase al arrancar
+  SupabaseAPI.fetchAll().catch(() => {});
 });
 
 window.Views = Views;

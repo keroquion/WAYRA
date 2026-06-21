@@ -150,7 +150,7 @@ const AdminView = (() => {
             </details>
             <div class="form-group">
               <label class="form-label">Nombre de la Hoja</label>
-              <input type="text" class="form-control" id="admin-sheets-sheet" value="${APP_CONFIG.sheets.sheetName || 'InventarioTI'}" placeholder="InventarioTI">
+              <input type="text" class="form-control" id="admin-sheets-sheet" value="${APP_CONFIG.sheets?.sheetName || 'InventarioTI'}" placeholder="InventarioTI">
             </div>
             <div class="form-group">
               <label class="form-label">URL del Web App</label>
