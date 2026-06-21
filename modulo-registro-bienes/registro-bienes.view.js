@@ -48,10 +48,10 @@ const RegistroBienesView = (() => {
   }
 
   const categorias = [
-    { id: 'LAPTOP/PC', label: 'Laptops / PCs', icon: '💻', campos: ['marca','modelo','serie','procesador','ram','hd_ssd','foto'], presets: ['8GB','16GB','256 SSD','512 SSD','i5','i7'] },
-    { id: 'MONITOR', label: 'Monitores', icon: '🖥️', campos: ['marca','modelo','serie','pulgadas','foto'], presets: ['19"','21.5"','22"','24"','27"'] },
+    { id: 'LAPTOP/PC', label: 'Laptops / PCs', icon: '💻', campos: ['marca','modelo','serie','procesador','ram','hd_ssd','observacion','foto'], presets: ['8GB','16GB','256 SSD','512 SSD','i5','i7'] },
+    { id: 'MONITOR', label: 'Monitores', icon: '🖥️', campos: ['marca','modelo','serie','pulgadas','observacion','foto'], presets: ['19"','21.5"','22"','24"','27"'] },
     { id: 'CABLE', label: 'Cables / Adaptadores', icon: '🔌', campos: ['tipo_sub','observacion','cantidad','foto'], presets: ['HDMI 1.8m','DP 1.8m','VGA','Poder C13','USB-C','Cat6 2m'] },
-    { id: 'PERIFERICO', label: 'Periféricos', icon: '⌨️', campos: ['tipo_sub','marca','modelo','serie','foto'], presets: ['Teclado USB','Mouse USB','Webcam 1080p','Headset USB'] },
+    { id: 'PERIFERICO', label: 'Periféricos', icon: '⌨️', campos: ['tipo_sub','marca','modelo','serie','observacion','foto'], presets: ['Teclado USB','Mouse USB','Webcam 1080p','Headset USB'] },
     { id: 'REDES', label: 'Redes', icon: '🌐', campos: ['tipo_sub','marca','modelo','serie','observacion','foto'], presets: ['Switch 8P','Switch 24P','Router','AP WiFi'] },
     { id: 'REPUESTO', label: 'Repuestos', icon: '📦', campos: ['tipo_sub','modelo','observacion','foto'], presets: ['RAM DDR4 8GB','SSD 480GB','Batería','Cargador'] },
     { id: 'OTRO', label: 'Otros', icon: '🛠️', campos: ['observacion','marca','modelo','serie','foto'], presets: [] }
@@ -495,33 +495,35 @@ const RegistroBienesView = (() => {
         const codigo = 'WYR-' + (baseCodeNum + i);
         const descObs = tipoSub ? `[${tipoSub}] ${getVal('observacion')}`.trim() : getVal('observacion');
         
-        const rowData = [
-          serie,
-          codigo,
-          tipoFinal,
-          marca,
-          modelo,
-          getVal('procesador'),
-          getVal('ram'),
-          getVal('hd_ssd'),
-          "", // PANTALLA
-          "", // CASE
-          "", // RESOLUCION
-          getVal('pulgadas'),
-          sucursal,
-          "C", // ESTADO: Correcto
-          descObs,
-          fechaHoy, // FEC_COMPRA
-          fotoUrl, // DOC_COMPRA
-          "", // FEC_VENTA
-          ""  // DOC_VENTA
-        ];
+        const rowData = {
+          SERIE: serie,
+          CODIGO: codigo,
+          TIP_EQUIP: tipoFinal,
+          MARCA: marca,
+          MODELO: modelo,
+          PROCESADOR: getVal('procesador'),
+          RAM: getVal('ram'),
+          HD_SSD: getVal('hd_ssd'),
+          PANTALLA: "",
+          CASE: "",
+          RESOLUCION: "",
+          PULGADAS: getVal('pulgadas'),
+          SUCURSAL: sucursal,
+          ESTADO: "C", // ESTADO: Correcto
+          OBSERVACION: descObs,
+          FEC_COMPRA: fechaHoy,
+          DOC_COMPRA: fotoUrl,
+          FEC_VENTA: "",
+          DOC_VENTA: "",
+          USUARIO_ASIGNADO: "",
+          DNI: "",
+          CARGO: "",
+          AREA_DEPARTAMENTO: "",
+          DETALLES_ACTA: ""
+        };
 
         // 3. Guardar localmente en IndexedDB para disponibilidad inmediata
-        const objToSave = {};
-        const headers = ['SERIE','CODIGO','TIP_EQUIP','MARCA','MODELO','PROCESADOR','RAM','HD_SSD','PANTALLA','CASE','RESOLUCION','PULGADAS','SUCURSAL','ESTADO','OBSERVACION','FEC_COMPRA','DOC_COMPRA','FEC_VENTA','DOC_VENTA'];
-        headers.forEach((h, idx) => objToSave[h] = rowData[idx]);
-        await LocalCache.put('equipos', { ...objToSave, _id: codigo });
+        await LocalCache.put('equipos', { ...rowData, _id: codigo });
 
         // 4. Encolar la escritura para Google Sheets en segundo plano
         const sheetName = APP_CONFIG.sheets.sheetName || 'InventarioTI';

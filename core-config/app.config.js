@@ -25,6 +25,12 @@ const APP_CONFIG = {
     timeoutMs: 30000,
   },
 
+  // ── Supabase (Base de datos) ────────────────────────────────────
+  supabase: {
+    url: 'https://injokwaabfbvemqmgzdc.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluam9rd2FhYmZidmVtcW1nemRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNjEwOTAsImV4cCI6MjA5NzYzNzA5MH0.ywaafrBF0-DT9rSihtAq0ELdzrgk4M5l5bHsidODjcM',
+  },
+
   // ── Google Sheets (lectura directa sin Apps Script) ─────────────
   sheets: {
     apiKey: '',
@@ -52,8 +58,7 @@ const APP_CONFIG = {
     { key: 'DNI',             label: 'DNI',             visible: false, width: 80,  editable: true, isAsignacion: true },
     { key: 'CARGO',           label: 'Cargo',           visible: false, width: 120, editable: true, isAsignacion: true },
     { key: 'AREA_DEPARTAMENTO',label: 'Área / Dpto.',    visible: false, width: 120, editable: true, isAsignacion: true },
-    { key: 'IP',              label: 'IP',              visible: false, width: 100, editable: true, isAsignacion: true },
-    { key: 'PERFIL_RED',      label: 'Perfil Red',      visible: false, width: 100, editable: true, isAsignacion: true },
+    { key: 'DETALLES_ACTA',   label: 'Detalles Acta',   visible: false, width: 200, editable: true, isAsignacion: true },
   ],
 
   // ── Estados equipo ────────────────────────────────────────────────

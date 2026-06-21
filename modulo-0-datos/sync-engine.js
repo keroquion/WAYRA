@@ -61,29 +61,20 @@ const SyncEngine = (() => {
     try {
       switch (op.action) {
         case 'writeRow':
-          try {
-            await AppsScriptBridge.writeRow(op.sheetName, op.rowData);
-          } catch (err) {
-            // Fallback: si el Apps Script es el de Wayra y no tiene implementado 'writeRow'
-            if (err.message && (err.message.includes('unknown') || err.message.includes('desconocida') || err.message.includes('writeRow'))) {
-              console.log('[SyncEngine] Fallback: writeRow no soportado, intentando writeAsset...');
-              await AppsScriptBridge._call('writeAsset', { rowData: op.rowData });
-            } else {
-              throw err;
-            }
-          }
-          break;
+        case 'writeAsset':
         case 'updateRow':
-          await AppsScriptBridge.updateRow(op.sheetName, op.rowIndex, op.rowData);
+          await SupabaseAPI.upsert(op.rowData);
           break;
         case 'deleteRow':
-          await AppsScriptBridge.deleteRow(op.sheetName, op.rowIndex);
+          console.warn('[SyncEngine] deleteRow no soportado en Supabase via sync. Usa Supabase Dashboard.');
           break;
         case 'uploadFile':
-          await AppsScriptBridge.uploadToDrive(op.base64, op.filename, op.mimeType);
+          // Aún no migrado a Supabase Storage, ignorar o manejar si es necesario.
+          console.warn('[SyncEngine] uploadFile no está conectado a Supabase Storage aún.');
           break;
         case 'appendAudit':
-          await AppsScriptBridge.appendAudit(op.auditRow);
+          // Podríamos crear una tabla de auditoría en Supabase si quisiéramos.
+          console.log('[SyncEngine] audit omitido en Supabase', op.auditRow);
           break;
       }
       await LocalCache.removeFromQueue(op.id);
