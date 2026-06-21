@@ -1,51 +1,29 @@
 /**
  * modulo-0-datos/drive-upload.js
- * Subida de archivos a Google Drive via Apps Script Bridge.
- * Flujo: File → FileReader (Base64) → AppsScriptBridge.uploadToDrive → URL
+ * Subida de archivos a Supabase Storage (Mantiene el nombre DriveUpload por compatibilidad).
+ * Flujo: File → Blob → Supabase Storage REST → URL Pública
  */
 
 const DriveUpload = (() => {
   const MAX_SIZE_MB = 10;
+  const BUCKET_NAME = 'fotos';
 
-  // ── Subir desde File object ──────────────────────────────────────
-  async function uploadFile(file, onProgress = null) {
-    if (!file) throw new Error('No se proporcionó archivo');
-
-    const sizeMB = file.size / 1048576;
-    if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
-
-    if (onProgress) onProgress(10, 'Leyendo archivo…');
-
-    const base64 = await _toBase64(file);
-    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-
-    if (onProgress) onProgress(40, 'Subiendo a Drive…');
-
-    const result = await AppsScriptBridge.uploadToDrive(base64, filename, file.type);
-
-    if (onProgress) onProgress(100, 'Listo');
-
-    return result.url || result.fileUrl || '';
+  // ── Helpers ──────────────────────────────────────────────────────
+  function base64ToBlob(base64, mimeType) {
+    const byteCharacters = atob(base64);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: mimeType });
   }
 
-  // ── Subir desde canvas/dataURL ───────────────────────────────────
-  async function uploadDataURL(dataUrl, filename = 'captura.jpg', onProgress = null) {
-    if (onProgress) onProgress(20, 'Preparando imagen…');
-
-    const [header, base64] = dataUrl.split(',');
-    const mimeMatch = header.match(/data:([^;]+)/);
-    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-
-    if (onProgress) onProgress(50, 'Subiendo a Drive…');
-
-    const result = await AppsScriptBridge.uploadToDrive(base64, filename, mimeType);
-
-    if (onProgress) onProgress(100, 'Listo');
-
-    return result.url || result.fileUrl || '';
-  }
-
-  // ── FileReader → Base64 ──────────────────────────────────────────
   function _toBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -58,8 +36,65 @@ const DriveUpload = (() => {
     });
   }
 
-  // ── Si no hay Apps Script, usar URL.createObjectURL como fallback ─
-  // ── Convertir a Base64 para guardarlo en IndexedDB y evitar que se rompa ─
+  async function uploadToSupabaseStorage(blob, filename, mimeType) {
+    if (!APP_CONFIG.supabase || !APP_CONFIG.supabase.url) {
+      throw new Error('Supabase no está configurado');
+    }
+    // Usar POST para crear nuevo archivo
+    const url = `${APP_CONFIG.supabase.url}/storage/v1/object/${BUCKET_NAME}/${encodeURIComponent(filename)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'apikey': APP_CONFIG.supabase.anonKey,
+        'Authorization': `Bearer ${APP_CONFIG.supabase.anonKey}`,
+        'Content-Type': mimeType
+      },
+      body: blob
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error('Error al subir archivo a Supabase: ' + err);
+    }
+
+    return `${APP_CONFIG.supabase.url}/storage/v1/object/public/${BUCKET_NAME}/${encodeURIComponent(filename)}`;
+  }
+
+  // ── APIs Originales ──────────────────────────────────────────────
+  async function uploadFile(file, onProgress = null) {
+    if (!file) throw new Error('No se proporcionó archivo');
+
+    const sizeMB = file.size / 1048576;
+    if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
+
+    if (onProgress) onProgress(10, 'Subiendo a Supabase…');
+
+    const filename = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    const url = await uploadToSupabaseStorage(file, filename, file.type);
+
+    if (onProgress) onProgress(100, 'Listo');
+
+    return url;
+  }
+
+  async function uploadDataURL(dataUrl, filename = 'captura.jpg', onProgress = null) {
+    if (onProgress) onProgress(20, 'Preparando imagen…');
+
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/data:([^;]+)/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+    const blob = base64ToBlob(base64, mimeType);
+
+    if (onProgress) onProgress(50, 'Subiendo a Supabase…');
+
+    const url = await uploadToSupabaseStorage(blob, filename, mimeType);
+
+    if (onProgress) onProgress(100, 'Listo');
+
+    return url;
+  }
+
   async function getBase64Preview(file) {
     const b64 = await _toBase64(file);
     return `data:${file.type};base64,${b64}`;
@@ -69,20 +104,18 @@ const DriveUpload = (() => {
     return URL.createObjectURL(file);
   }
 
-  // ── Subir y retornar objeto completo (url + thumbUrl + fileId) ───
-  // loteNombre: nombre del lote (será la subcarpeta en Drive)
-  // equipoCodigo: código del equipo (prefijo del nombre de archivo)
+  // Sube y retorna objeto completo por compatibilidad
   async function uploadFileWithMeta(file, onProgress = null, loteNombre = '', equipoCodigo = '') {
     if (!file) throw new Error('No se proporcionó archivo');
 
-    let base64 = '';
+    let blob;
     let mimeType = 'image/jpeg';
     let filename = '';
     let sizeMB = 0;
     const actualOnProgress = typeof onProgress === 'function' ? onProgress : null;
 
     if (typeof file === 'string') {
-      // Es una cadena Base64 o Data URL
+      // Cadena Base64 o Data URL
       let base64Data = file;
       if (file.includes(',')) {
         const parts = file.split(',');
@@ -95,19 +128,17 @@ const DriveUpload = (() => {
           mimeType = onProgress;
         }
       }
-      base64 = base64Data;
-      const sizeBytes = base64.length * 0.75;
+      blob = base64ToBlob(base64Data, mimeType);
+      const sizeBytes = blob.size;
       sizeMB = sizeBytes / 1048576;
       
       const ext = mimeType.split('/')[1] || 'jpg';
       const codigoPrefix = equipoCodigo ? `${equipoCodigo}_` : '';
       filename = `${codigoPrefix}${Date.now()}_evidencia.${ext}`;
     } else {
-      // Es un objeto File o Blob
+      // Objeto File o Blob
+      blob = file;
       sizeMB = file.size / 1048576;
-      if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
-      if (actualOnProgress) actualOnProgress(10, 'Leyendo archivo…');
-      base64 = await _toBase64(file);
       mimeType = file.type || 'image/jpeg';
       const codigoPrefix = equipoCodigo ? `${equipoCodigo}_` : '';
       filename = `${codigoPrefix}${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
@@ -115,17 +146,20 @@ const DriveUpload = (() => {
 
     if (sizeMB > MAX_SIZE_MB) throw new Error(`Archivo muy grande (máx ${MAX_SIZE_MB}MB)`);
 
-    if (actualOnProgress) actualOnProgress(40, 'Subiendo a Drive…');
+    if (actualOnProgress) actualOnProgress(40, 'Subiendo a Supabase…');
     
-    const finalLote = typeof loteNombre === 'string' ? loteNombre : '';
-    const result = await AppsScriptBridge.uploadToDrive(base64, filename, mimeType, finalLote);
+    // Si queremos organizar por lote en carpetas, añadimos el lote al nombre
+    const finalLote = typeof loteNombre === 'string' && loteNombre ? `${loteNombre}/` : '';
+    const finalPath = finalLote + filename;
+
+    const publicUrl = await uploadToSupabaseStorage(blob, finalPath, mimeType);
     
     if (actualOnProgress) actualOnProgress(100, 'Listo');
 
     return {
-      url:      result.url || result.fileUrl || '',
-      thumbUrl: result.thumbUrl || result.url || '',
-      fileId:   result.fileId || null,
+      url:      publicUrl,
+      thumbUrl: publicUrl,
+      fileId:   finalPath,
     };
   }
 
