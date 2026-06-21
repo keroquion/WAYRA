@@ -64,8 +64,13 @@ const SyncEngine = (() => {
         case 'updateRow':
           // Si hay una foto adjunta en la cola, la subimos a Supabase Storage primero
           if (op.base64Photo && op.rowData.DOC_COMPRA && !op.rowData.DOC_COMPRA.startsWith('http')) {
-            const publicUrl = await DriveUpload.uploadDataURL(op.base64Photo, `${op.rowData.CODIGO}_evidencia_${Date.now()}.jpg`);
-            op.rowData.DOC_COMPRA = publicUrl;
+            try {
+              const publicUrl = await DriveUpload.uploadDataURL(op.base64Photo, `${op.rowData.CODIGO}_evidencia_${Date.now()}.jpg`);
+              op.rowData.DOC_COMPRA = publicUrl;
+            } catch (uploadErr) {
+              console.error('[SyncEngine] Error al subir foto, guardando registro sin foto:', uploadErr);
+              op.rowData.DOC_COMPRA = ''; // Limpiamos para evitar intentar guardar un base64 gigante en DB
+            }
           }
           await SupabaseAPI.upsert(op.rowData);
           break;
