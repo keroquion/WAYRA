@@ -221,80 +221,22 @@ const LocalCache = (() => {
     _syncLotesRemoto();
   }
 
-  // ── SYNC LOTES A REMOTO (debounced) ──────────────────────────────
+  // ── SYNC LOTES (solo local - Supabase no almacena lotes) ──────────
   function _syncLotesRemoto() {
-    if (!APP_CONFIG.appsScript.webAppUrl) return;
-    clearTimeout(_syncTimer);
-    _syncTimer = setTimeout(async () => {
-      try {
-        const lotes = await getLotes();
-        await AppsScriptBridge.saveLotes(lotes);
-        // Marcar los lotes como sincronizados localmente
-        for (const l of lotes) {
-          if (!l.synced) {
-            l.synced = true;
-            await put('lotes', l);
-          }
-        }
-        // Eliminado: await setConfig('deleted_lote_ids', []); // NO LIMPIAR, para evitar que lotes borrados vuelvan de Sheets
-        console.log('✅ Lotes sincronizados a Sheets (' + lotes.length + ')');
-      } catch (err) {
-        console.warn('[LocalCache] Error sincronizando lotes:', err.message);
-      }
-    }, 2000); // esperar 2s para agrupar cambios rápidos
+    // Los lotes de actividades se guardan solo localmente (IDB).
+    // No hay sincronización remota de lotes por el momento.
   }
 
-  // ── SYNC LOTES A REMOTO INMEDIATO ────────────────────────────────
+  // ── SYNC LOTES INMEDIATO (solo local) ─────────────────────────────
   async function syncLotesRemotoInmediato() {
-    if (!APP_CONFIG.appsScript.webAppUrl) return;
-    clearTimeout(_syncTimer);
-    try {
-      const lotes = await getLotes();
-      await AppsScriptBridge.saveLotes(lotes);
-      // Marcar los lotes como sincronizados localmente
-      for (const l of lotes) {
-        if (!l.synced) {
-          l.synced = true;
-          await put('lotes', l);
-        }
-      }
-      // Eliminado: await setConfig('deleted_lote_ids', []); // NO LIMPIAR
-      console.log('✅ Lotes sincronizados a Sheets inmediatamente (' + lotes.length + ')');
-    } catch (err) {
-      console.warn('[LocalCache] Error sincronizando lotes inmediatamente:', err.message);
-    }
+    // Sin sincronización remota de lotes por el momento.
+    return;
   }
 
-  // ── CARGAR LOTES DESDE REMOTO ────────────────────────────────────
-  // SHEETS = FUENTE DE VERDAD.
-  // Al cargar, reemplazamos el estado local con exactamente lo que hay en Sheets,
-  // respetando solo deleted_lote_ids (lotes que se eliminaron explícitamente en este dispositivo).
-  // Esto evita que dispositivos con datos viejos (teléfono, otra PC) resuciten lotes borrados.
+  // ── CARGAR LOTES DESDE REMOTO ─────────────────────────────────────
+  // Lotes solo existen localmente (IDB). Retorna vacío por compatibilidad.
   async function loadLotesFromRemote() {
-    if (!APP_CONFIG.appsScript.webAppUrl) return { added: 0, total: 0 };
-    try {
-      const result = await AppsScriptBridge.loadLotes();
-      const remoteLotes = (result.lotes || []).map(l => ({ ...l, synced: true }));
-      const deletedIds  = await getConfig('deleted_lote_ids', []);
-
-      // Filtrar: ignorar cualquier lote que fue eliminado explícitamente en este dispositivo
-      const lotesValidos = remoteLotes.filter(l => !deletedIds.includes(l.id));
-
-      // ── Reemplazar el store 'lotes' COMPLETO con los remotos válidos ──
-      // Así no quedan fantasmas de sesiones antiguas en ningún dispositivo.
-      await clear('lotes');
-      for (const lote of lotesValidos) {
-        await put('lotes', lote);
-      }
-
-      await syncCatalogTiposFromLotes(lotesValidos);
-
-      console.log(`✅ Lotes sincronizados desde Sheets: ${lotesValidos.length} activos (${deletedIds.length} ignorados por borrado local)`);
-      return { added: lotesValidos.length, total: remoteLotes.length };
-    } catch (err) {
-      console.warn('[LocalCache] Error cargando lotes remotos:', err.message);
-      throw err;
-    }
+    return { added: 0, total: 0 };
   }
 
   // ── EXTRACT REPUESTOS FROM LOTES ─────────────────────────────────
@@ -382,27 +324,5 @@ window.LocalCache = LocalCache;
 // Alias para compatibilidad con código v1
 window.LocalDB = LocalCache;
 
-// Utilidad de emergencia para depurar lotes "fantasma" que se quedan pegados
-// Ahora usa el enfoque: Sheets = fuente de verdad. Borra local y recarga desde remoto.
-window.depurarLotesBugeados = async () => {
-  if (!confirm('⚠️ Esto limpiará los lotes locales y recargará solo lo que hay en Google Sheets.\n\n¿Continuar?')) return;
-  try {
-    // 1. Borrar TODO el store de lotes local
-    await LocalCache.clear('lotes');
-    console.log('[Depurar] 🗑️ Store de lotes local borrado');
 
-    // 2. Recargar desde Sheets (fuente de verdad)
-    if (APP_CONFIG.appsScript.webAppUrl) {
-      const stats = await LocalCache.loadLotesFromRemote();
-      console.log(`[Depurar] ✅ Recargados ${stats.added} lotes desde Sheets`);
-      alert(`✅ Limpieza completa.\n${stats.added} lote(s) cargado(s) desde Google Sheets.\n\nLa página se recargará.`);
-    } else {
-      alert('✅ Lotes locales limpiados.\n\nNota: No hay URL de Sheets configurada. No se recargaron lotes remotos.');
-    }
-    location.reload();
-  } catch (err) {
-    alert('❌ Error durante depuración: ' + err.message);
-    console.error('[Depurar]', err);
-  }
-};
 

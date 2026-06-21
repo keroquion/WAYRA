@@ -187,70 +187,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   AppsScriptBridge.init(gasUrl);
   PinAuth.init();
 
-  // 8.5. Cargar lotes desde Sheets (si hay conexión configurada)
-  // Sheets es la fuente de verdad — al abrir la app en CUALQUIER dispositivo,
-  // se descarga el estado actual de Sheets y se reemplaza el IndexedDB local.
-  // Luego se refresca la vista activa para que el usuario vea datos correctos.
-  if (gasUrl && navigator.onLine && window.location.protocol !== 'file:') {
-    LocalCache.loadLotesFromRemote().then(async () => {
-      const lotes = await LocalCache.getLotes();
-      window._histLotes = lotes;
-      // Refrescar la vista activa si muestra lotes (sin esperar intervención del usuario)
+  // 8.5. Sincronizar inventario desde Supabase al arrancar
+  if (navigator.onLine && window.location.protocol !== 'file:') {
+    SupabaseAPI.syncFromRemote().then(() => {
       const current = Views.getCurrent();
-      if (current === 'historial-tareas' && window.HistorialTareasView) {
-        HistorialTareasView.render();
-      } else if (current === 'tareas' && window.TareasView) {
-        TareasView.render();
-      }
+      if (current === 'inventario' && window.InventarioView) InventarioView.render();
     }).catch(() => {});
-
-    // Cargar Repuestos DB en paralelo (Memory Map)
-    RepuestosDB.loadFromRemote().catch(() => {});
   }
 
-  // 9. Iniciar motor de sync
+  // 9. Iniciar motor de sync (escribe la cola pendiente a Supabase)
   SyncEngine.start();
 
   // 9.6. Listener de restablecimiento de caché en pestañas duplicadas
   try {
     const resetChannel = new BroadcastChannel('app-cache-reset');
     resetChannel.onmessage = (event) => {
-      if (event.data === 'clear_and_reload') {
-        console.log('[App] Pestaña duplicada notificó limpieza de caché. Reiniciando...');
-        location.reload(true);
-      }
+      if (event.data === 'clear_and_reload') location.reload(true);
     };
   } catch(e) {}
 
-  // 9.7. Sincronizar automáticamente al enfocar la pestaña si ha pasado mucho tiempo
+  // 9.7. Re-sincronizar con Supabase si la pestaña lleva más de 10 min inactiva
   window.addEventListener('focus', () => {
-    if (APP_CONFIG.appsScript.webAppUrl && navigator.onLine && window.location.protocol !== 'file:') {
-      const now = Date.now();
-      LocalCache.getConfig('equipos_last_sync', 0).then(lastSync => {
-        // Si ha pasado más de 10 minutos (600,000 ms), forzar sync
-        if ((now - lastSync) > 10 * 60 * 1000) {
-          console.log('[App] Pestaña enfocada después de inactividad. Sincronizando inventario desde Sheets...');
-          SheetsAPI.syncFromRemote(true).then(() => {
+    if (navigator.onLine && window.location.protocol !== 'file:') {
+      LocalCache.getConfig('equipos_supabase_sync', 0).then(lastSync => {
+        if ((Date.now() - lastSync) > 10 * 60 * 1000) {
+          SupabaseAPI.syncFromRemote(true).then(() => {
             const current = Views.getCurrent();
-            if (current === 'inventario' && window.InventarioView) {
-              InventarioView.render();
-            }
-          }).catch(() => {});
-        }
-      });
-
-      // Sincronizar lotes históricos también si ha pasado más de 10 minutos
-      LocalCache.getConfig('lotes_last_sync', 0).then(lastSync => {
-        if ((now - lastSync) > 10 * 60 * 1000) {
-          console.log('[App] Sincronizando lotes históricos desde Sheets...');
-          LocalCache.loadLotesFromRemote().then(() => {
-            LocalCache.setConfig('lotes_last_sync', Date.now());
-            const current = Views.getCurrent();
-            if (current === 'historial-tareas' && window.HistorialTareasView) {
-              HistorialTareasView.render();
-            } else if (current === 'tareas' && window.TareasView) {
-              TareasView.render();
-            }
+            if (current === 'inventario' && window.InventarioView) InventarioView.render();
           }).catch(() => {});
         }
       });

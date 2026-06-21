@@ -56,19 +56,26 @@ const SupabaseAPI = (() => {
   async function syncFromRemote(force = false) {
     _updateChip('connecting');
     try {
-      const data = await _request('equipos?select=*&order=created_at.desc.nullslast');
+      const rawData = await _request('equipos?select=*&order=created_at.desc.nullslast');
       
+      // Supabase devuelve columnas en minúsculas. Las convertimos a MAYÚSCULAS
+      // para que todo el código de la app siga funcionando sin cambios.
+      const data = (rawData || []).map(row => {
+        const normalized = {};
+        for (const [k, v] of Object.entries(row)) {
+          normalized[k.toUpperCase()] = v;
+        }
+        return normalized;
+      });
+
       // Guardar en IDB
       await LocalCache.clear(IDB_STORE);
       const BATCH = 200;
       for (let i = 0; i < data.length; i += BATCH) {
         const batch = data.slice(i, i + BATCH);
         await Promise.all(batch.map(eq => {
-          // Asegurar _id para IDB
           const id = eq.CODIGO || eq.SERIE;
-          if (id) {
-            return LocalCache.put(IDB_STORE, { ...eq, _id: id });
-          }
+          if (id) return LocalCache.put(IDB_STORE, { ...eq, _id: id });
         }));
       }
       await LocalCache.setConfig(CFG_KEY, Date.now());
