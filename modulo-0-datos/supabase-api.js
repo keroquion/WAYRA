@@ -6,7 +6,7 @@
 
 const SupabaseAPI = (() => {
   const IDB_STORE = 'equipos';
-  const CFG_KEY = 'equipos_last_sync';
+  const CFG_KEY = 'equipos_supabase_sync'; // Cambiado para forzar limpieza del caché de Excel
   const TTL = 5 * 60 * 1000;
 
   let _status = 'disconnected';

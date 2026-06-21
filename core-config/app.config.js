@@ -31,14 +31,6 @@ const APP_CONFIG = {
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imluam9rd2FhYmZidmVtcW1nemRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNjEwOTAsImV4cCI6MjA5NzYzNzA5MH0.ywaafrBF0-DT9rSihtAq0ELdzrgk4M5l5bHsidODjcM',
   },
 
-  // ── Google Sheets (lectura directa sin Apps Script) ─────────────
-  sheets: {
-    apiKey: '',
-    spreadsheetId: '',
-    sheetName: 'InventarioTI',
-    dataRange: '',
-  },
-
   // ── Columnas del dataset ─────────────────────────────────────────
   columns: [
     { key: 'SERIE',       label: 'Serie',        visible: true,  width: 120, editable: false },
