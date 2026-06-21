@@ -109,11 +109,21 @@ const SupabaseAPI = (() => {
 
   // ── Métodos de escritura directa para SyncEngine ──────────
   async function upsert(rowData) {
-    // Upsert requiere un header especial en Supabase REST
-    return _request('equipos', {
+    // Limpiamos strings vacíos para no enviar campos con valores en blanco a Supabase
+    // (esto evita errores de columnas que no existen en el schema todavía)
+    const cleanData = {};
+    for (const [key, val] of Object.entries(rowData)) {
+      if (val !== '' && val !== null && val !== undefined) {
+        cleanData[key] = val;
+      }
+    }
+    // Upsert usando on_conflict en la URL - Supabase REST requiere esto para upsert real
+    return _request('equipos?on_conflict=CODIGO', {
       method: 'POST',
-      headers: { 'Prefer': 'resolution=merge-duplicates' },
-      body: JSON.stringify(rowData)
+      headers: { 
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(cleanData)
     });
   }
 

@@ -544,22 +544,12 @@ const RegistroBienesView = (() => {
           PROCESADOR: getVal('procesador'),
           RAM: getVal('ram'),
           HD_SSD: getVal('hd_ssd'),
-          PANTALLA: "",
-          CASE: "",
-          RESOLUCION: "",
           PULGADAS: getVal('pulgadas'),
           SUCURSAL: sucursal,
-          ESTADO: "C", // ESTADO: Correcto
+          ESTADO: "C",
           OBSERVACION: descObs,
           FEC_COMPRA: fechaHoy,
-          DOC_COMPRA: fotoData, // Guardamos temporalmente el base64 localmente
-          FEC_VENTA: "",
-          DOC_VENTA: "",
-          USUARIO_ASIGNADO: "",
-          DNI: "",
-          CARGO: "",
-          AREA_DEPARTAMENTO: "",
-          DETALLES_ACTA: ""
+          DOC_COMPRA: "" // La foto se subirá en background y se actualizará con la URL real
         };
 
         // 3. Guardar localmente en IndexedDB para disponibilidad inmediata
@@ -577,7 +567,7 @@ const RegistroBienesView = (() => {
         registros.push(codigo);
       }
 
-      SheetsAPI.invalidateCache();
+      SupabaseAPI.invalidateCache();
       
       Toast.success(`✅ Registro Exitoso: ${registros.join(', ')}`);
 
