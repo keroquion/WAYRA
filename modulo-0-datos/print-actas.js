@@ -44,9 +44,9 @@ const PrintActas = (() => {
   `;
 
   /* ─────────────────────────────────────────────────────────────
-   *  FUNCIÓN PRINCIPAL
+   *  FUNCIÓN PRINCIPAL - ACTA DE ENTREGA / DEVOLUCIÓN
    * ───────────────────────────────────────────────────────────── */
-  function imprimirActa(equiposArray) {
+  function imprimirActa(equiposArray, isDevolucion = false) {
     const equipos  = Array.isArray(equiposArray) ? equiposArray : [equiposArray];
     const e        = equipos[0] || {};
     const perifericos = equipos.slice(1);
@@ -90,7 +90,7 @@ const PrintActas = (() => {
 
   <!-- Barra de herramientas (no se imprime) -->
   <div class="toolbar">
-    <span>📄 Acta de Entrega / Devolución — ${docId}</span>
+    <span>📄 ${isDevolucion ? 'Acta de Devolución' : 'Acta de Entrega'} — ${docId}</span>
     <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
     <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
   </div>
@@ -214,7 +214,7 @@ const PrintActas = (() => {
         <div class="p-6 flex-grow flex flex-col">
           <div style="min-height:72px;">
             <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
-              <input type="checkbox" checked disabled class="border-gray-400 rounded-sm">
+              <input type="checkbox" ${!isDevolucion ? 'checked' : ''} disabled class="border-gray-400 rounded-sm">
               ENTREGA DE EQUIPO AL COLABORADOR
             </label>
           </div>
@@ -247,7 +247,7 @@ const PrintActas = (() => {
           <div style="min-height:72px;">
             <div class="flex flex-col gap-2">
               <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
-                <input type="checkbox" disabled class="border-gray-400 rounded-sm"> DEVOLUCIÓN POR CESE
+                <input type="checkbox" ${isDevolucion ? 'checked' : ''} disabled class="border-gray-400 rounded-sm"> DEVOLUCIÓN POR CESE
               </label>
               <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
                 <input type="checkbox" disabled class="border-gray-400 rounded-sm"> REPOSICIÓN O RENOVACIÓN
@@ -408,7 +408,113 @@ const PrintActas = (() => {
     win.focus();
   }
 
-  return { imprimirActa, imprimirReporteGeneral };
+  /* ─────────────────────────────────────────────────────────────
+   *  FORMATO DE CAPACITACIÓN (NUEVO)
+   * ───────────────────────────────────────────────────────────── */
+  function imprimirCapacitacion(usuarioData) {
+    const win = window.open('', '_blank', 'width=960,height=920');
+    if (!win) return alert('Permite las ventanas emergentes.');
+
+    const fechaGen = new Date().toLocaleDateString('es-PE');
+    const docId    = `CAP-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    const usuario = usuarioData.USUARIO_ASIGNADO || '________________________';
+    const dni     = usuarioData.DNI             || '______________';
+    const cargo   = usuarioData.CARGO           || '________________________';
+    const area    = usuarioData.AREA_DEPARTAMENTO || '________________________';
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Capacitación - ${docId}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <style>${cssNoPrint}</style>
+</head>
+<body>
+  <div class="toolbar">
+    <span>📄 Registro de Capacitación — ${docId}</span>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    <button class="btn-close" onclick="window.close()">✕ Cerrar</button>
+  </div>
+
+  <div class="a4-container border border-gray-200" style="min-height: 297mm; display:flex; flex-direction:column;">
+    
+    <!-- Header -->
+    <div class="flex justify-between items-end border-b border-gray-300 pb-3 mb-8">
+      <div class="flex items-center gap-4">
+        <div class="bg-[#0b2253] text-white text-4xl font-bold w-14 h-14 flex items-center justify-center rounded-sm">M</div>
+        <div class="flex flex-col">
+          <span class="text-2xl font-bold text-[#0b2253] leading-none">MEGATECH</span>
+          <span class="text-[0.7rem] tracking-[0.3em] text-gray-500 mt-1">ENTERPRISE</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <h1 class="text-[1.65rem] font-bold text-[#0b2253] mb-2 tracking-tight">REGISTRO DE CAPACITACIÓN</h1>
+        <div class="text-xs font-bold text-gray-800 tracking-wide">
+          DOC: ${docId} <span class="mx-2 text-gray-300 font-normal">|</span> FECHA: ${fechaGen}
+        </div>
+      </div>
+    </div>
+
+    <!-- Introducción -->
+    <p class="text-[0.95rem] text-gray-800 mb-8 text-justify leading-relaxed">
+      Por medio del presente documento, yo, <span class="font-bold text-[#0b2253] border-b border-gray-300 pb-0.5 inline-block min-w-[200px] text-center">${usuario}</span> identificado(a) con DNI/CE N° <span class="font-bold text-[#0b2253] border-b border-gray-300 pb-0.5 inline-block min-w-[100px] text-center">${dni}</span>, en mi calidad de <span class="font-bold text-[#0b2253] border-b border-gray-300 pb-0.5 inline-block min-w-[150px] text-center">${cargo}</span> del área de <span class="font-bold text-[#0b2253] border-b border-gray-300 pb-0.5 inline-block min-w-[150px] text-center">${area}</span>, declaro haber recibido la inducción y capacitación correspondiente a mis funciones operativas y manejo de sistemas/equipos por parte del área de Soporte TI.
+    </p>
+
+    <!-- Tema de Capacitación -->
+    <div class="mb-8">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="bg-[#0b2253] text-white font-bold w-7 h-7 flex items-center justify-center rounded-sm text-sm">1.</div>
+        <h2 class="font-bold text-[#0b2253] text-[0.95rem] uppercase">Temas Impartidos y Evaluados</h2>
+      </div>
+      <div class="border border-gray-400 rounded-sm p-4 h-[250px] flex flex-col gap-6">
+        <div class="border-b border-dashed border-gray-300 w-full pt-8"></div>
+        <div class="border-b border-dashed border-gray-300 w-full pt-8"></div>
+        <div class="border-b border-dashed border-gray-300 w-full pt-8"></div>
+        <div class="border-b border-dashed border-gray-300 w-full pt-8"></div>
+        <div class="border-b border-dashed border-gray-300 w-full pt-8"></div>
+      </div>
+    </div>
+
+    <!-- Declaración Final -->
+    <div class="bg-[#f8f9fa] border border-gray-300 p-5 text-[0.85rem] text-gray-700 leading-relaxed rounded-sm mb-auto">
+      <strong class="text-[#0b2253]">Declaración del Trabajador:</strong> Entiendo completamente los procedimientos, normativas de seguridad y el uso correcto de los recursos tecnológicos que me han sido explicados. Me comprometo a cumplir con las políticas de uso establecidas por la empresa.
+    </div>
+
+    <!-- Firmas (pegadas al fondo) -->
+    <div class="flex border border-gray-300 rounded-lg overflow-hidden mt-12">
+      <!-- Columna 1 -->
+      <div class="w-1/2 border-r border-gray-300 p-8 flex flex-col justify-end min-h-[220px]">
+        <div class="flex items-end justify-between gap-6">
+          <div class="flex-grow text-center text-[0.75rem] pt-3 border-t border-gray-400">
+            <div class="font-semibold text-gray-800 mb-0.5">CAPACITADOR (SOPORTE TI)</div>
+          </div>
+          <div class="w-[5rem] h-[5rem] border-[1.5px] border-dashed border-gray-400 rounded-md flex items-center justify-center text-[0.65rem] text-gray-400 font-semibold mb-2">HUELLA</div>
+        </div>
+      </div>
+      <!-- Columna 2 -->
+      <div class="w-1/2 p-8 flex flex-col justify-end min-h-[220px]">
+        <div class="flex items-end justify-between gap-6">
+          <div class="flex-grow text-center text-[0.75rem] pt-3 border-t border-gray-400">
+            <div class="font-semibold text-gray-800 mb-0.5">RECIBÍ CONFORME (TRABAJADOR)</div>
+            <div class="text-[#0b2253] font-bold mt-1">${usuario}</div>
+          </div>
+          <div class="w-[5rem] h-[5rem] border-[1.5px] border-dashed border-gray-400 rounded-md flex items-center justify-center text-[0.65rem] text-gray-400 font-semibold mb-2">HUELLA</div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>`;
+
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  }
+
+  return { imprimirActa, imprimirReporteGeneral, imprimirCapacitacion };
 })();
 
 window.PrintActas = PrintActas;

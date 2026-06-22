@@ -4,6 +4,7 @@
 
 const InventarioView = (() => {
   let _all = [], _filtered = [], _colVis = {};
+  let _trabajadoresUnicos = [];
 
   async function render() {
     const el = document.getElementById('view-inventario');
@@ -39,6 +40,17 @@ const InventarioView = (() => {
   async function _load(force=false) {
     try {
       _all = await SheetsAPI.fetchAll(force);
+      
+      // Extraer trabajadores dinámicamente
+      _trabajadoresUnicos = [];
+      const tMap = {};
+      _all.forEach(e => {
+        if(e.DNI && e.USUARIO_ASIGNADO && !tMap[e.DNI]) {
+          tMap[e.DNI] = { DNI: e.DNI, USUARIO_ASIGNADO: e.USUARIO_ASIGNADO, CARGO: e.CARGO, AREA_DEPARTAMENTO: e.AREA_DEPARTAMENTO };
+          _trabajadoresUnicos.push(tMap[e.DNI]);
+        }
+      });
+
       _populateFilters();
       _apply();
       _renderStats();
@@ -83,12 +95,18 @@ const InventarioView = (() => {
     const rows = pageRows.map(r=>{
       const cells = visCols.map(c=>{
         if(c.key==='ESTADO') return `<td>${Formatters.estadoBadge(r[c.key])}</td>`;
+        if(c.key==='USUARIO_ASIGNADO') {
+          const v = r[c.key] ? `<span style="background:#0b2253;color:white;padding:2px 6px;border-radius:12px;font-size:0.75rem;font-weight:bold;white-space:nowrap">👤 ${Formatters.safe(r[c.key])}</span>` : `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:12px;font-size:0.75rem;font-weight:bold;white-space:nowrap">🟢 Libre</span>`;
+          return `<td title="${r[c.key]||'Libre'}">${v}</td>`;
+        }
         const v = Formatters.safe(r[c.key]);
         return `<td title="${v}">${q?Formatters.highlight(v,q):v}</td>`;
       }).join('');
       return `<tr>${cells}<td style="white-space:nowrap">
         <button class="btn btn-sm btn-icon" title="Editar" onclick="InventarioView.editarFila('${r.CODIGO}')">✏️</button>
         <button class="btn btn-sm btn-icon" title="Asignar / Acta" onclick="InventarioView.abrirModalAsignacion('${r.CODIGO}')">📄</button>
+        <button class="btn btn-sm btn-icon" title="Capacitación" onclick="InventarioView.imprimirCapacitacionEquipo('${r.CODIGO}')">🎓</button>
+        ${r.USUARIO_ASIGNADO ? `<button class="btn btn-sm btn-icon" title="Devolver (Libera equipo y genera Acta)" onclick="InventarioView.devolverEquipo('${r.CODIGO}')">↩️</button>` : ''}
         <button class="btn btn-sm btn-icon btn-danger" title="Eliminar" onclick="InventarioView.borrarFila('${r.CODIGO}')">🗑️</button>
       </td></tr>`;
     }).join('');
@@ -285,25 +303,36 @@ const InventarioView = (() => {
     const r = _all.find(x => x.CODIGO === codigo);
     if(!r) return;
     
+    const datalistHTML = `<datalist id="list-trabajadores">${_trabajadoresUnicos.map(t => `<option value="${t.DNI}">${t.USUARIO_ASIGNADO} - ${t.CARGO}</option>`).join('')}</datalist>`;
+
     const fields = APP_CONFIG.columns.filter(c => c.isAsignacion).map(c => {
+      if(c.key === 'DNI') {
+        return `<div class="form-group"><label class="form-label">${c.label} (Escribe para buscar)</label><input type="text" class="form-control" list="list-trabajadores" id="asig-inv-${c.key}" value="${Formatters.safe(r[c.key])}" placeholder="Buscar DNI..." oninput="InventarioView.autocompletarTrabajador(this.value)"></div>`;
+      }
       return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="asig-inv-${c.key}" value="${Formatters.safe(r[c.key])}" placeholder="Opcional"></div>`;
     }).join('');
 
     const accesoriosOptions = _all
       .filter(x => x.CODIGO !== codigo && ['MONITOR','TECLADO','MOUSE','ACCESORIO','MICROFONO','ACCESORIO_SIMPLE'].includes(x.TIP_EQUIP))
-      .map(x => `<option value="${x.CODIGO}">${x.TIP_EQUIP}: ${x.MARCA||''} ${x.MODELO||''} (SN: ${x.SERIE||'-'}) - ${x.USUARIO_ASIGNADO?'👤 '+x.USUARIO_ASIGNADO:'🟢 Libre'}</option>`)
+      .map(x => {
+        const asignado = x.USUARIO_ASIGNADO ? true : false;
+        const disabled = asignado ? 'disabled' : '';
+        const label = asignado ? `👤 Asignado a ${x.USUARIO_ASIGNADO}` : '🟢 Libre';
+        return `<option value="${x.CODIGO}" ${disabled}>${x.TIP_EQUIP}: ${x.MARCA||''} ${x.MODELO||''} (SN: ${x.SERIE||'-'}) - ${label}</option>`;
+      })
       .join('');
 
     ModalGenerico.open(`
       <div class="modal-title">📄 Asignación de Equipo y Acta</div>
-      <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px">Completa los datos de asignación antes de generar el acta de entrega. Estos datos se guardarán en el inventario.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:15px">Completa los datos de asignación antes de generar el acta de entrega. Puedes buscar por DNI para autocompletar.</p>
+      ${datalistHTML}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${fields}</div>
       <div class="form-group" style="margin-top:15px">
         <label class="form-label">🔌 Emparejar Accesorios / Periféricos (Opcional)</label>
         <select id="asig-inv-accesorios" class="form-control" multiple style="height: 110px; font-size:12px">
           ${accesoriosOptions}
         </select>
-        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Mantén presionada la tecla Ctrl (o Cmd) para seleccionar múltiples accesorios. Se asignarán al mismo usuario.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Mantén presionada la tecla Ctrl para seleccionar múltiples. Solo aparecen habilitados los que están libres.</div>
       </div>
       <div class="modal-footer" style="margin-top:20px">
         <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>
@@ -371,7 +400,61 @@ const InventarioView = (() => {
     }
   }
 
-  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa };
+  function autocompletarTrabajador(dni) {
+    const t = _trabajadoresUnicos.find(x => x.DNI === dni);
+    if(t) {
+      if(document.getElementById('asig-inv-USUARIO_ASIGNADO')) document.getElementById('asig-inv-USUARIO_ASIGNADO').value = t.USUARIO_ASIGNADO || '';
+      if(document.getElementById('asig-inv-CARGO')) document.getElementById('asig-inv-CARGO').value = t.CARGO || '';
+      if(document.getElementById('asig-inv-AREA_DEPARTAMENTO')) document.getElementById('asig-inv-AREA_DEPARTAMENTO').value = t.AREA_DEPARTAMENTO || '';
+    }
+  }
+
+  async function devolverEquipo(codigo) {
+    if(!confirm('¿Estás seguro de DEVOLVER este equipo? Se borrarán los datos del usuario asignado y se generará el Acta de Devolución.')) return;
+    const r = _all.find(x => x.CODIGO === codigo);
+    if(!r) return;
+
+    // Copiar datos del usuario para el acta antes de borrarlos
+    const usuarioCopia = { ...r };
+
+    // Limpiar campos de asignación
+    APP_CONFIG.columns.forEach(c => {
+      if (c.isAsignacion) r[c.key] = '';
+    });
+
+    Toast.info('Procesando devolución...');
+    try {
+      const rowData = {};
+      APP_CONFIG.columns.forEach(c => { rowData[c.key] = r[c.key]; });
+      await LocalCache.addAudit({ accion: 'UPDATE', entidad: 'Inventario', datos: rowData, usuario: 'Admin' });
+      await SyncEngine.enqueue('updateRow', { sheetName: APP_CONFIG.sheets.sheetName || 'InventarioTI', codigo: r.CODIGO, rowData });
+      await LocalCache.put('equipos', { ...r, _id: r.CODIGO || r.SERIE });
+
+      localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
+      _apply();
+      
+      if(typeof PrintActas !== 'undefined') {
+        PrintActas.imprimirActa([usuarioCopia], true); // true = isDevolucion
+      }
+      Toast.success('Equipo devuelto correctamente');
+    } catch(err) { Toast.error('Error al procesar devolución'); }
+  }
+
+  function imprimirCapacitacionEquipo(codigo) {
+    const r = _all.find(x => x.CODIGO === codigo);
+    if(!r) return;
+    if(!r.USUARIO_ASIGNADO) {
+      Toast.warning('Este equipo no tiene un usuario asignado para la capacitación. Asígnale uno primero.');
+      return;
+    }
+    if(typeof PrintActas !== 'undefined' && PrintActas.imprimirCapacitacion) {
+      PrintActas.imprimirCapacitacion(r);
+    } else {
+      Toast.error('Módulo de Actas no encontrado o desactualizado');
+    }
+  }
+
+  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo };
 })();
 
 window.InventarioView = InventarioView;
