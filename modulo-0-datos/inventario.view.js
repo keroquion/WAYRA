@@ -487,6 +487,12 @@ const InventarioView = (() => {
         <td style="padding:10px;font-weight:600;color:var(--accent)">${t.USUARIO_ASIGNADO}</td>
         <td style="padding:10px">${t.CARGO || '-'}</td>
         <td style="padding:10px"><span class="badge" style="background:var(--bg-hover);color:var(--text-color)">${t.AREA_DEPARTAMENTO || t.SUCURSAL || '-'}</span></td>
+        <td style="padding:10px;text-align:right">
+          <button class="btn btn-sm btn-icon" title="Acta Global" onclick="InventarioView.imprimirActaTrabajador('${t.DNI}')">📄</button>
+          <button class="btn btn-sm btn-icon" title="Capacitación (Blanco)" onclick="InventarioView.imprimirCapacitacionTrabajador('${t.DNI}')">🎓</button>
+          <button class="btn btn-sm btn-icon" title="Regularización (Blanco)" onclick="InventarioView.imprimirRegularizacionTrabajador('${t.DNI}')">📝</button>
+          <button class="btn btn-sm btn-icon" title="Devolución Masiva" onclick="InventarioView.devolverTodoTrabajador('${t.DNI}')">↩️</button>
+        </td>
       </tr>
     `).join('');
 
@@ -501,6 +507,7 @@ const InventarioView = (() => {
               <th style="padding:12px 10px;font-weight:600">Nombre Completo</th>
               <th style="padding:12px 10px;font-weight:600">Cargo</th>
               <th style="padding:12px 10px;font-weight:600">Área / Ubicación</th>
+              <th style="padding:12px 10px;font-weight:600;text-align:right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -514,7 +521,54 @@ const InventarioView = (() => {
     `);
   }
 
-  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo, imprimirRegularizacionEquipo, verTrabajadores };
+  function imprimirActaTrabajador(dni) {
+    const equipos = _all.filter(x => x.DNI === dni);
+    if (!equipos.length) return Toast.error('El trabajador no tiene equipos asignados.');
+    if (typeof PrintActas !== 'undefined' && PrintActas.imprimirActa) {
+      PrintActas.imprimirActa(equipos);
+    } else {
+      Toast.error('Módulo de Actas no encontrado.');
+    }
+  }
+
+  function _generarPseudoEquipoTrabajador(dni) {
+    const t = _trabajadoresUnicos.find(x => x.DNI === dni);
+    if (!t) return null;
+    return {
+      USUARIO_ASIGNADO: t.USUARIO_ASIGNADO,
+      DNI: t.DNI,
+      CARGO: t.CARGO,
+      AREA_DEPARTAMENTO: t.AREA_DEPARTAMENTO,
+      SUCURSAL: t.SUCURSAL || '',
+      TIP_EQUIP: '', MARCA: '', MODELO: '', SERIE: ''
+    };
+  }
+
+  function imprimirCapacitacionTrabajador(dni) {
+    const p = _generarPseudoEquipoTrabajador(dni);
+    if (!p) return;
+    if (typeof PrintActas !== 'undefined' && PrintActas.imprimirCapacitacion) {
+      PrintActas.imprimirCapacitacion(p);
+    } else {
+      Toast.error('Módulo de Actas no encontrado.');
+    }
+  }
+
+  function imprimirRegularizacionTrabajador(dni) {
+    const p = _generarPseudoEquipoTrabajador(dni);
+    if (!p) return;
+    if (typeof PrintActas !== 'undefined' && PrintActas.imprimirRegularizacion) {
+      PrintActas.imprimirRegularizacion(p);
+    } else {
+      Toast.error('Módulo de Actas no encontrado.');
+    }
+  }
+
+  function devolverTodoTrabajador(dni) {
+    Toast.info('Función de devolución masiva en desarrollo (Próximamente).', 3000);
+  }
+
+  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo, imprimirRegularizacionEquipo, verTrabajadores, imprimirActaTrabajador, imprimirCapacitacionTrabajador, imprimirRegularizacionTrabajador, devolverTodoTrabajador };
 })();
 
 window.InventarioView = InventarioView;
