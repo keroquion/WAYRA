@@ -32,6 +32,10 @@ const SupabaseAPI = (() => {
     };
     const res = await fetch(url, { ...options, headers });
     if (!res.ok) {
+      if (res.status === 401 && window.AuthService) {
+        AuthService.logout();
+        throw new Error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+      }
       const errorText = await res.text();
       throw new Error(`Supabase Error: ${res.status} - ${errorText}`);
     }
