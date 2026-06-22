@@ -230,6 +230,7 @@ const InventarioView = (() => {
 
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
       _apply();
+      _renderStats();
       Toast.success('Equipo actualizado en cola');
     } catch(err) { Toast.error('Error al actualizar'); }
   }
@@ -249,6 +250,7 @@ const InventarioView = (() => {
       _all = _all.filter(x => x.CODIGO !== codigo);
       localStorage.setItem('inv-pro-full-data', JSON.stringify(_all));
       _apply();
+      _renderStats();
       Toast.warning('Equipo eliminado');
     } catch(err) { Toast.error('Error al eliminar'); }
   }

@@ -588,11 +588,16 @@ const RegistroBienesView = (() => {
         registros.push(codigo);
       }
 
-      SupabaseAPI.invalidateCache();
+      // Se eliminó SupabaseAPI.invalidateCache() para no borrar los datos locales optimistas antes de que SyncEngine los suba
       
       Toast.success(`✅ Registro Exitoso: ${registros.join(', ')}`);
 
       _limpiarFormulario();
+      
+      const modoRafaga = document.getElementById('rb-modo-rafaga')?.checked;
+      if (!modoRafaga && window.Views) {
+        Views.go('inventario');
+      }
 
     } catch (err) {
       Toast.error('Error al guardar: ' + err.message);
