@@ -18,9 +18,14 @@ const SupabaseAPI = (() => {
       throw new Error('Supabase no está configurado en app.config.js');
     }
     const url = `${APP_CONFIG.supabase.url}/rest/v1/${endpoint}`;
+    let authHeader = `Bearer ${APP_CONFIG.supabase.anonKey}`;
+    if (window.AuthService && AuthService.getUsuarioActual() && AuthService.getUsuarioActual().access_token) {
+      authHeader = `Bearer ${AuthService.getUsuarioActual().access_token}`;
+    }
+
     const headers = {
       'apikey': APP_CONFIG.supabase.anonKey,
-      'Authorization': `Bearer ${APP_CONFIG.supabase.anonKey}`,
+      'Authorization': authHeader,
       'Content-Type': 'application/json',
       'Prefer': 'return=representation',
       ...(options.headers || {})
