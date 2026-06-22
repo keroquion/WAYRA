@@ -83,11 +83,14 @@ const RegistroBienesView = (() => {
 
       <style>
         .rb-layout-container { display: flex; gap: 20px; align-items: flex-start; }
-        .rb-form-card { flex: 1; min-width: 300px; padding: 20px; width: 100%; box-sizing: border-box; }
+        .rb-form-card { flex: 1; min-width: 0; padding: 20px; width: 100%; box-sizing: border-box; overflow: hidden; }
         .rb-preview-card { width: 320px; flex-shrink: 0; position: sticky; top: 80px; background: var(--bg-hover); border: 1px solid var(--border); box-sizing: border-box; }
+        .rb-cat-btn { flex: 1; min-width: 140px; padding: 10px; }
         @media (max-width: 768px) {
-          .rb-layout-container { flex-direction: column-reverse; }
+          .rb-layout-container { flex-direction: column-reverse; gap: 12px; }
           .rb-preview-card { width: 100%; position: static; }
+          .rb-form-card { padding: 12px; }
+          .rb-cat-btn { min-width: 110px; font-size: 0.75rem; padding: 8px 4px !important; }
         }
       </style>
       <div class="rb-layout-container">
@@ -98,7 +101,7 @@ const RegistroBienesView = (() => {
             <input type="hidden" id="rb-categoria" value="">
             <div style="display:flex; flex-wrap:wrap; gap:8px;">
               ${categorias.map(c => `
-                <button type="button" class="btn btn-secondary btn-sm rb-cat-btn" data-id="${c.id}" style="display:flex; align-items:center; gap:6px; flex:1; min-width:140px; justify-content:center; padding:10px;">
+                <button type="button" class="btn btn-secondary btn-sm rb-cat-btn" data-id="${c.id}" style="display:flex; align-items:center; gap:6px; justify-content:center;">
                   ${c.icon} ${c.label}
                 </button>
               `).join('')}
