@@ -103,7 +103,7 @@ const InventarioView = (() => {
         const v = Formatters.safe(r[c.key]);
         return `<td title="${v}">${q?Formatters.highlight(v,q):v}</td>`;
       }).join('');
-      return `<tr>${cells}<td style="white-space:nowrap">
+      return `<tr>${cells}<td style="white-space:nowrap; max-width:none; overflow:visible;">
         <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Editar" onclick="InventarioView.editarFila('${r.CODIGO}')">✏️</button>
         <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Asignar / Acta" onclick="InventarioView.abrirModalAsignacion('${r.CODIGO}')">📄</button>
         <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Capacitación" onclick="InventarioView.imprimirCapacitacionEquipo('${r.CODIGO}')">🎓</button>
@@ -487,7 +487,7 @@ const InventarioView = (() => {
         <td style="padding:10px;font-weight:600;color:var(--accent)">${t.USUARIO_ASIGNADO}</td>
         <td style="padding:10px">${t.CARGO || '-'}</td>
         <td style="padding:10px"><span class="badge" style="background:var(--bg-hover);color:var(--text-color)">${t.AREA_DEPARTAMENTO || t.SUCURSAL || '-'}</span></td>
-        <td style="padding:10px;text-align:right;white-space:nowrap;">
+        <td style="padding:10px;text-align:right;white-space:nowrap;max-width:none;overflow:visible;">
           <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Acta Global" onclick="InventarioView.imprimirActaTrabajador('${t.DNI}')">📄</button>
           <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Capacitación (Blanco)" onclick="InventarioView.imprimirCapacitacionTrabajador('${t.DNI}')">🎓</button>
           <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Regularización (Blanco)" onclick="InventarioView.imprimirRegularizacionTrabajador('${t.DNI}')">📝</button>
