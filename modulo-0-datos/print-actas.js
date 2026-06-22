@@ -212,10 +212,12 @@ const PrintActas = (() => {
           4. ASIGNACIÓN INICIAL
         </div>
         <div class="p-6 flex-grow flex flex-col">
-          <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253] mb-10">
-            <input type="checkbox" checked disabled class="border-gray-400 rounded-sm">
-            ENTREGA DE EQUIPO AL COLABORADOR
-          </label>
+          <div style="min-height:72px;">
+            <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
+              <input type="checkbox" checked disabled class="border-gray-400 rounded-sm">
+              ENTREGA DE EQUIPO AL COLABORADOR
+            </label>
+          </div>
           <div class="flex flex-col gap-8 mt-auto">
             <!-- Firma 1 -->
             <div class="flex items-end justify-between gap-6">
@@ -242,13 +244,15 @@ const PrintActas = (() => {
           5. DEVOLUCIÓN / CESE
         </div>
         <div class="p-6 flex-grow flex flex-col">
-          <div class="flex flex-col gap-2 mb-6">
-            <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
-              <input type="checkbox" disabled class="border-gray-400 rounded-sm"> DEVOLUCIÓN POR CESE
-            </label>
-            <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
-              <input type="checkbox" disabled class="border-gray-400 rounded-sm"> REPOSICIÓN O RENOVACIÓN
-            </label>
+          <div style="min-height:72px;">
+            <div class="flex flex-col gap-2">
+              <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
+                <input type="checkbox" disabled class="border-gray-400 rounded-sm"> DEVOLUCIÓN POR CESE
+              </label>
+              <label class="flex items-center gap-3 text-xs font-bold text-[#0b2253]">
+                <input type="checkbox" disabled class="border-gray-400 rounded-sm"> REPOSICIÓN O RENOVACIÓN
+              </label>
+            </div>
           </div>
           <div class="flex flex-col gap-8 mt-auto">
             <!-- Firma 3 -->
