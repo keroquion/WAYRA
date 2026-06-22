@@ -54,7 +54,30 @@ const SyncEngine = (() => {
         if (err.message && err.message.includes('42501')) {
           Toast.error('🚨 Error de Permisos en Supabase (RLS). Mira las instrucciones.');
           const sql = 'CREATE POLICY "Permitir todo a usuarios autenticados" ON public.equipos FOR ALL TO authenticated USING (true) WITH CHECK (true);';
-          alert('ATENCIÓN: Supabase está bloqueando el guardado (Error RLS 42501).\n\nPara solucionarlo, debes ir a Supabase > SQL Editor y ejecutar esto:\n\n' + sql + '\n\nTus datos NO se han borrado, están en cola. Se subirán en cuanto arregles esto.');
+          
+          if (window.ModalGenerico) {
+            ModalGenerico.open(`
+              <div class="modal-title" style="color:var(--danger)">🚨 Atención: Guardado Bloqueado</div>
+              <div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px">
+                Supabase está bloqueando el guardado en la nube (Error RLS 42501).
+              </div>
+              <div style="font-size:0.8rem; margin-bottom:8px;">
+                Para solucionarlo, ve a <strong>Supabase > SQL Editor</strong> y ejecuta esto:
+              </div>
+              <div style="background:var(--bg-input); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border); font-family:monospace; font-size:0.75rem; color:var(--accent); overflow-x:auto; margin-bottom:12px; user-select:all;">
+                ${sql}
+              </div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:16px;">
+                Tus datos NO se han borrado, están en cola. Se subirán automáticamente en cuanto arregles los permisos.
+              </div>
+              <div class="modal-footer">
+                <button class="btn btn-primary" onclick="ModalGenerico.close()">Entendido</button>
+              </div>
+            `);
+          } else {
+            alert('ATENCIÓN: Supabase está bloqueando el guardado (Error RLS 42501).\n\nPara solucionarlo, debes ir a Supabase > SQL Editor y ejecutar esto:\n\n' + sql + '\n\nTus datos NO se han borrado, están en cola.');
+          }
+          
           stop(); // Pausamos el motor para no molestar más
           setTimeout(start, 5 * 60 * 1000); // Reintentar en 5 mins
         } else {
