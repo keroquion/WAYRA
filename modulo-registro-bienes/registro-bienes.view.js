@@ -95,10 +95,14 @@ const RegistroBienesView = (() => {
         <div class="card rb-form-card">
           <div class="form-group">
             <label class="form-label">Categoría del Bien</label>
-            <select class="form-control" id="rb-categoria" tabindex="1">
-              <option value="" disabled selected>Selecciona una categoría...</option>
-              ${categorias.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}
-            </select>
+            <input type="hidden" id="rb-categoria" value="">
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+              ${categorias.map(c => `
+                <button type="button" class="btn btn-secondary btn-sm rb-cat-btn" data-id="${c.id}" style="display:flex; align-items:center; gap:6px; flex:1; min-width:140px; justify-content:center; padding:10px;">
+                  ${c.icon} ${c.label}
+                </button>
+              `).join('')}
+            </div>
           </div>
           
           <div class="form-group">
@@ -263,8 +267,22 @@ const RegistroBienesView = (() => {
   }
 
   function _bindEvents() {
-    const categoriaSelect = document.getElementById('rb-categoria');
-    categoriaSelect.addEventListener('change', (e) => _onCategoriaChange(e.target.value));
+    const catBtns = document.querySelectorAll('.rb-cat-btn');
+    catBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        catBtns.forEach(b => {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-secondary');
+        });
+        const targetBtn = e.currentTarget;
+        targetBtn.classList.remove('btn-secondary');
+        targetBtn.classList.add('btn-primary');
+        
+        const catId = targetBtn.getAttribute('data-id');
+        document.getElementById('rb-categoria').value = catId;
+        _onCategoriaChange(catId);
+      });
+    });
 
     ['rb-marca','rb-modelo','rb-serie','rb-procesador','rb-ram','rb-hd_ssd','rb-pulgadas','rb-observacion','rb-tipo_sub'].forEach(id => {
       const input = document.getElementById(id);
