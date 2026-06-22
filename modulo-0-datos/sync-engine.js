@@ -51,7 +51,15 @@ const SyncEngine = (() => {
       console.warn('[SyncEngine]', err.message);
       // Notificar al usuario visiblemente sobre el error de conexión
       if (window.Toast) {
-        Toast.error('Problema de conexión o subida con Supabase: ' + err.message);
+        if (err.message && err.message.includes('42501')) {
+          Toast.error('🚨 Error de Permisos en Supabase (RLS). Mira las instrucciones.');
+          const sql = 'CREATE POLICY "Permitir todo a usuarios autenticados" ON public.equipos FOR ALL TO authenticated USING (true) WITH CHECK (true);';
+          alert('ATENCIÓN: Supabase está bloqueando el guardado (Error RLS 42501).\n\nPara solucionarlo, debes ir a Supabase > SQL Editor y ejecutar esto:\n\n' + sql + '\n\nTus datos NO se han borrado, están en cola. Se subirán en cuanto arregles esto.');
+          stop(); // Pausamos el motor para no molestar más
+          setTimeout(start, 5 * 60 * 1000); // Reintentar en 5 mins
+        } else {
+          Toast.error('Problema de conexión o subida con Supabase: ' + err.message);
+        }
       }
     } finally {
       _running = false;
@@ -96,6 +104,12 @@ const SyncEngine = (() => {
       }
       await LocalCache.removeFromQueue(op.id);
     } catch (err) {
+      if (err.message && err.message.includes('42501')) {
+        // Es un error de RLS (Row Level Security). No incrementar reintentos, pausar motor.
+        console.error('[SyncEngine] Error RLS detectado. Pausando sync para no perder datos.');
+        throw err;
+      }
+      
       op.retries = (op.retries || 0) + 1;
       if (op.retries >= 5) {
         // Descartar después de 5 intentos, loguear
