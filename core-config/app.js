@@ -160,6 +160,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const cats = await LocalCache.getCatalogos();
   Object.assign(APP_CONFIG.catalogos, cats);
 
+  // MIGRACIÓN: Si el catálogo local de sucursales aún tiene los valores por defecto antiguos, actualizar a las nuevas tiendas
+  if (APP_CONFIG.catalogos.sucursales && (APP_CONFIG.catalogos.sucursales.length <= 2 || APP_CONFIG.catalogos.sucursales.includes('PRINCIPAL'))) {
+    APP_CONFIG.catalogos.sucursales = ['WAYRA MEDIC CENTRAL', 'TIENDA HD', 'TIENDA FT', 'TIENDA PSP', 'TIENDA MM'];
+    try { await LocalCache.setCatalogo('sucursales', APP_CONFIG.catalogos.sucursales); } catch(e){}
+  }
+
   // 4.5 Extraer posibles repuestos que estén en Lotes pero no en el catálogo
   await LocalCache.syncCatalogTiposFromLotes();
 

@@ -180,11 +180,17 @@ const InventarioView = (() => {
       if(c.isAsignacion) return '';
       if(c.key === 'CODIGO') return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="edit-inv-${c.key}" value="${Formatters.safe(r[c.key])}" readonly style="background:var(--bg-hover)"></div>`;
       if(c.key === 'ESTADO') return `<div class="form-group"><label class="form-label">${c.label}</label><select class="form-control" id="edit-inv-${c.key}"><option value="C" ${r.ESTADO==='C'?'selected':''}>Correcto</option><option value="P" ${r.ESTADO==='P'?'selected':''}>En Revisión</option><option value="M" ${r.ESTADO==='M'?'selected':''}>Malogrado</option><option value="V" ${r.ESTADO==='V'?'selected':''}>Vendido</option></select></div>`;
+      if(c.key === 'SUCURSAL') return `<div class="form-group"><label class="form-label">${c.label}</label><select class="form-control" id="edit-inv-${c.key}">${(APP_CONFIG.catalogos.sucursales||[]).map(o=>`<option value="${o}" ${r[c.key]===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+      if(c.key === 'TIP_EQUIP') return `<div class="form-group"><label class="form-label">${c.label}</label><select class="form-control" id="edit-inv-${c.key}">${(APP_CONFIG.catalogos.tiposEquipo||[]).map(o=>`<option value="${o}" ${r[c.key]===o?'selected':''}>${o}</option>`).join('')}</select></div>`;
+      if(c.key === 'MARCA') return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="edit-inv-${c.key}" list="dl-marcas-edit" value="${Formatters.safe(r[c.key])}"></div>`;
       return `<div class="form-group"><label class="form-label">${c.label}</label><input type="text" class="form-control" id="edit-inv-${c.key}" value="${Formatters.safe(r[c.key])}"></div>`;
     }).join('');
 
+    const extraHTML = `<datalist id="dl-marcas-edit">${(APP_CONFIG.catalogos.marcas||[]).map(m=>`<option value="${m}">`).join('')}</datalist>`;
+
     ModalGenerico.open(`
       <div class="modal-title">✏️ Editar Equipo</div>
+      ${extraHTML}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-height:60vh;overflow-y:auto;padding-right:8px">${fields}</div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cancelar</button>

@@ -100,6 +100,13 @@ const RegistroBienesView = (() => {
               ${categorias.map(c => `<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}
             </select>
           </div>
+          
+          <div class="form-group">
+            <label class="form-label">Ubicación / Sucursal</label>
+            <select class="form-control" id="rb-sucursal">
+              ${(APP_CONFIG.catalogos.sucursales||[]).map(s => `<option value="${s}">${s}</option>`).join('')}
+            </select>
+          </div>
 
           <div id="rb-presets-container" style="display:none; margin-bottom: 16px; gap: 8px; flex-wrap: wrap;"></div>
 
@@ -515,7 +522,7 @@ const RegistroBienesView = (() => {
 
       const registros = [];
       const fechaHoy = new Date().toLocaleDateString('es-PE');
-      const sucursal = (APP_CONFIG.catalogos.sucursales && APP_CONFIG.catalogos.sucursales.length > 0) ? APP_CONFIG.catalogos.sucursales[0] : '';
+      const sucursal = document.getElementById('rb-sucursal')?.value || '';
       
       let tipoFinal = catId;
       if (catId === 'LAPTOP/PC') tipoFinal = modelo.toLowerCase().includes('laptop') ? 'LAPTOP' : 'PC';
