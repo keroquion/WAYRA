@@ -104,12 +104,12 @@ const InventarioView = (() => {
         return `<td title="${v}">${q?Formatters.highlight(v,q):v}</td>`;
       }).join('');
       return `<tr>${cells}<td style="white-space:nowrap">
-        <button class="btn btn-sm btn-icon" title="Editar" onclick="InventarioView.editarFila('${r.CODIGO}')">✏️</button>
-        <button class="btn btn-sm btn-icon" title="Asignar / Acta" onclick="InventarioView.abrirModalAsignacion('${r.CODIGO}')">📄</button>
-        <button class="btn btn-sm btn-icon" title="Capacitación" onclick="InventarioView.imprimirCapacitacionEquipo('${r.CODIGO}')">🎓</button>
-        <button class="btn btn-sm btn-icon" title="Regularización / Extraordinario" onclick="InventarioView.imprimirRegularizacionEquipo('${r.CODIGO}')">📝</button>
-        ${r.USUARIO_ASIGNADO ? `<button class="btn btn-sm btn-icon" title="Devolver (Libera equipo y genera Acta)" onclick="InventarioView.devolverEquipo('${r.CODIGO}')">↩️</button>` : ''}
-        <button class="btn btn-sm btn-icon btn-danger" title="Eliminar" onclick="InventarioView.borrarFila('${r.CODIGO}')">🗑️</button>
+        <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Editar" onclick="InventarioView.editarFila('${r.CODIGO}')">✏️</button>
+        <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Asignar / Acta" onclick="InventarioView.abrirModalAsignacion('${r.CODIGO}')">📄</button>
+        <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Capacitación" onclick="InventarioView.imprimirCapacitacionEquipo('${r.CODIGO}')">🎓</button>
+        <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Regularización / Extraordinario" onclick="InventarioView.imprimirRegularizacionEquipo('${r.CODIGO}')">📝</button>
+        ${r.USUARIO_ASIGNADO ? `<button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Devolver (Libera equipo y genera Acta)" onclick="InventarioView.devolverEquipo('${r.CODIGO}')">↩️</button>` : ''}
+        <button class="btn btn-sm btn-icon btn-danger" style="font-size:1.1rem; padding:4px 6px" title="Eliminar" onclick="InventarioView.borrarFila('${r.CODIGO}')">🗑️</button>
       </td></tr>`;
     }).join('');
 
@@ -487,11 +487,11 @@ const InventarioView = (() => {
         <td style="padding:10px;font-weight:600;color:var(--accent)">${t.USUARIO_ASIGNADO}</td>
         <td style="padding:10px">${t.CARGO || '-'}</td>
         <td style="padding:10px"><span class="badge" style="background:var(--bg-hover);color:var(--text-color)">${t.AREA_DEPARTAMENTO || t.SUCURSAL || '-'}</span></td>
-        <td style="padding:10px;text-align:right">
-          <button class="btn btn-sm btn-icon" title="Acta Global" onclick="InventarioView.imprimirActaTrabajador('${t.DNI}')">📄</button>
-          <button class="btn btn-sm btn-icon" title="Capacitación (Blanco)" onclick="InventarioView.imprimirCapacitacionTrabajador('${t.DNI}')">🎓</button>
-          <button class="btn btn-sm btn-icon" title="Regularización (Blanco)" onclick="InventarioView.imprimirRegularizacionTrabajador('${t.DNI}')">📝</button>
-          <button class="btn btn-sm btn-icon" title="Devolución Masiva" onclick="InventarioView.devolverTodoTrabajador('${t.DNI}')">↩️</button>
+        <td style="padding:10px;text-align:right;white-space:nowrap;">
+          <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Acta Global" onclick="InventarioView.imprimirActaTrabajador('${t.DNI}')">📄</button>
+          <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Capacitación (Blanco)" onclick="InventarioView.imprimirCapacitacionTrabajador('${t.DNI}')">🎓</button>
+          <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Regularización (Blanco)" onclick="InventarioView.imprimirRegularizacionTrabajador('${t.DNI}')">📝</button>
+          <button class="btn btn-sm btn-icon btn-secondary" style="font-size:1.1rem; padding:4px 6px" title="Devolución Masiva" onclick="InventarioView.devolverTodoTrabajador('${t.DNI}')">↩️</button>
         </td>
       </tr>
     `).join('');
@@ -499,8 +499,8 @@ const InventarioView = (() => {
     ModalGenerico.open(`
       <div class="modal-title">👥 Directorio de Trabajadores</div>
       <div class="modal-subtitle">Trabajadores extraídos dinámicamente de las asignaciones actuales (${sorted.length} registrados).</div>
-      <div style="max-height:60vh;overflow-y:auto;margin-top:16px;border:1px solid var(--border);border-radius:var(--radius-md)">
-        <table style="width:100%;border-collapse:collapse;text-align:left;font-size:0.85rem">
+      <div style="max-height:60vh;overflow-y:auto;overflow-x:auto;margin-top:16px;border:1px solid var(--border);border-radius:var(--radius-md)">
+        <table style="width:100%;border-collapse:collapse;text-align:left;font-size:0.85rem;min-width:600px;">
           <thead style="background:var(--bg-card);color:var(--text-secondary);position:sticky;top:0;z-index:1;box-shadow:0 1px 0 var(--border)">
             <tr>
               <th style="padding:12px 10px;font-weight:600">DNI</th>
