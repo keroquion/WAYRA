@@ -79,7 +79,11 @@ const SyncEngine = (() => {
           await SupabaseAPI.upsert(op.rowData);
           break;
         case 'deleteRow':
-          console.warn('[SyncEngine] deleteRow no soportado en Supabase via sync. Usa Supabase Dashboard.');
+          if (op.codigo) {
+            await SupabaseAPI.remove(op.codigo);
+          } else {
+            console.warn('[SyncEngine] deleteRow omitido porque no se proporcionó código.');
+          }
           break;
         case 'uploadFile':
           // Aún no migrado a Supabase Storage, ignorar o manejar si es necesario.

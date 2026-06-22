@@ -148,10 +148,16 @@ const SupabaseAPI = (() => {
     chip.innerHTML = `<span class="dot"></span>${labels[state] || state}`;
   }
 
+  async function remove(codigo) {
+    return _request(`equipos?codigo=eq.${encodeURIComponent(codigo)}`, {
+      method: 'DELETE'
+    });
+  }
+
   return {
     init, fetchAll, syncFromRemote,
     findByCodigoOSerie, search,
-    invalidateCache, getSyncInfo, upsert,
+    invalidateCache, getSyncInfo, upsert, remove,
     getStatus: () => _status
   };
 })();

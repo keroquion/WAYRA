@@ -486,17 +486,19 @@ const RegistroBienesView = (() => {
 
     const getVal = (id) => (document.getElementById('rb-' + id)?.value || '').trim();
     
-    const marca = getVal('marca');
-    const modelo = getVal('modelo');
+    let marca = getVal('marca');
+    let modelo = getVal('modelo');
     let serie = getVal('serie');
     const tipoSub = getVal('tipo_sub');
     const cant = parseInt(document.getElementById('rb-cantidad')?.value || '1', 10);
 
     const cat = categorias.find(c => c.id === catId);
-    if (cat.campos.includes('marca') && !marca && catId !== 'OTRO') {
-      Toast.warning('La marca es obligatoria para este tipo de bien');
-      document.getElementById('rb-marca')?.focus();
-      return;
+    if (cat.campos.includes('marca') && !marca) {
+      marca = 'SIN MARCA';
+    }
+    
+    if (cat.campos.includes('modelo') && !modelo) {
+      modelo = 'SIN MODELO';
     }
 
     if (!serie) serie = "N/A";
