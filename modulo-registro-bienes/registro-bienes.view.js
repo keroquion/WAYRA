@@ -492,14 +492,8 @@ const RegistroBienesView = (() => {
     const tipoSub = getVal('tipo_sub');
     const cant = parseInt(document.getElementById('rb-cantidad')?.value || '1', 10);
 
-    const cat = categorias.find(c => c.id === catId);
-    if (cat.campos.includes('marca') && !marca) {
-      marca = 'SIN MARCA';
-    }
-    
-    if (cat.campos.includes('modelo') && !modelo) {
-      modelo = 'SIN MODELO';
-    }
+    if (!marca) marca = 'SIN MARCA';
+    if (!modelo) modelo = 'SIN MODELO';
 
     if (!serie) serie = "N/A";
 

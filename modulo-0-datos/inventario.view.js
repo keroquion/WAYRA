@@ -207,7 +207,12 @@ const InventarioView = (() => {
     APP_CONFIG.columns.forEach(c => {
       if (c.isAsignacion) return;
       const el = document.getElementById(`edit-inv-${c.key}`);
-      if(el && c.key !== 'CODIGO') r[c.key] = el.value.trim();
+      if(el && c.key !== 'CODIGO') {
+        let val = el.value.trim();
+        if (c.key === 'MARCA' && !val) val = 'SIN MARCA';
+        if (c.key === 'MODELO' && !val) val = 'SIN MODELO';
+        r[c.key] = val;
+      }
     });
 
     ModalGenerico.close();
