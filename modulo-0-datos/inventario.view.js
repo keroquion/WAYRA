@@ -14,6 +14,7 @@ const InventarioView = (() => {
         <div><div class="page-title">📦 Inventario Completo</div><div class="page-subtitle">Todos los equipos en Google Sheets</div></div>
         <div class="page-actions">
           <button class="btn btn-secondary btn-sm" id="btn-inv-refresh">🔄 Actualizar</button>
+          <button class="btn btn-secondary btn-sm" onclick="InventarioView.verTrabajadores()">👥 Trabajadores</button>
           <button class="btn btn-secondary btn-sm" onclick="InventarioView.exportarPDF('lista')">🖨️ PDF Lista</button>
           <button class="btn btn-secondary btn-sm" onclick="InventarioView.exportarPDF('catalogo')">🗂️ Reporte Asignaciones</button>
           <button class="btn btn-secondary btn-sm" onclick="InventarioView.abrirModalImportar()">📤 Importar CSV</button>
@@ -471,7 +472,49 @@ const InventarioView = (() => {
     }
   }
 
-  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo, imprimirRegularizacionEquipo };
+  function verTrabajadores() {
+    if(!_trabajadoresUnicos || _trabajadoresUnicos.length === 0) {
+      Toast.info('No hay trabajadores registrados con equipos asignados.');
+      return;
+    }
+    
+    // Sort by name
+    const sorted = [..._trabajadoresUnicos].sort((a,b) => a.USUARIO_ASIGNADO.localeCompare(b.USUARIO_ASIGNADO));
+
+    const rows = sorted.map(t => `
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:10px">${t.DNI}</td>
+        <td style="padding:10px;font-weight:600;color:var(--accent)">${t.USUARIO_ASIGNADO}</td>
+        <td style="padding:10px">${t.CARGO || '-'}</td>
+        <td style="padding:10px"><span class="badge" style="background:var(--bg-hover);color:var(--text-color)">${t.AREA_DEPARTAMENTO || t.SUCURSAL || '-'}</span></td>
+      </tr>
+    `).join('');
+
+    ModalGenerico.open(`
+      <div class="modal-title">👥 Directorio de Trabajadores</div>
+      <div class="modal-subtitle">Trabajadores extraídos dinámicamente de las asignaciones actuales (${sorted.length} registrados).</div>
+      <div style="max-height:60vh;overflow-y:auto;margin-top:16px;border:1px solid var(--border);border-radius:var(--radius-md)">
+        <table style="width:100%;border-collapse:collapse;text-align:left;font-size:0.85rem">
+          <thead style="background:var(--bg-card);color:var(--text-secondary);position:sticky;top:0;z-index:1;box-shadow:0 1px 0 var(--border)">
+            <tr>
+              <th style="padding:12px 10px;font-weight:600">DNI</th>
+              <th style="padding:12px 10px;font-weight:600">Nombre Completo</th>
+              <th style="padding:12px 10px;font-weight:600">Cargo</th>
+              <th style="padding:12px 10px;font-weight:600">Área / Ubicación</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer" style="margin-top:20px">
+        <button class="btn btn-secondary" onclick="ModalGenerico.close()">Cerrar</button>
+      </div>
+    `);
+  }
+
+  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo, imprimirRegularizacionEquipo, verTrabajadores };
 })();
 
 window.InventarioView = InventarioView;
