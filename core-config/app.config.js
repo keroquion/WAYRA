@@ -87,7 +87,7 @@ const APP_CONFIG = {
   catalogos: {
     marcas:        ['DELL','HP','LENOVO','APPLE','TOSHIBA','ASUS','MICROSOFT','HALION','BYTESPEED','AZUS'],
     tiposEquipo:   ['LAPTOP','PC','AIO','MONITOR','CPU','TABLET','IMPRESORA','CAMARA','TECLADO','MOUSE','MICROFONO','CABLE','SWITCH','ROUTER','ACCESS POINT','REPUESTO','ACCESORIO','OTRO'],
-    sucursales:    ['PRINCIPAL', 'ALMACÉN'],
+    sucursales:    ['WAYRA MEDIC CENTRAL', 'TIENDA HD', 'TIENDA FT', 'TIENDA PSP', 'TIENDA MM'],
     proveedores:   ['PROVEEDOR A','PROVEEDOR B'],
     tiposRepuesto: ['PANTALLA','TECLADO','BATERÍA','CARGADOR','RAM','DISCO','CARCASA','TOUCHPAD','BISAGRA','FLEX'],
   },

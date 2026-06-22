@@ -106,6 +106,7 @@ const InventarioView = (() => {
         <button class="btn btn-sm btn-icon" title="Editar" onclick="InventarioView.editarFila('${r.CODIGO}')">✏️</button>
         <button class="btn btn-sm btn-icon" title="Asignar / Acta" onclick="InventarioView.abrirModalAsignacion('${r.CODIGO}')">📄</button>
         <button class="btn btn-sm btn-icon" title="Capacitación" onclick="InventarioView.imprimirCapacitacionEquipo('${r.CODIGO}')">🎓</button>
+        <button class="btn btn-sm btn-icon" title="Regularización / Extraordinario" onclick="InventarioView.imprimirRegularizacionEquipo('${r.CODIGO}')">📝</button>
         ${r.USUARIO_ASIGNADO ? `<button class="btn btn-sm btn-icon" title="Devolver (Libera equipo y genera Acta)" onclick="InventarioView.devolverEquipo('${r.CODIGO}')">↩️</button>` : ''}
         <button class="btn btn-sm btn-icon btn-danger" title="Eliminar" onclick="InventarioView.borrarFila('${r.CODIGO}')">🗑️</button>
       </td></tr>`;
@@ -454,7 +455,17 @@ const InventarioView = (() => {
     }
   }
 
-  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo };
+  function imprimirRegularizacionEquipo(codigo) {
+    const r = _all.find(x => x.CODIGO === codigo);
+    if(!r) return;
+    if(typeof PrintActas !== 'undefined' && PrintActas.imprimirRegularizacion) {
+      PrintActas.imprimirRegularizacion(r);
+    } else {
+      Toast.error('Módulo de Actas no encontrado o desactualizado');
+    }
+  }
+
+  return { render, editarFila, guardarEdicion, borrarFila, abrirModalImportar, descargarPlantilla, procesarImportar, exportarPDF, abrirModalAsignacion, guardarYGenerarActa, autocompletarTrabajador, devolverEquipo, imprimirCapacitacionEquipo, imprimirRegularizacionEquipo };
 })();
 
 window.InventarioView = InventarioView;
