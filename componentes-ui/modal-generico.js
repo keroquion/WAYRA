@@ -1,10 +1,12 @@
 /**
  * componentes-ui/modal-generico.js
  * Modal reutilizable con slots de contenido dinámico.
+ * Protegido contra cierre accidental por clic fuera del modal.
  */
 
 const ModalGenerico = (() => {
   const OVERLAY_ID = 'modal-generico-overlay';
+  let _closeOnOutsideClick = false;
 
   function _ensure() {
     let overlay = document.getElementById(OVERLAY_ID);
@@ -16,7 +18,22 @@ const ModalGenerico = (() => {
         <button class="modal-close" onclick="ModalGenerico.close()">✕</button>
         <div id="modal-generico-content"></div>
       </div>`;
-      overlay.addEventListener('click', (e) => { if(e.target===overlay) close(); });
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          if (_closeOnOutsideClick) {
+            close();
+          } else {
+            // Feedback visual: el modal vibra para indicar que no se puede cerrar así
+            const box = document.getElementById('modal-generico-box');
+            if (box) {
+              box.classList.remove('modal-shake');
+              // Force reflow para reiniciar la animación
+              void box.offsetWidth;
+              box.classList.add('modal-shake');
+            }
+          }
+        }
+      });
       document.body.appendChild(overlay);
     }
     return overlay;
@@ -27,6 +44,9 @@ const ModalGenerico = (() => {
     const box = document.getElementById('modal-generico-box');
     const content = document.getElementById('modal-generico-content');
     if (!box || !content) return;
+
+    // Guardar opción de cierre por clic externo (por defecto: NO cerrar)
+    _closeOnOutsideClick = options.closeOnOutsideClick === true;
 
     // Tamaño
     box.className = `modal ${options.size || ''}`;

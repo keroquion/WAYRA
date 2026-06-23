@@ -78,6 +78,7 @@ const RegistroBienesView = (() => {
             <input type="checkbox" id="rb-modo-rafaga" style="width:16px; height:16px; accent-color:var(--danger);">
             Modo Ráfaga 🔥
           </label>
+          <button class="btn btn-secondary btn-sm" id="rb-btn-limpiar-todo" style="font-size:0.8rem;">🧹 Limpiar Todo</button>
         </div>
       </div>
 
@@ -339,6 +340,9 @@ const RegistroBienesView = (() => {
 
     const btnGuardar = document.getElementById('rb-btn-guardar');
     if (btnGuardar) btnGuardar.addEventListener('click', guardar);
+
+    const btnLimpiarTodo = document.getElementById('rb-btn-limpiar-todo');
+    if (btnLimpiarTodo) btnLimpiarTodo.addEventListener('click', _limpiarTodo);
   }
 
   function _onCategoriaChange(catId) {
@@ -596,11 +600,6 @@ const RegistroBienesView = (() => {
       Toast.success(`✅ Registro Exitoso: ${registros.join(', ')}`);
 
       _limpiarFormulario();
-      
-      const modoRafaga = document.getElementById('rb-modo-rafaga')?.checked;
-      if (!modoRafaga && window.Views) {
-        Views.go('inventario');
-      }
 
     } catch (err) {
       Toast.error('Error al guardar: ' + err.message);
@@ -612,31 +611,42 @@ const RegistroBienesView = (() => {
   }
 
   function _limpiarFormulario() {
-    const modoRafaga = document.getElementById('rb-modo-rafaga')?.checked;
-    
-    if (modoRafaga) {
-      const serieInput = document.getElementById('rb-serie');
-      if (serieInput) {
-        serieInput.value = '';
-        serieInput.focus();
-      }
-      const obsInput = document.getElementById('rb-observacion');
-      if (obsInput) obsInput.value = '';
+    // Siempre conservar: categoría, sucursal, marca, modelo, procesador, ram, hd_ssd, pulgadas, tipo_sub
+    // Solo limpiar: serie, observación y foto (lo que cambia entre registros)
+    const serieInput = document.getElementById('rb-serie');
+    if (serieInput) {
+      serieInput.value = '';
+    }
+    const obsInput = document.getElementById('rb-observacion');
+    if (obsInput) obsInput.value = '';
+
+    const elCant = document.getElementById('rb-cantidad');
+    if (elCant) elCant.value = '1';
+
+    _borrarFoto();
+
+    // Enfocar el campo serie para registro rápido
+    if (serieInput && serieInput.offsetParent !== null) {
+      serieInput.focus();
     } else {
-      ['rb-marca','rb-modelo','rb-serie','rb-procesador','rb-ram','rb-hd_ssd','rb-pulgadas','rb-observacion','rb-tipo_sub'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-      const elCant = document.getElementById('rb-cantidad');
-      if (elCant) elCant.value = '1';
-      
-      _borrarFoto();
-      
       const visibles = Array.from(document.querySelectorAll('#rb-campos-dinamicos input')).filter(el => el.offsetParent !== null && el.type !== 'file');
       if (visibles.length > 0) visibles[0].focus();
     }
     
     _actualizarPreviewCard();
+  }
+
+  function _limpiarTodo() {
+    ['rb-marca','rb-modelo','rb-serie','rb-procesador','rb-ram','rb-hd_ssd','rb-pulgadas','rb-observacion','rb-tipo_sub'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const elCant = document.getElementById('rb-cantidad');
+    if (elCant) elCant.value = '1';
+    
+    _borrarFoto();
+    _actualizarPreviewCard();
+    Toast.info('Formulario limpiado completamente');
   }
 
   function onLeave() {

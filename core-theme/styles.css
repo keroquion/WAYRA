@@ -158,6 +158,8 @@ select.form-control option{background:var(--bg-card)}
 .modal-close{position:absolute;top:12px;right:12px;background:none;border:none;color:var(--text-muted);font-size:1.1rem;cursor:pointer;transition:color var(--transition);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center}
 .modal-close:hover{color:var(--text-primary);background:var(--bg-hover)}
 .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+@keyframes modal-shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(5px)}45%{transform:translateX(-4px)}60%{transform:translateX(3px)}75%{transform:translateX(-2px)}}
+.modal-shake{animation:modal-shake 0.4s ease-in-out}
 
 /* ── TOAST ── */
 #toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:7px;z-index:9999}
